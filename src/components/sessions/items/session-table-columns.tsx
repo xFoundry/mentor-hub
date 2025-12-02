@@ -14,7 +14,15 @@ import {
   CheckCircle2,
   Circle,
   XCircle,
+  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { parseISO, format, isFuture } from "date-fns";
@@ -40,6 +48,7 @@ interface CreateColumnsOptions {
   visibleColumns: string[];
   onSessionClick?: (session: Session) => void;
   onFeedbackClick?: (sessionId: string) => void;
+  onDeleteClick?: (session: Session) => void;
   canAddFeedback?: (session: Session) => boolean;
   /** When true, only sessions where userEmail matches the mentor are interactive */
   restrictInteractionToUserSessions?: boolean;
@@ -133,6 +142,7 @@ export function createSessionTableColumns({
   visibleColumns,
   onSessionClick,
   onFeedbackClick,
+  onDeleteClick,
   canAddFeedback,
   restrictInteractionToUserSessions = false,
 }: CreateColumnsOptions): ColumnDef<Session>[] {
@@ -381,16 +391,17 @@ export function createSessionTableColumns({
     columns.push({
       id: "actions",
       header: "",
-      size: 120,
+      size: 150,
       cell: ({ row }) => {
         const session = row.original;
         const isUserSession = checkIsUserSession(session);
         const upcoming = isSessionUpcoming(session);
         const hasMeetingUrl = session.meetingUrl && upcoming && isUserSession;
         const needsFeedback = isUserSession && (canAddFeedback?.(session) ?? false);
+        const canDelete = userType === "staff" && onDeleteClick;
 
-        // For non-user sessions, don't show action buttons
-        if (!isUserSession) {
+        // For non-user sessions, only show delete if staff
+        if (!isUserSession && !canDelete) {
           return null;
         }
 
@@ -429,17 +440,48 @@ export function createSessionTableColumns({
             )}
 
             {/* View details button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSessionClick?.(session);
-              }}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            {isUserSession && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSessionClick?.(session);
+                }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+
+            {/* Staff actions dropdown */}
+            {canDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Session actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteClick(session);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Session
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         );
       },

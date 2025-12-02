@@ -4,9 +4,7 @@ import {
   Calendar,
   CheckSquare,
   MessageSquare,
-  Settings,
   Users2,
-  GraduationCap,
   UserCircle,
 } from "lucide-react";
 import type { UserType } from "@/types/schema";
@@ -128,11 +126,6 @@ export function getNavItems(userType: UserType): NavGroup[] {
               icon: Users,
             },
             {
-              title: "Students",
-              url: "/students",
-              icon: GraduationCap,
-            },
-            {
               title: "Action Items",
               url: "/tasks",
               icon: CheckSquare,
@@ -151,11 +144,6 @@ export function getNavItems(userType: UserType): NavGroup[] {
               title: "Impersonate User",
               url: "/impersonate",
               icon: UserCircle,
-            },
-            {
-              title: "Settings",
-              url: "/settings",
-              icon: Settings,
             },
           ],
         },

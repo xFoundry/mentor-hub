@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SessionCard } from "@/components/shared/session-card";
+import { DeleteSessionDialog } from "../delete-session-dialog";
 import { Calendar, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Session, UserType } from "@/types/schema";
@@ -55,6 +56,15 @@ export function SessionCardView({
     const groups = groupSessions(sessions, groupBy);
     return new Set(Array.from(groups.keys()));
   });
+
+  // Delete dialog state
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const handleDeleteClick = (session: Session) => {
+    setSessionToDelete(session);
+    setIsDeleteDialogOpen(true);
+  };
 
   const toggleGroup = (groupId: string) => {
     setOpenGroups((prev) => {
@@ -123,6 +133,7 @@ export function SessionCardView({
                     userEmail={userEmail}
                     onSessionClick={onSessionClick}
                     onFeedbackClick={onFeedbackClick}
+                    onDeleteClick={userType === "staff" ? handleDeleteClick : undefined}
                     showTeamName={groupBy !== "team" && showTeamName}
                     showMentorName={showMentorName}
                     showFeedbackStatus={showFeedbackStatus}
@@ -133,6 +144,12 @@ export function SessionCardView({
             </Collapsible>
           );
         })}
+
+        <DeleteSessionDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          session={sessionToDelete}
+        />
       </div>
     );
   }
@@ -148,12 +165,19 @@ export function SessionCardView({
           userEmail={userEmail}
           onSessionClick={onSessionClick}
           onFeedbackClick={onFeedbackClick}
+          onDeleteClick={userType === "staff" ? handleDeleteClick : undefined}
           showTeamName={showTeamName}
           showMentorName={showMentorName}
           showFeedbackStatus={showFeedbackStatus}
           restrictInteractionToUserSessions={restrictInteractionToUserSessions}
         />
       ))}
+
+      <DeleteSessionDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        session={sessionToDelete}
+      />
     </div>
   );
 }
@@ -164,6 +188,7 @@ interface SessionCardItemProps {
   userEmail: string;
   onSessionClick?: (session: Session) => void;
   onFeedbackClick?: (sessionId: string) => void;
+  onDeleteClick?: (session: Session) => void;
   showTeamName?: boolean;
   showMentorName?: boolean;
   showFeedbackStatus?: boolean;
@@ -176,6 +201,7 @@ function SessionCardItem({
   userEmail,
   onSessionClick,
   onFeedbackClick,
+  onDeleteClick,
   showTeamName,
   showMentorName,
   showFeedbackStatus,
@@ -205,6 +231,7 @@ function SessionCardItem({
         showFeedbackStatus={isUserSession ? showFeedbackStatus : false}
         onFeedbackClick={isUserSession ? onFeedbackClick : undefined}
         isInteractive={isUserSession}
+        onDeleteClick={onDeleteClick}
       />
     </div>
   );

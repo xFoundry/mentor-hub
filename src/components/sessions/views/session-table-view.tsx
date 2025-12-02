@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   TableProvider,
   TableHeader,
@@ -17,6 +17,7 @@ import type { Session, UserType } from "@/types/schema";
 import { useSessionPermissions } from "@/hooks/use-session-permissions";
 import { createSessionTableColumns } from "../items/session-table-columns";
 import { sessionNeedsFeedback, isCurrentUserMentor } from "../session-transformers";
+import { DeleteSessionDialog } from "../delete-session-dialog";
 
 export interface SessionTableViewProps {
   sessions: Session[];
@@ -45,6 +46,15 @@ export function SessionTableView({
 }: SessionTableViewProps) {
   const { visibleColumns, canAddFeedback } = useSessionPermissions(userType, userEmail);
 
+  // Delete dialog state
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const handleDeleteClick = (session: Session) => {
+    setSessionToDelete(session);
+    setIsDeleteDialogOpen(true);
+  };
+
   // Create columns based on user permissions
   const columns = useMemo(() => {
     return createSessionTableColumns({
@@ -53,6 +63,7 @@ export function SessionTableView({
       visibleColumns,
       onSessionClick,
       onFeedbackClick,
+      onDeleteClick: userType === "staff" ? handleDeleteClick : undefined,
       canAddFeedback,
       restrictInteractionToUserSessions,
     });
@@ -100,6 +111,12 @@ export function SessionTableView({
           }}
         </TableBody>
       </TableProvider>
+
+      <DeleteSessionDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        session={sessionToDelete}
+      />
     </div>
   );
 }

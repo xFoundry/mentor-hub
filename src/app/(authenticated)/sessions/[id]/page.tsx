@@ -25,8 +25,9 @@ import {
   User,
   Pencil,
   Users2,
+  Trash2,
 } from "lucide-react";
-import { EditSessionDialog, AddMeetingNotesDialog, ViewMeetingNotesDialog } from "@/components/sessions";
+import { EditSessionDialog, AddMeetingNotesDialog, ViewMeetingNotesDialog, DeleteSessionDialog } from "@/components/sessions";
 import { useUpdateSession } from "@/hooks/use-update-session";
 import { useSessionPermissions } from "@/hooks/use-session-permissions";
 import { format, formatDistanceToNow, isPast } from "date-fns";
@@ -55,8 +56,11 @@ export default function SessionDetailPage() {
   // Meeting notes dialog state
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
+  // Delete dialog state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { updateSession } = useUpdateSession();
   const { canUpdate } = useSessionPermissions(userType ?? undefined, userContext?.email);
+  const canDelete = userType === "staff";
 
   const isLoading = isUserLoading || isSessionsLoading;
   const session = sessions.find((s) => s.id === sessionId);
@@ -169,6 +173,16 @@ export default function SessionDetailPage() {
             <Button variant="outline" onClick={() => setIsNotesDialogOpen(true)}>
               <FileText className="mr-2 h-4 w-4" />
               {session.summary || session.fullTranscript ? "Edit Meeting Notes" : "Add Meeting Notes"}
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
             </Button>
           )}
           {needsFeedback && (
@@ -587,6 +601,16 @@ export default function SessionDetailPage() {
           open={isViewNotesDialogOpen}
           onOpenChange={setIsViewNotesDialogOpen}
           session={session}
+        />
+      )}
+
+      {/* Delete Session Dialog - staff only */}
+      {canDelete && session && (
+        <DeleteSessionDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          session={session}
+          onDeleted={() => router.push("/sessions")}
         />
       )}
     </div>

@@ -5,6 +5,9 @@ export type { SessionViewProps, SessionViewVariant } from "./session-view";
 // Session Edit Dialog
 export { EditSessionDialog } from "./edit-session-dialog";
 
+// Delete Session Dialog
+export { DeleteSessionDialog } from "./delete-session-dialog";
+
 // Meeting Notes Dialogs
 export { AddMeetingNotesDialog } from "./add-meeting-notes-dialog";
 export { ViewMeetingNotesDialog } from "./view-meeting-notes-dialog";

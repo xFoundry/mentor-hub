@@ -5,7 +5,14 @@ import { format, isPast, isFuture } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, Clock, MessageSquare, Video } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Calendar, Clock, MessageSquare, Video, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
 import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isCurrentUserMentor, parseAsLocalTime } from "@/components/sessions/session-transformers";
@@ -23,6 +30,8 @@ interface SessionCardProps {
   onFeedbackClick?: (sessionId: string) => void;
   /** When false, the card is not wrapped in a link (used for other mentor's sessions) */
   isInteractive?: boolean;
+  /** Callback when delete is requested (staff only) */
+  onDeleteClick?: (session: Session) => void;
 }
 
 export function SessionCard({
@@ -35,11 +44,13 @@ export function SessionCard({
   showFeedbackStatus = false,
   onFeedbackClick,
   isInteractive = true,
+  onDeleteClick,
 }: SessionCardProps) {
   const { openFeedbackDialog } = useFeedbackDialog();
   const mentor = session.mentor?.[0];
   const team = session.team?.[0];
   const isUserMentor = isCurrentUserMentor(session, userEmail);
+  const canDelete = userType === "staff" && onDeleteClick;
 
   const handleFeedbackClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,6 +61,12 @@ export function SessionCard({
     } else {
       openFeedbackDialog(session);
     }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDeleteClick?.(session);
   };
   // Check if current user type has submitted feedback (for past or completed sessions)
   const needsFeedback = isSessionEligibleForFeedback(session) &&
@@ -118,16 +135,43 @@ export function SessionCard({
           </div>
         </div>
 
-        {showFeedbackStatus && needsFeedback && isInteractive && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleFeedbackClick}
-          >
-            <MessageSquare className="mr-1 h-3 w-3" />
-            Add Feedback
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {showFeedbackStatus && needsFeedback && isInteractive && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFeedbackClick}
+            >
+              <MessageSquare className="mr-1 h-3 w-3" />
+              Add Feedback
+            </Button>
+          )}
+
+          {canDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Session actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                  onClick={handleDeleteClick}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Session
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
     );
 
@@ -164,14 +208,41 @@ export function SessionCard({
           )}
         </div>
 
-        {session.meetingUrl && isInteractive && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
-              <Video className="mr-1 h-3 w-3" />
-              Join
-            </a>
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {session.meetingUrl && isInteractive && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
+                <Video className="mr-1 h-3 w-3" />
+                Join
+              </a>
+            </Button>
+          )}
+
+          {canDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Session actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                  onClick={handleDeleteClick}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Session
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

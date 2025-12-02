@@ -2199,6 +2199,21 @@ export async function searchContacts(
 }
 
 /**
+ * Delete a session (staff only)
+ */
+export async function deleteSession(sessionId: string): Promise<{ delete_sessions: { id: string } }> {
+  const mutation = `
+    mutation DeleteSession($id: String!) {
+      delete_sessions(id: $id) {
+        id
+      }
+    }
+  `;
+
+  return executeMutation(mutation, { id: sessionId });
+}
+
+/**
  * Get all contacts that can be impersonated (mentors and students)
  * Returns contacts with their participation records for role determination
  */

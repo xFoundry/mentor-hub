@@ -34,6 +34,9 @@ export const auth0 = new Auth0Client({
     rolling: true,
     absoluteDuration: 60 * 60 * 24, // 24 hours
     inactivityDuration: 60 * 60 * 2, // 2 hours
+    cookie: {
+      name: "mentor_hub_session", // Unique name to avoid conflicts with other localhost apps
+    },
   },
 
   // OAuth parameters
