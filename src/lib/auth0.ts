@@ -41,11 +41,8 @@ export const auth0 = new Auth0Client({
     scope: "openid profile email",
   },
 
-  // Routes configuration
-  routes: {
-    // Where to redirect after logout
-    postLogoutRedirect: "/login",
-  },
+  // Note: Post-logout redirect is handled via returnTo query param on /auth/logout
+  // e.g., /auth/logout?returnTo=/login
 
   // Callback hook for custom logic after authentication
   async onCallback(error, context, session) {

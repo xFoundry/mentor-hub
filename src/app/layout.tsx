@@ -14,7 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mentor Hub - Mentorship Portal",
+  metadataBase: new URL(process.env.APP_BASE_URL || "http://localhost:3000"),
+  title: {
+    default: "Mentor Hub - Mentorship Portal",
+    template: "%s | Mentor Hub",
+  },
   description: "Connect with mentors, track sessions, and manage action items",
   icons: {
     icon: [
@@ -22,6 +26,13 @@ export const metadata: Metadata = {
       { url: "/x-icon-blue.png", media: "(prefers-color-scheme: dark)" },
     ],
     apple: "/x-icon-blue.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Mentor Hub",
+  },
+  twitter: {
+    card: "summary_large_image",
   },
 };
 
