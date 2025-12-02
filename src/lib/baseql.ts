@@ -19,21 +19,46 @@ import type {
 /**
  * BaseQL Query Helper
  *
- * In production, this would use a proper GraphQL client library.
- * For now, we'll use fetch to call the BaseQL API directly.
+ * Routes requests through /api/graphql on client-side to keep API key server-side.
+ * On server-side, calls BaseQL directly.
  */
 class BaseQLClient {
-  private apiUrl: string;
-  private apiKey: string;
+  private isServer: boolean;
 
   constructor() {
-    this.apiUrl = process.env.NEXT_PUBLIC_BASEQL_API_URL || "";
-    this.apiKey = process.env.NEXT_PUBLIC_BASEQL_API_KEY || "";
+    this.isServer = typeof window === "undefined";
+  }
 
-    if (!this.apiUrl || !this.apiKey) {
-      console.warn(
-        "[BaseQL] API URL or API Key not configured. Check environment variables."
-      );
+  /**
+   * Get the appropriate endpoint and headers based on environment
+   */
+  private getConfig(): { url: string; headers: Record<string, string> } {
+    if (this.isServer) {
+      // Server-side: call BaseQL directly with server env vars
+      const apiUrl = process.env.BASEQL_API_URL || "";
+      const apiKey = process.env.BASEQL_API_KEY || "";
+
+      if (!apiUrl || !apiKey) {
+        throw new Error(
+          "BaseQL not configured. Set BASEQL_API_URL and BASEQL_API_KEY."
+        );
+      }
+
+      return {
+        url: apiUrl,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: apiKey,
+        },
+      };
+    } else {
+      // Client-side: route through proxy (API key stays server-side)
+      return {
+        url: "/api/graphql",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      };
     }
   }
 
@@ -41,18 +66,12 @@ class BaseQLClient {
    * Execute a GraphQL query against BaseQL
    */
   async query<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
-    if (!this.apiUrl || !this.apiKey) {
-      throw new Error("BaseQL not configured. Set BASEQL_API_URL and BASEQL_API_KEY.");
-    }
-
     try {
-      const response = await fetch(this.apiUrl, {
+      const config = this.getConfig();
+
+      const response = await fetch(config.url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // API key already includes "Bearer " prefix
-          Authorization: this.apiKey,
-        },
+        headers: config.headers,
         body: JSON.stringify({
           query,
           variables,
