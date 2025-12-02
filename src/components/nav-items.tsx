@@ -1,0 +1,167 @@
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  CheckSquare,
+  MessageSquare,
+  Settings,
+  Users2,
+  GraduationCap,
+  UserCircle,
+} from "lucide-react";
+import type { UserType } from "@/types/schema";
+import type { LucideIcon } from "lucide-react";
+
+export interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  isActive?: boolean;
+}
+
+export interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+/**
+ * Get navigation items based on user role
+ */
+export function getNavItems(userType: UserType): NavGroup[] {
+  switch (userType) {
+    case "student":
+      return [
+        {
+          title: "Main",
+          items: [
+            {
+              title: "Dashboard",
+              url: "/dashboard",
+              icon: LayoutDashboard,
+            },
+            {
+              title: "Mentors",
+              url: "/mentors",
+              icon: Users,
+            },
+            {
+              title: "Sessions",
+              url: "/sessions",
+              icon: Calendar,
+            },
+            {
+              title: "Action Items",
+              url: "/tasks",
+              icon: CheckSquare,
+            },
+            {
+              title: "Feedback",
+              url: "/feedback",
+              icon: MessageSquare,
+            },
+          ],
+        },
+      ];
+
+    case "mentor":
+      return [
+        {
+          title: "Main",
+          items: [
+            {
+              title: "Dashboard",
+              url: "/dashboard",
+              icon: LayoutDashboard,
+            },
+            {
+              title: "Sessions",
+              url: "/sessions",
+              icon: Calendar,
+            },
+            {
+              title: "Teams",
+              url: "/teams",
+              icon: Users2,
+            },
+            {
+              title: "Action Items",
+              url: "/tasks",
+              icon: CheckSquare,
+            },
+            {
+              title: "Feedback",
+              url: "/feedback",
+              icon: MessageSquare,
+            },
+          ],
+        },
+      ];
+
+    case "staff":
+      return [
+        {
+          title: "Main",
+          items: [
+            {
+              title: "Dashboard",
+              url: "/dashboard",
+              icon: LayoutDashboard,
+            },
+          ],
+        },
+        {
+          title: "Management",
+          items: [
+            {
+              title: "Sessions",
+              url: "/sessions",
+              icon: Calendar,
+            },
+            {
+              title: "Teams",
+              url: "/teams",
+              icon: Users2,
+            },
+            {
+              title: "Mentors",
+              url: "/mentors",
+              icon: Users,
+            },
+            {
+              title: "Students",
+              url: "/students",
+              icon: GraduationCap,
+            },
+            {
+              title: "Action Items",
+              url: "/tasks",
+              icon: CheckSquare,
+            },
+            {
+              title: "Feedback",
+              url: "/feedback",
+              icon: MessageSquare,
+            },
+          ],
+        },
+        {
+          title: "Settings",
+          items: [
+            {
+              title: "Impersonate User",
+              url: "/impersonate",
+              icon: UserCircle,
+            },
+            {
+              title: "Settings",
+              url: "/settings",
+              icon: Settings,
+            },
+          ],
+        },
+      ];
+
+    default:
+      return [];
+  }
+}
