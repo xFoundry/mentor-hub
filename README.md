@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mentor Hub
+
+A mentorship portal for managing mentorship programs at xFoundry. Connects students, mentors, and staff through sessions, tasks, and feedback tracking.
+
+## Purpose
+
+Mentor Hub provides a centralized platform for:
+- **Students** to track their mentorship sessions, action items, and team progress
+- **Mentors** to manage their mentees, schedule sessions, and assign tasks
+- **Staff** to oversee all program activity, manage teams, and support users
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS 4 + shadcn/ui |
+| Authentication | Auth0 Next.js SDK v4 |
+| Data | BaseQL (GraphQL → Airtable) |
+| State | SWR for data fetching |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Auth0 application credentials
+- BaseQL API access
+
+### Environment Variables
+
+Copy `.env.example` to `.env.local` and configure:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Auth0
+AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_CLIENT_ID=
+AUTH0_CLIENT_SECRET=
+AUTH0_SECRET=          # Generate with: openssl rand -hex 32
+APP_BASE_URL=http://localhost:3000
+
+# Auth0 M2M (for Management API)
+AUTH0_M2M_DOMAIN=      # Actual tenant domain (not custom domain)
+AUTH0_M2M_CLIENT_ID=
+AUTH0_M2M_CLIENT_SECRET=
+
+# BaseQL
+NEXT_PUBLIC_BASEQL_API_URL=
+NEXT_PUBLIC_BASEQL_API_KEY=
+
+# Development
+NEXT_PUBLIC_USE_AUTH_MOCK=true
+NEXT_PUBLIC_MOCK_USER_EMAIL=your-email@example.com
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+### Production Build
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── (authenticated)/    # Protected routes (dashboard, sessions, tasks, etc.)
+│   ├── login/              # Login page
+│   ├── signup/             # Signup page
+│   └── api/                # API routes
+├── components/             # React components
+│   ├── ui/                 # shadcn/ui primitives
+│   ├── dashboards/         # Role-specific dashboards
+│   ├── sessions/           # Session management
+│   ├── tasks/              # Task/action item views
+│   └── teams/              # Team management
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utilities (auth, baseql, permissions)
+├── contexts/               # React contexts
+└── types/                  # TypeScript types
+```
 
-## Deploy on Vercel
+## Authentication Flow
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. User enters email on login/signup page
+2. Email is verified against BaseQL contacts database
+3. If contact exists:
+   - Has Auth0 account → Show sign-in options
+   - No Auth0 account → Redirect to signup
+4. User authenticates via Google OAuth or passwordless code
+5. Role determined from participation records in Airtable
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Documentation
+
+- See `docs/AUTH0-GUIDE.md` for Auth0 configuration details
+- See `CLAUDE.md` for AI assistant context
