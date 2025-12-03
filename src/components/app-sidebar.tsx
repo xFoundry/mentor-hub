@@ -29,7 +29,7 @@ import { CohortHeaderDropdown } from "@/components/cohort-header-dropdown";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { userType, userContext, isLoading, realUserType } = useEffectiveUser();
+  const { userType, userContext, isLoading, realUserType, isImpersonated } = useEffectiveUser();
 
   if (isLoading || !userType || !userContext) {
     return (
@@ -80,8 +80,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {/* Cohort Selector - Only visible for staff (even when impersonating) */}
-          {realUserType === "staff" && <CohortHeaderDropdown />}
+          {/* Cohort Selector - Only visible for staff when NOT impersonating */}
+          {realUserType === "staff" && !isImpersonated && <CohortHeaderDropdown />}
         </SidebarMenu>
       </SidebarHeader>
 

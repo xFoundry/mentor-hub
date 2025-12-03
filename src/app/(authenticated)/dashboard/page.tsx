@@ -1,13 +1,14 @@
 "use client";
 
-import { useUserType } from "@/hooks/use-user-type";
+import { useEffectiveUser } from "@/hooks/use-effective-user";
 import { StudentDashboard } from "@/components/dashboards/student-dashboard";
 import { MentorDashboard } from "@/components/dashboards/mentor-dashboard";
 import { StaffDashboard } from "@/components/dashboards/staff-dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-  const { userType, userContext, isLoading } = useUserType();
+  // Use effective user to respect impersonation
+  const { userType, userContext, isLoading } = useEffectiveUser();
 
   if (isLoading || !userContext) {
     return (

@@ -8,7 +8,25 @@ import React, {
   useRef,
 } from "react";
 import { getUserParticipation } from "@/lib/baseql";
-import { mapCapacityToUserType, type UserContext, type UserType } from "@/types/schema";
+import { mapCapacityToUserType, type UserContext, type UserType, type Participation } from "@/types/schema";
+
+/**
+ * Get the capacity name from a participation record
+ * Prefers capacityLink (new field) over capacity (deprecated field)
+ */
+function getCapacityName(participation: Participation): string | undefined {
+  if (participation.capacityLink && participation.capacityLink.length > 0) {
+    return participation.capacityLink[0].name;
+  }
+  return participation.capacity;
+}
+
+/**
+ * Check if a participation record's cohort is "In Progress"
+ */
+function hasInProgressCohort(participation: Participation): boolean {
+  return participation.cohorts?.some(cohort => cohort.status === "In Progress") ?? false;
+}
 
 /**
  * Impersonation state for staff users to view as other users
@@ -111,30 +129,43 @@ export function ImpersonationProvider({
         }
 
         // Find the best participation record (same logic as useUserType)
+        // Priority: In Progress cohort > capacity type > Active status
         const capacityPriority: Record<string, number> = {
           Staff: 1,
           Mentor: 2,
           Participant: 3,
         };
 
-        const validParticipations = result.participation.filter((p) => p.capacity);
+        const validParticipations = result.participation.filter((p) => getCapacityName(p));
 
         if (validParticipations.length === 0) {
           throw new Error(`No valid participation records for ${targetEmail}`);
         }
 
         const bestParticipation = validParticipations.sort((a, b) => {
-          const aPriority = capacityPriority[a.capacity || ""] || 999;
-          const bPriority = capacityPriority[b.capacity || ""] || 999;
+          // First priority: cohort with "In Progress" status
+          const aInProgress = hasInProgressCohort(a);
+          const bInProgress = hasInProgressCohort(b);
+          if (aInProgress && !bInProgress) return -1;
+          if (bInProgress && !aInProgress) return 1;
+
+          // Second priority: capacity type (Staff > Mentor > Participant)
+          const aCapacity = getCapacityName(a) || "";
+          const bCapacity = getCapacityName(b) || "";
+          const aPriority = capacityPriority[aCapacity] || 999;
+          const bPriority = capacityPriority[bCapacity] || 999;
           if (aPriority !== bPriority) {
             return aPriority - bPriority;
           }
+
+          // Third priority: Active participation status
           if (a.status === "Active" && b.status !== "Active") return -1;
           if (b.status === "Active" && a.status !== "Active") return 1;
           return 0;
         })[0];
 
-        const targetType = mapCapacityToUserType(bestParticipation.capacity);
+        const selectedCapacity = getCapacityName(bestParticipation);
+        const targetType = mapCapacityToUserType(selectedCapacity);
 
         // Build the target user context
         const targetContext: UserContext = {
@@ -154,7 +185,11 @@ export function ImpersonationProvider({
         console.log("[Impersonation] Started impersonating:", {
           targetEmail,
           targetType,
+          capacity: selectedCapacity,
+          capacityLink: bestParticipation.capacityLink?.[0]?.name,
           participationId: bestParticipation.participationId,
+          cohort: bestParticipation.cohorts?.[0]?.shortName,
+          cohortStatus: bestParticipation.cohorts?.[0]?.status,
         });
 
         setState({

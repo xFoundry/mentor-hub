@@ -57,12 +57,21 @@ export interface Cohort {
   lastModified?: string;
 }
 
+export interface Capacity {
+  id: string;
+  name?: string;
+  description?: string;
+}
+
 export interface Participation {
   id: string;
   participationId?: string;
+  /** @deprecated Use capacityLink instead */
   capacity?: "Academic Council" | "Ambassador" | "Board of Advisors" | "Board of Directors" |
     "Corporate Partner" | "CXO" | "Horizons Council" | "Innovation Scholar" | "Judge" |
     "Mentor" | "Participant" | "Pioneer Circle" | "Speaker" | "Sponsor" | "Staff";
+  /** The linked capacity record - preferred over the capacity field */
+  capacityLink?: Capacity[];
   status?: "Active" | "Inactive" | "Left" | "Removed" | "Duplicate" | "Pending";
   contactId?: string;
   // Relationships

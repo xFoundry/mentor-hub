@@ -3,8 +3,28 @@
 import { useUser } from "@auth0/nextjs-auth0/client";
 import useSWR from "swr";
 import { getUserParticipation, getUserByAuth0Id } from "@/lib/baseql";
-import { mapCapacityToUserType, type UserContext, type UserType, type Contact } from "@/types/schema";
+import { mapCapacityToUserType, type UserContext, type UserType, type Contact, type Participation } from "@/types/schema";
 import { MOCK_USER, isAuthMockEnabled } from "@/lib/auth-mock";
+
+/**
+ * Get the capacity name from a participation record
+ * Prefers capacityLink (new field) over capacity (deprecated field)
+ */
+function getCapacityName(participation: Participation): string | undefined {
+  // Prefer capacityLink (linked record) over capacity (deprecated single select)
+  if (participation.capacityLink && participation.capacityLink.length > 0) {
+    return participation.capacityLink[0].name;
+  }
+  // Fallback to deprecated capacity field
+  return participation.capacity;
+}
+
+/**
+ * Check if a participation record's cohort is "In Progress"
+ */
+function hasInProgressCohort(participation: Participation): boolean {
+  return participation.cohorts?.some(cohort => cohort.status === "In Progress") ?? false;
+}
 
 /**
  * Hook to detect user type from participation records
@@ -101,10 +121,11 @@ export function useUserType() {
   };
 
   // Find the best participation record:
-  // 1. Filter to records with a valid capacity
-  // 2. Prefer Active status
+  // 1. Filter to records with a valid capacity (via capacityLink or legacy capacity field)
+  // 2. Prioritize records where cohort status is "In Progress"
   // 3. Sort by capacity priority (Staff > Mentor > Participant)
-  const validParticipations = participations.filter((p) => p.capacity);
+  // 4. Prefer Active participation status
+  const validParticipations = participations.filter((p) => getCapacityName(p));
 
   if (validParticipations.length === 0) {
     console.warn("[useUserType] No participation records with capacity found");
@@ -117,31 +138,43 @@ export function useUserType() {
   }
 
   const activeParticipation = validParticipations.sort((a, b) => {
-    // First, sort by capacity priority (Staff > Mentor > Participant)
-    const aPriority = capacityPriority[a.capacity || ""] || 999;
-    const bPriority = capacityPriority[b.capacity || ""] || 999;
+    // First priority: cohort with "In Progress" status
+    const aInProgress = hasInProgressCohort(a);
+    const bInProgress = hasInProgressCohort(b);
+    if (aInProgress && !bInProgress) return -1;
+    if (bInProgress && !aInProgress) return 1;
+
+    // Second priority: capacity type (Staff > Mentor > Participant)
+    const aCapacity = getCapacityName(a) || "";
+    const bCapacity = getCapacityName(b) || "";
+    const aPriority = capacityPriority[aCapacity] || 999;
+    const bPriority = capacityPriority[bCapacity] || 999;
     if (aPriority !== bPriority) {
       return aPriority - bPriority;
     }
 
-    // Then, prefer Active status for same capacity
+    // Third priority: Active participation status
     if (a.status === "Active" && b.status !== "Active") return -1;
     if (b.status === "Active" && a.status !== "Active") return 1;
 
     return 0;
   })[0];
 
+  const selectedCapacity = getCapacityName(activeParticipation);
+
   console.log(`[useUserType] Selected participation:`, {
     id: activeParticipation.participationId,
-    capacity: activeParticipation.capacity,
+    capacity: selectedCapacity,
+    capacityLink: activeParticipation.capacityLink?.[0]?.name,
     status: activeParticipation.status,
     cohort: activeParticipation.cohorts?.[0]?.shortName,
+    cohortStatus: activeParticipation.cohorts?.[0]?.status,
     totalContacts: data.contacts?.length || 1,
     totalParticipations: participations.length,
   });
 
-  // Determine user type from capacity
-  const userType = mapCapacityToUserType(activeParticipation.capacity);
+  // Determine user type from capacity (using capacityLink or fallback)
+  const userType = mapCapacityToUserType(selectedCapacity);
 
   // Build user context
   // Use primary contact's email for consistency, but fall back to login email

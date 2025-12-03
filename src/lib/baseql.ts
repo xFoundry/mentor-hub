@@ -158,6 +158,10 @@ export async function getUserParticipation(
           id
           participationId
           capacity
+          capacityLink {
+            id
+            name
+          }
           status
           cohorts {
             id
@@ -215,6 +219,10 @@ export async function getUserByAuth0Id(
           id
           participationId
           capacity
+          capacityLink {
+            id
+            name
+          }
           status
           cohorts {
             id
@@ -593,9 +601,7 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
             }
           }
         }
-        actionItems(
-          _order_by: { dueDate: "asc" }
-        ) {
+        actionItems {
           id
           taskId
           name
@@ -1043,11 +1049,11 @@ export async function getSessionDetail(
  * Get all tasks (for staff users)
  */
 export async function getAllTasks(): Promise<{ tasks: Task[] }> {
+  // Note: dueDate cannot be used in _order_by (BaseQL limitation)
+  // Sorting is done client-side in the hook
   const query = `
     query GetAllTasks {
-      tasks(
-        _order_by: { dueDate: "asc" }
-      ) {
+      tasks {
         id
         taskId
         name
