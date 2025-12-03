@@ -153,6 +153,7 @@ export async function getUserParticipation(
         lastName
         email
         headshot
+        auth0Id
         participation {
           id
           participationId
@@ -186,6 +187,97 @@ export async function getUserParticipation(
     participation: enrichedParticipation,
     contact,
   };
+}
+
+/**
+ * Get user's contact(s) and participation records by Auth0 ID
+ * This is the primary lookup method for authenticated users.
+ * Returns ALL contacts linked to this auth0Id (supports multi-contact users).
+ */
+export async function getUserByAuth0Id(
+  auth0Id: string
+): Promise<{ contacts: Contact[]; participation: Participation[] }> {
+  const query = `
+    query GetUserByAuth0Id($auth0Id: String!) {
+      contacts(
+        _filter: {
+          auth0Id: {_eq: $auth0Id}
+        }
+      ) {
+        id
+        fullName
+        firstName
+        lastName
+        email
+        headshot
+        auth0Id
+        participation {
+          id
+          participationId
+          capacity
+          status
+          cohorts {
+            id
+            shortName
+            startDate
+            endDate
+            status
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ contacts: Contact[] }>(query, { auth0Id });
+  const contacts = result.contacts || [];
+
+  // Aggregate participation from ALL linked contacts
+  const allParticipation: Participation[] = [];
+  for (const contact of contacts) {
+    const participation = contact.participation || [];
+    // Attach contact info to each participation record
+    const enrichedParticipation = participation.map((p: Participation) => ({
+      ...p,
+      contacts: [contact],
+    }));
+    allParticipation.push(...enrichedParticipation);
+  }
+
+  return {
+    contacts,
+    participation: allParticipation,
+  };
+}
+
+/**
+ * Link an Auth0 ID to a contact record
+ * This should only be called from server-side code after verifying the Auth0 session.
+ * SECURITY: Never expose this mutation to clients directly.
+ */
+export async function linkAuth0IdToContact(
+  contactId: string,
+  auth0Id: string
+): Promise<Contact> {
+  const mutation = `
+    mutation LinkAuth0Id($id: String!, $auth0Id: String!) {
+      update_contacts(
+        id: $id
+        auth0Id: $auth0Id
+      ) {
+        id
+        email
+        auth0Id
+        fullName
+      }
+    }
+  `;
+
+  const result = await executeMutation<{ update_contacts: Contact }>(mutation, {
+    id: contactId,
+    auth0Id,
+  });
+
+  return result.update_contacts;
 }
 
 /**

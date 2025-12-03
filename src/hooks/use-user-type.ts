@@ -2,8 +2,8 @@
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 import useSWR from "swr";
-import { getUserParticipation } from "@/lib/baseql";
-import { mapCapacityToUserType, type UserContext, type UserType } from "@/types/schema";
+import { getUserParticipation, getUserByAuth0Id } from "@/lib/baseql";
+import { mapCapacityToUserType, type UserContext, type UserType, type Contact } from "@/types/schema";
 import { MOCK_USER, isAuthMockEnabled } from "@/lib/auth-mock";
 
 /**
@@ -11,23 +11,54 @@ import { MOCK_USER, isAuthMockEnabled } from "@/lib/auth-mock";
  *
  * Returns the user's role (student, mentor, or staff) based on their
  * participation capacity in Airtable.
+ *
+ * Lookup priority:
+ * 1. auth0Id (stable identifier, supports multi-contact users)
+ * 2. email (fallback for users not yet linked)
  */
 export function useUserType() {
   const { user, isLoading: isAuthLoading } = useUser();
 
-  // Determine email to use (mock or real Auth0 user)
-  const email = isAuthMockEnabled() ? MOCK_USER.email : user?.email;
+  // Determine identifiers to use
+  const isMock = isAuthMockEnabled();
+  const auth0Id = isMock ? null : user?.sub;
+  const email = isMock ? MOCK_USER.email : user?.email;
 
-  // Fetch participation data
+  // Fetch participation data - prefer auth0Id lookup, fall back to email
   const { data, error, isLoading: isParticipationLoading } = useSWR(
-    email ? [`/api/user-type`, email] : null,
+    (auth0Id || email) ? [`/api/user-type`, auth0Id, email] : null,
     async () => {
-      if (!email) return null;
+      // Try auth0Id first (returns ALL linked contacts)
+      if (auth0Id) {
+        const result = await getUserByAuth0Id(auth0Id);
+        if (result.contacts.length > 0) {
+          console.log(`[useUserType] Found ${result.contacts.length} contact(s) by auth0Id`);
+          return {
+            contacts: result.contacts,
+            participation: result.participation,
+            primaryContact: result.contacts[0], // First contact as primary
+          };
+        }
+        // auth0Id not found - user might not be linked yet, fall through to email
+        console.log("[useUserType] No contacts found by auth0Id, trying email lookup");
+      }
 
-      const result = await getUserParticipation(email);
-      return { participation: result.participation || [], contact: result.contact };
+      // Fallback to email lookup (single contact)
+      if (email) {
+        const result = await getUserParticipation(email);
+        return {
+          contacts: result.contact ? [result.contact] : [],
+          participation: result.participation || [],
+          primaryContact: result.contact,
+        };
+      }
+
+      return null;
     }
   );
+
+  // Helper to extract primary contact from data
+  const contact: Contact | undefined = data?.primaryContact;
 
   const isLoading = isAuthLoading || isParticipationLoading;
 
@@ -60,7 +91,6 @@ export function useUserType() {
     };
   }
 
-  const contact = data.contact;
   const participations = data.participation;
 
   // Priority order for capacity types
@@ -106,14 +136,19 @@ export function useUserType() {
     capacity: activeParticipation.capacity,
     status: activeParticipation.status,
     cohort: activeParticipation.cohorts?.[0]?.shortName,
+    totalContacts: data.contacts?.length || 1,
+    totalParticipations: participations.length,
   });
 
   // Determine user type from capacity
   const userType = mapCapacityToUserType(activeParticipation.capacity);
 
   // Build user context
+  // Use primary contact's email for consistency, but fall back to login email
+  const primaryEmail = contact?.email || email || "";
+
   const userContext: UserContext = {
-    email: email || "",
+    email: primaryEmail,
     name: user?.name || MOCK_USER.name,
     firstName: contact?.firstName,
     lastName: contact?.lastName,
@@ -124,6 +159,8 @@ export function useUserType() {
     cohortId: activeParticipation.cohorts?.[0]?.id || "",
     contactId: contact?.id || activeParticipation.contacts?.[0]?.id || "",
     cohort: activeParticipation.cohorts?.[0],
+    // Include info about linked contacts (for multi-contact users)
+    linkedContactIds: data.contacts?.map(c => c.id).filter(id => id !== contact?.id),
   };
 
   return {

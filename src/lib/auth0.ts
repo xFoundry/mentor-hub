@@ -58,6 +58,44 @@ export const auth0 = new Auth0Client({
 
     if (session) {
       console.log(`[Auth0] User ${session.user.email} logged in successfully`);
+
+      // Trigger identity linking to connect Auth0 ID with BaseQL contact
+      try {
+        const { getUserByAuth0Id, getUserParticipation, linkAuth0IdToContact } =
+          await import("./baseql");
+
+        const auth0Id = session.user.sub;
+        const email = session.user.email?.toLowerCase().trim();
+
+        // Check if already linked by auth0Id
+        const { contacts: linkedContacts } = await getUserByAuth0Id(auth0Id);
+
+        if (linkedContacts.length === 0 && email) {
+          // Not linked yet - try to find and link by email
+          const { contact } = await getUserParticipation(email);
+
+          if (contact && !contact.auth0Id) {
+            // Contact exists and has no auth0Id - link it
+            await linkAuth0IdToContact(contact.id, auth0Id);
+            console.log(`[Auth0] Linked ${auth0Id} to contact ${contact.id} (${email})`);
+          } else if (contact && contact.auth0Id && contact.auth0Id !== auth0Id) {
+            // Contact is linked to a different auth0Id - log warning
+            console.warn(
+              `[Auth0] Contact ${contact.id} (${email}) already linked to ` +
+              `different auth0Id: ${contact.auth0Id}`
+            );
+          } else if (!contact) {
+            // No contact found - user shouldn't have passed verify-email check
+            console.warn(`[Auth0] No contact found for email: ${email}`);
+            return NextResponse.redirect(
+              new URL("/login?error=profile_not_found", process.env.APP_BASE_URL)
+            );
+          }
+        }
+      } catch (linkError) {
+        // Log but don't block login - linking can be retried on next login
+        console.error("[Auth0] Identity linking error:", linkError);
+      }
     }
 
     return NextResponse.redirect(

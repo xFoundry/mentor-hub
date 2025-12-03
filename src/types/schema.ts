@@ -219,6 +219,8 @@ export interface UserContext {
   cohortId: string;
   contactId: string;
   cohort?: Cohort;
+  /** IDs of other contact records linked to this user (via shared auth0Id) */
+  linkedContactIds?: string[];
 }
 
 /**
