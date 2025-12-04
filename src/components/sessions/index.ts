@@ -1,3 +1,20 @@
+// Session Detail Components (role-specific)
+export {
+  SessionDetailStudent,
+  SessionDetailMentor,
+  SessionDetailStaff,
+  SessionDetailHeader,
+  SessionPhaseIndicator,
+  SessionPhaseBadge,
+  SessionCountdown,
+  SessionLifecycleProgress,
+  SessionOverviewTab,
+  SessionPreparationTab,
+  SessionFeedbackTab,
+  SessionTasksTab,
+  SessionNotesTab,
+} from "./detail";
+
 // Session View Components
 export { SessionView } from "./session-view";
 export type { SessionViewProps, SessionViewVariant } from "./session-view";

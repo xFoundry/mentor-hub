@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import { CohortProvider } from "@/contexts/cohort-context";
 import { BreadcrumbProvider, useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { ActionNotificationButton } from "@/components/actions";
 
 /**
  * Layout Content (uses breadcrumb context)
@@ -49,7 +50,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
+          <Breadcrumb className="flex-1">
             <BreadcrumbList>
               {breadcrumbs.flatMap((breadcrumb, index) => {
                 const items = [];
@@ -76,6 +77,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               })}
             </BreadcrumbList>
           </Breadcrumb>
+          {/* Actions notification button */}
+          <ActionNotificationButton />
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</main>
       </SidebarInset>

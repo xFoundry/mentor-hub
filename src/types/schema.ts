@@ -145,8 +145,10 @@ export interface Session {
   cohort?: Cohort[];
   locations?: Location[];
   tasks?: Task[];
+  actionItems?: Task[]; // Alias for tasks (set by useSessions hook)
   attendance?: any[];
   feedback?: SessionFeedback[];
+  sessionFeedback?: SessionFeedback[]; // Alias for feedback (set by useSessions hook)
   preMeetingSubmissions?: PreMeetingSubmission[];
   created?: string;
   lastModified?: string;
