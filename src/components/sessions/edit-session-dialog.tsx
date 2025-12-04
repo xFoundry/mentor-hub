@@ -23,6 +23,7 @@ import {
 import { Loader2, Save } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { Session } from "@/types/schema";
+import { LocationSelector } from "./location-selector";
 
 const SESSION_TYPES = [
   { value: "Team Check-in", label: "Team Check-in" },
@@ -70,6 +71,7 @@ interface EditSessionDialogProps {
     status?: string;
     meetingPlatform?: string;
     meetingUrl?: string;
+    locationId?: string;
     agenda?: string;
   }) => Promise<void>;
 }
@@ -107,6 +109,7 @@ export function EditSessionDialog({
   const [duration, setDuration] = useState(String(session.duration || 60));
   const [meetingPlatform, setMeetingPlatform] = useState(session.meetingPlatform || "");
   const [meetingUrl, setMeetingUrl] = useState(session.meetingUrl || "");
+  const [locationId, setLocationId] = useState(session.locations?.[0]?.id || "");
   const [agenda, setAgenda] = useState(session.agenda || "");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,6 +126,7 @@ export function EditSessionDialog({
       setDuration(String(session.duration || 60));
       setMeetingPlatform(session.meetingPlatform || "");
       setMeetingUrl(session.meetingUrl || "");
+      setLocationId(session.locations?.[0]?.id || "");
       setAgenda(session.agenda || "");
       setErrors({});
     }
@@ -192,6 +196,16 @@ export function EditSessionDialog({
       }
       if (meetingUrl !== (session.meetingUrl || "")) {
         updates.meetingUrl = meetingUrl || undefined;
+      }
+      // Handle location changes
+      const currentLocationId = session.locations?.[0]?.id || "";
+      if (meetingPlatform === "In-Person") {
+        if (locationId !== currentLocationId) {
+          updates.locationId = locationId || undefined;
+        }
+      } else if (currentLocationId) {
+        // Clear location if switching away from In-Person
+        updates.locationId = undefined;
       }
       if (agenda !== (session.agenda || "")) {
         updates.agenda = agenda || undefined;
@@ -328,7 +342,13 @@ export function EditSessionDialog({
             <Label htmlFor="platform">Meeting Platform</Label>
             <Select
               value={meetingPlatform || undefined}
-              onValueChange={setMeetingPlatform}
+              onValueChange={(value) => {
+                setMeetingPlatform(value);
+                // Clear location when switching away from In-Person
+                if (value !== "In-Person") {
+                  setLocationId("");
+                }
+              }}
               disabled={isSubmitting}
             >
               <SelectTrigger id="platform">
@@ -343,6 +363,18 @@ export function EditSessionDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Location (for In-Person meetings) */}
+          {meetingPlatform === "In-Person" && (
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <LocationSelector
+                value={locationId}
+                onValueChange={setLocationId}
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
 
           {/* Meeting URL */}
           <div className="space-y-2">

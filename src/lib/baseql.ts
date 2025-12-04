@@ -14,6 +14,8 @@ import type {
   Member,
   Contact,
   Team,
+  Location,
+  PreMeetingSubmission,
 } from "@/types/schema";
 
 /**
@@ -711,6 +713,26 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
             headshot
           }
         }
+        locations {
+          id
+          name
+          building
+          address
+        }
+        preMeetingSubmissions {
+          id
+          agendaItems
+          questions
+          topicsToDiscuss
+          materialsLinks
+          submitted
+          respondant {
+            id
+            fullName
+            email
+            headshot
+          }
+        }
       }
     }
   `;
@@ -837,6 +859,26 @@ export async function getStudentSessions(
                   headshot
                 }
               }
+              locations {
+                id
+                name
+                building
+                address
+              }
+              preMeetingSubmissions {
+                id
+                agendaItems
+                questions
+                topicsToDiscuss
+                materialsLinks
+                submitted
+                respondant {
+                  id
+                  fullName
+                  email
+                  headshot
+                }
+              }
             }
           }
         }
@@ -900,6 +942,26 @@ export async function getStudentSessions(
             actionabilityOfAdvice
             contentRelevance
             mentorPreparedness
+            respondant {
+              id
+              fullName
+              email
+              headshot
+            }
+          }
+          locations {
+            id
+            name
+            building
+            address
+          }
+          preMeetingSubmissions {
+            id
+            agendaItems
+            questions
+            topicsToDiscuss
+            materialsLinks
+            submitted
             respondant {
               id
               fullName
@@ -1014,6 +1076,26 @@ export async function getSessionDetail(
           actionabilityOfAdvice
           contentRelevance
           mentorPreparedness
+          respondant {
+            id
+            fullName
+            email
+            headshot
+          }
+        }
+        locations {
+          id
+          name
+          building
+          address
+        }
+        preMeetingSubmissions {
+          id
+          agendaItems
+          questions
+          topicsToDiscuss
+          materialsLinks
+          submitted
           respondant {
             id
             fullName
@@ -1540,6 +1622,7 @@ export async function createSession(input: {
   meetingUrl?: string;
   agenda?: string;
   status?: string;
+  locationId?: string;
 }): Promise<{ insert_sessions: Session }> {
   const mutation = `
     mutation CreateSession(
@@ -1553,6 +1636,7 @@ export async function createSession(input: {
       $meetingUrl: String
       $agenda: String
       $status: String
+      $locations: [String!]
     ) {
       insert_sessions(
         sessionType: $sessionType
@@ -1565,6 +1649,7 @@ export async function createSession(input: {
         meetingUrl: $meetingUrl
         agenda: $agenda
         status: $status
+        locations: $locations
       ) {
         id
         sessionId
@@ -1580,6 +1665,12 @@ export async function createSession(input: {
         team {
           id
           teamName
+        }
+        locations {
+          id
+          name
+          building
+          address
         }
       }
     }
@@ -1597,6 +1688,7 @@ export async function createSession(input: {
     meetingUrl: input.meetingUrl,
     agenda: input.agenda,
     status: input.status || "Scheduled",
+    locations: input.locationId ? [input.locationId] : undefined,
   };
 
   return executeMutation(mutation, variables);
@@ -1618,6 +1710,7 @@ export async function updateSession(
     granolaNotesUrl?: string;
     summary?: string;
     fullTranscript?: string;
+    locationId?: string;
   }
 ): Promise<{ update_sessions: Session }> {
   const mutation = `
@@ -1633,6 +1726,7 @@ export async function updateSession(
       $granolaNotesUrl: String
       $summary: String
       $fullTranscript: String
+      $locations: [String!]
     ) {
       update_sessions(
         id: $id
@@ -1646,6 +1740,7 @@ export async function updateSession(
         granolaNotesUrl: $granolaNotesUrl
         summary: $summary
         fullTranscript: $fullTranscript
+        locations: $locations
       ) {
         id
         sessionId
@@ -1667,6 +1762,12 @@ export async function updateSession(
           id
           teamName
         }
+        locations {
+          id
+          name
+          building
+          address
+        }
       }
     }
   `;
@@ -1679,6 +1780,7 @@ export async function updateSession(
   if (updates.meetingPlatform !== undefined) variables.meetingPlatform = updates.meetingPlatform;
   if (updates.meetingUrl !== undefined) variables.meetingUrl = updates.meetingUrl;
   if (updates.agenda !== undefined) variables.agenda = updates.agenda;
+  if (updates.locationId !== undefined) variables.locations = updates.locationId ? [updates.locationId] : [];
   if (updates.granolaNotesUrl !== undefined) variables.granolaNotesUrl = updates.granolaNotesUrl;
   if (updates.summary !== undefined) variables.summary = updates.summary;
   if (updates.fullTranscript !== undefined) variables.fullTranscript = updates.fullTranscript;
@@ -2383,4 +2485,213 @@ export async function getImpersonatableContacts(): Promise<{
   });
 
   return { contacts };
+}
+
+// ====================
+// Location Functions
+// ====================
+
+/**
+ * Get all locations
+ */
+export async function getAllLocations(): Promise<{ locations: Location[] }> {
+  const query = `
+    query GetAllLocations {
+      locations(
+        _order_by: { name: "asc" }
+      ) {
+        id
+        name
+        building
+        floor
+        address
+        accessInstructions
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ locations: Location[] }>(query);
+  return { locations: result.locations || [] };
+}
+
+/**
+ * Create a new location
+ */
+export async function createLocation(input: {
+  name: string;
+  building?: string;
+  floor?: string;
+  address?: string;
+  accessInstructions?: string;
+}): Promise<{ insert_locations: Location }> {
+  const mutation = `
+    mutation CreateLocation(
+      $name: String!
+      $building: String
+      $floor: String
+      $address: String
+      $accessInstructions: String
+    ) {
+      insert_locations(
+        name: $name
+        building: $building
+        floor: $floor
+        address: $address
+        accessInstructions: $accessInstructions
+      ) {
+        id
+        name
+        building
+        floor
+        address
+        accessInstructions
+      }
+    }
+  `;
+
+  return executeMutation(mutation, input);
+}
+
+// ====================
+// Pre-Meeting Submission Functions
+// ====================
+
+/**
+ * Get pre-meeting submissions for a session
+ */
+export async function getPreMeetingSubmissions(
+  sessionId: string
+): Promise<{ preMeetingSubmissions: PreMeetingSubmission[] }> {
+  const query = `
+    query GetPreMeetingSubmissions($sessionId: String!) {
+      preMeetingSubmissions(
+        _filter: {
+          session: {_eq: $sessionId}
+        }
+        _order_by: { submitted: "desc" }
+      ) {
+        id
+        agendaItems
+        questions
+        topicsToDiscuss
+        materialsLinks
+        submitted
+        session {
+          id
+          sessionId
+        }
+        respondant {
+          id
+          fullName
+          email
+          headshot
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ preMeetingSubmissions: PreMeetingSubmission[] }>(
+    query,
+    { sessionId }
+  );
+  return { preMeetingSubmissions: result.preMeetingSubmissions || [] };
+}
+
+/**
+ * Create a pre-meeting submission
+ */
+export async function createPreMeetingSubmission(input: {
+  sessionId: string;
+  respondantId: string;
+  agendaItems?: string;
+  questions?: string;
+  topicsToDiscuss?: string;
+  materialsLinks?: string;
+}): Promise<{ insert_preMeetingSubmissions: PreMeetingSubmission }> {
+  const mutation = `
+    mutation CreatePreMeetingSubmission(
+      $session: [String!]!
+      $respondant: [String!]!
+      $agendaItems: String
+      $questions: String
+      $topicsToDiscuss: String
+      $materialsLinks: String
+      $submitted: String
+    ) {
+      insert_preMeetingSubmissions(
+        session: $session
+        respondant: $respondant
+        agendaItems: $agendaItems
+        questions: $questions
+        topicsToDiscuss: $topicsToDiscuss
+        materialsLinks: $materialsLinks
+        submitted: $submitted
+      ) {
+        id
+        agendaItems
+        questions
+        topicsToDiscuss
+        materialsLinks
+        submitted
+        respondant {
+          id
+          fullName
+          email
+        }
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    session: [input.sessionId],
+    respondant: [input.respondantId],
+    agendaItems: input.agendaItems,
+    questions: input.questions,
+    topicsToDiscuss: input.topicsToDiscuss,
+    materialsLinks: input.materialsLinks,
+    submitted: new Date().toISOString(),
+  });
+}
+
+/**
+ * Update a pre-meeting submission
+ */
+export async function updatePreMeetingSubmission(
+  submissionId: string,
+  updates: {
+    agendaItems?: string;
+    questions?: string;
+    topicsToDiscuss?: string;
+    materialsLinks?: string;
+  }
+): Promise<{ update_preMeetingSubmissions: PreMeetingSubmission }> {
+  const mutation = `
+    mutation UpdatePreMeetingSubmission(
+      $id: String!
+      $agendaItems: String
+      $questions: String
+      $topicsToDiscuss: String
+      $materialsLinks: String
+    ) {
+      update_preMeetingSubmissions(
+        id: $id
+        agendaItems: $agendaItems
+        questions: $questions
+        topicsToDiscuss: $topicsToDiscuss
+        materialsLinks: $materialsLinks
+      ) {
+        id
+        agendaItems
+        questions
+        topicsToDiscuss
+        materialsLinks
+        submitted
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    id: submissionId,
+    ...updates,
+  });
 }

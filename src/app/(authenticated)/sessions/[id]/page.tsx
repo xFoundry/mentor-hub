@@ -26,8 +26,20 @@ import {
   Pencil,
   Users2,
   Trash2,
+  Link2,
+  Check,
+  ClipboardList,
 } from "lucide-react";
-import { EditSessionDialog, AddMeetingNotesDialog, ViewMeetingNotesDialog, DeleteSessionDialog } from "@/components/sessions";
+import { toast } from "sonner";
+import {
+  EditSessionDialog,
+  AddMeetingNotesDialog,
+  ViewMeetingNotesDialog,
+  DeleteSessionDialog,
+  PreMeetingWizard,
+  PreMeetingSubmissionsList,
+} from "@/components/sessions";
+import { hasUserSubmitted } from "@/hooks/use-pre-meeting-submission";
 import { useUpdateSession } from "@/hooks/use-update-session";
 import { useSessionPermissions } from "@/hooks/use-session-permissions";
 import { format, formatDistanceToNow, isPast } from "date-fns";
@@ -45,7 +57,7 @@ export default function SessionDetailPage() {
 
   const { userContext, userType, isLoading: isUserLoading } = useUserType();
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext?.email);
-  const { updateTask, createUpdate } = useTasks(userContext?.email);
+  const { tasks: allTasks, updateTask, createUpdate } = useTasks(userContext?.email);
 
   // Task detail sheet state - store ID only, look up from session for fresh data
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -58,12 +70,19 @@ export default function SessionDetailPage() {
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
   // Delete dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  // Pre-meeting wizard state
+  const [isPreMeetingWizardOpen, setIsPreMeetingWizardOpen] = useState(false);
+  // Copy link state
+  const [isCopied, setIsCopied] = useState(false);
   const { updateSession } = useUpdateSession();
   const { canUpdate } = useSessionPermissions(userType ?? undefined, userContext?.email);
   const canDelete = userType === "staff";
 
   const isLoading = isUserLoading || isSessionsLoading;
   const session = sessions.find((s) => s.id === sessionId);
+
+  // Pre-meeting submissions - read from session data (embedded in session query)
+  const preMeetingSubmissions = session?.preMeetingSubmissions || [];
 
   // Look up task from session's action items to get fresh data
   const selectedTask = useMemo(() => {
@@ -84,11 +103,60 @@ export default function SessionDetailPage() {
     }));
   }, [teamMembers]);
 
+  // Get team member contact IDs for filtering tasks
+  const teamMemberContactIds = useMemo(() => {
+    return teamMembers
+      .map((member: any) => member.contact?.[0]?.id)
+      .filter(Boolean) as string[];
+  }, [teamMembers]);
+
+  // Filter tasks to show those assigned to team members
+  const teamTasks = useMemo(() => {
+    if (!allTasks || teamMemberContactIds.length === 0) return [];
+    return allTasks.filter((task) => {
+      const assignedToIds = task.assignedTo?.map((c) => c.id) || [];
+      return assignedToIds.some((id) => teamMemberContactIds.includes(id));
+    });
+  }, [allTasks, teamMemberContactIds]);
+
   const handleTaskClick = (task: Task) => {
     setSelectedTaskId(task.id);
     setIsSheetOpen(true);
   };
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}/sessions/${sessionId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setIsCopied(true);
+      toast.success("Session link copied to clipboard");
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
   const isMentor = userType === "mentor";
+  const isStudent = userType === "student";
+
+  // Check if user can submit pre-meeting prep (students only, for upcoming sessions)
+  const canSubmitPreMeeting = isStudent &&
+    session?.status !== "Completed" &&
+    session?.status !== "Cancelled" &&
+    userContext?.contactId &&
+    !hasUserSubmitted(preMeetingSubmissions, userContext.contactId);
+
+  // Check if session is upcoming (for showing pre-meeting prompt)
+  const isUpcomingSession = session?.scheduledStart &&
+    !isPast(parseAsLocalTime(session.scheduledStart)) &&
+    session.status === "Scheduled";
+
+  // Handle task updates from pre-meeting wizard
+  const handleTasksUpdate = async (updates: { taskId: string; newStatus: string }[]) => {
+    for (const update of updates) {
+      await updateTask(update.taskId, { status: update.newStatus as Task["status"] });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -163,6 +231,14 @@ export default function SessionDetailPage() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleCopyLink}>
+            {isCopied ? (
+              <Check className="mr-2 h-4 w-4" />
+            ) : (
+              <Link2 className="mr-2 h-4 w-4" />
+            )}
+            {isCopied ? "Copied" : "Copy Link"}
+          </Button>
           {canUpdate && (
             <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
               <Pencil className="mr-2 h-4 w-4" />
@@ -189,6 +265,12 @@ export default function SessionDetailPage() {
             <Button onClick={() => openFeedbackDialog(session)}>
               <MessageSquare className="mr-2 h-4 w-4" />
               Add Feedback
+            </Button>
+          )}
+          {canSubmitPreMeeting && isUpcomingSession && (
+            <Button onClick={() => setIsPreMeetingWizardOpen(true)}>
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Prepare for Meeting
             </Button>
           )}
         </div>
@@ -330,6 +412,21 @@ export default function SessionDetailPage() {
                   <span className="text-muted-foreground">Platform:</span>{" "}
                   {session.meetingPlatform}
                 </p>
+              )}
+              {/* Location for In-Person meetings */}
+              {session.meetingPlatform === "In-Person" && session.locations?.[0] && (
+                <div className="flex items-start gap-2 text-sm">
+                  <MapPin className="h-3 w-3 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{session.locations[0].name}</p>
+                    {session.locations[0].building && (
+                      <p className="text-muted-foreground">{session.locations[0].building}</p>
+                    )}
+                    {session.locations[0].address && (
+                      <p className="text-muted-foreground">{session.locations[0].address}</p>
+                    )}
+                  </div>
+                </div>
               )}
               {session.meetingUrl ? (
                 <Button variant="outline" size="sm" asChild>
@@ -559,6 +656,51 @@ export default function SessionDetailPage() {
         </Card>
       </div>
 
+      {/* Pre-Meeting Submissions Section */}
+      {(preMeetingSubmissions.length > 0 || canSubmitPreMeeting) && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                <CardTitle>Pre-Meeting Prep</CardTitle>
+              </div>
+              {canSubmitPreMeeting && (
+                <Button size="sm" onClick={() => setIsPreMeetingWizardOpen(true)}>
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  {preMeetingSubmissions.length > 0 ? "Update Prep" : "Submit Prep"}
+                </Button>
+              )}
+            </div>
+            <CardDescription>
+              {isStudent
+                ? "Share your thoughts and questions before the meeting"
+                : "Pre-meeting submissions from team members"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {preMeetingSubmissions.length > 0 ? (
+              <PreMeetingSubmissionsList submissions={preMeetingSubmissions} />
+            ) : (
+              <div className="text-muted-foreground flex flex-col items-center justify-center py-8 text-center">
+                <ClipboardList className="mb-2 h-8 w-8" />
+                <p className="text-sm">No pre-meeting submissions yet</p>
+                {canSubmitPreMeeting && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setIsPreMeetingWizardOpen(true)}
+                  >
+                    Submit Your Prep
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Task Detail Sheet */}
       {userType && userContext && (
         <TaskDetailSheet
@@ -611,6 +753,19 @@ export default function SessionDetailPage() {
           onOpenChange={setIsDeleteDialogOpen}
           session={session}
           onDeleted={() => router.push("/sessions")}
+        />
+      )}
+
+      {/* Pre-Meeting Wizard - students only */}
+      {isStudent && session && userContext && (
+        <PreMeetingWizard
+          open={isPreMeetingWizardOpen}
+          onOpenChange={setIsPreMeetingWizardOpen}
+          session={session}
+          tasks={teamTasks}
+          contactId={userContext.contactId}
+          onTasksUpdate={handleTasksUpdate}
+          onCreateUpdate={createUpdate}
         />
       )}
     </div>

@@ -23,6 +23,7 @@ import { useMentors } from "@/hooks/use-mentors";
 import { useCohortContext } from "@/contexts/cohort-context";
 import { useCreateSession } from "@/hooks/use-create-session";
 import { hasPermission } from "@/lib/permissions";
+import { LocationSelector } from "@/components/sessions";
 
 const SESSION_TYPES = [
   { value: "Team Check-in", label: "Team Check-in" },
@@ -60,6 +61,7 @@ export default function NewSessionPage() {
   const [duration, setDuration] = useState<string>("60");
   const [meetingPlatform, setMeetingPlatform] = useState<string>("");
   const [meetingUrl, setMeetingUrl] = useState<string>("");
+  const [locationId, setLocationId] = useState<string>("");
   const [agenda, setAgenda] = useState<string>("");
 
   const isLoading = isUserLoading || isTeamsLoading || isMentorsLoading;
@@ -100,6 +102,7 @@ export default function NewSessionPage() {
       duration: parseInt(duration) || 60,
       meetingPlatform: meetingPlatform || undefined,
       meetingUrl: meetingUrl || undefined,
+      locationId: meetingPlatform === "In-Person" && locationId ? locationId : undefined,
       agenda: agenda || undefined,
       status: "Scheduled",
       cohortId: selectedCohortId !== "all" ? selectedCohortId : undefined,
@@ -244,7 +247,13 @@ export default function NewSessionPage() {
             {/* Meeting Platform */}
             <div className="space-y-2">
               <Label htmlFor="platform">Meeting Platform</Label>
-              <Select value={meetingPlatform} onValueChange={setMeetingPlatform}>
+              <Select value={meetingPlatform} onValueChange={(value) => {
+                setMeetingPlatform(value);
+                // Clear location when switching away from In-Person
+                if (value !== "In-Person") {
+                  setLocationId("");
+                }
+              }}>
                 <SelectTrigger id="platform">
                   <SelectValue placeholder="Select platform (optional)" />
                 </SelectTrigger>
@@ -257,6 +266,17 @@ export default function NewSessionPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Location (for In-Person meetings) */}
+            {meetingPlatform === "In-Person" && (
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <LocationSelector
+                  value={locationId}
+                  onValueChange={setLocationId}
+                />
+              </div>
+            )}
 
             {/* Meeting URL */}
             <div className="space-y-2">

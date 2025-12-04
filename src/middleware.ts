@@ -82,7 +82,7 @@ export async function middleware(request: NextRequest) {
 
   if (!session) {
     // User is not authenticated, redirect to login
-    const loginUrl = new URL("/auth/login", request.url);
+    const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
   }

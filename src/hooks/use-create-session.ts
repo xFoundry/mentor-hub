@@ -15,6 +15,7 @@ interface CreateSessionInput {
   cohortId?: string;
   meetingPlatform?: string;
   meetingUrl?: string;
+  locationId?: string;
   agenda?: string;
   status?: string;
 }

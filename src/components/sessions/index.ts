@@ -12,6 +12,13 @@ export { DeleteSessionDialog } from "./delete-session-dialog";
 export { AddMeetingNotesDialog } from "./add-meeting-notes-dialog";
 export { ViewMeetingNotesDialog } from "./view-meeting-notes-dialog";
 
+// Location Selector
+export { LocationSelector } from "./location-selector";
+
+// Pre-Meeting Components
+export { PreMeetingWizard } from "./pre-meeting-wizard";
+export { PreMeetingCard, PreMeetingSubmissionsList } from "./pre-meeting-card";
+
 export { SessionViewControls } from "./session-view-controls";
 export type { SessionViewControlsProps } from "./session-view-controls";
 

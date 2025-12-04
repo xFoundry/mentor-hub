@@ -143,9 +143,11 @@ export interface Session {
   mentor?: Contact[];
   team?: Team[];
   cohort?: Cohort[];
+  locations?: Location[];
   tasks?: Task[];
   attendance?: any[];
   feedback?: SessionFeedback[];
+  preMeetingSubmissions?: PreMeetingSubmission[];
   created?: string;
   lastModified?: string;
 }
@@ -202,6 +204,27 @@ export interface Update {
   project?: any[];
   task?: Task[];
   gate?: any[];
+}
+
+export interface Location {
+  id: string;
+  name?: string;
+  building?: string;
+  floor?: string;
+  address?: string;
+  accessInstructions?: string;
+}
+
+export interface PreMeetingSubmission {
+  id: string;
+  agendaItems?: string;
+  questions?: string;
+  topicsToDiscuss?: string;
+  materialsLinks?: string;
+  submitted?: string;
+  // Relationships
+  session?: Session[];
+  respondant?: Contact[]; // Note: matches Airtable typo for consistency
 }
 
 // ====================
