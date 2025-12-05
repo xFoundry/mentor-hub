@@ -52,12 +52,24 @@ export default function NewSessionPage() {
   const { mentors, isLoading: isMentorsLoading } = useMentors(selectedCohortId);
   const { createSession, isCreating } = useCreateSession();
 
-  // Form state
+  // Form state - initialize date/time with defaults
+  const getDefaultDate = () => {
+    const now = new Date();
+    return now.toISOString().split("T")[0]; // YYYY-MM-DD
+  };
+
+  const getDefaultTime = () => {
+    const now = new Date();
+    // Round up to next hour
+    now.setHours(now.getHours() + 1, 0, 0, 0);
+    return now.toTimeString().slice(0, 5); // HH:MM
+  };
+
   const [sessionType, setSessionType] = useState<string>("");
   const [teamId, setTeamId] = useState<string>("");
   const [mentorId, setMentorId] = useState<string>("");
-  const [scheduledDate, setScheduledDate] = useState<string>("");
-  const [scheduledTime, setScheduledTime] = useState<string>("");
+  const [scheduledDate, setScheduledDate] = useState<string>(getDefaultDate);
+  const [scheduledTime, setScheduledTime] = useState<string>(getDefaultTime);
   const [duration, setDuration] = useState<string>("60");
   const [meetingPlatform, setMeetingPlatform] = useState<string>("");
   const [meetingUrl, setMeetingUrl] = useState<string>("");
