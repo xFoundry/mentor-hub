@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { format, isPast, isFuture } from "date-fns";
+import { isPast, isFuture } from "date-fns";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -120,16 +121,16 @@ export function SessionCard({
                 )}
               </span>
             )}
-            {sessionDate && (
+            {session.scheduledStart && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(sessionDate, "MMM d, yyyy")}
+                {formatAsEastern(session.scheduledStart, "MMM d, yyyy")}
               </span>
             )}
-            {sessionDate && (
+            {session.scheduledStart && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {format(sessionDate, "h:mm a")}
+                {formatAsEastern(session.scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
               </span>
             )}
           </div>
@@ -246,10 +247,10 @@ export function SessionCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-        {sessionDate && (
+        {session.scheduledStart && (
           <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            {format(sessionDate, "EEEE, MMMM d, yyyy")} at {format(sessionDate, "h:mm a")}
+            {formatAsEastern(session.scheduledStart, "EEEE, MMMM d, yyyy")} at {formatAsEastern(session.scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
           </span>
         )}
         {session.duration && (

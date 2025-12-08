@@ -10,8 +10,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight, Calendar, Users, User, MessageSquarePlus } from "lucide-react";
-import { format } from "date-fns";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { formatAsEastern } from "@/lib/timezone";
 import { FeedbackCard } from "./feedback-card";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
 import type { Session, SessionFeedback, UserType } from "@/types/schema";
@@ -37,7 +37,7 @@ export function FeedbackSessionGroup({
   const { openFeedbackDialog } = useFeedbackDialog();
 
   const sessionDate = session.scheduledStart
-    ? format(parseAsLocalTime(session.scheduledStart), "MMM d, yyyy")
+    ? formatAsEastern(session.scheduledStart, "MMM d, yyyy")
     : "";
 
   const teamName = session.team?.[0]?.teamName;

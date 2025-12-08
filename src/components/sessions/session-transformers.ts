@@ -1,6 +1,7 @@
-import { parseISO, isPast, isFuture, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { isPast, isFuture } from "date-fns";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/types/schema";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 
 // ====================
 // Type Definitions
@@ -64,14 +65,18 @@ export type SessionType = keyof typeof SESSION_TYPE_CONFIG;
 // ====================
 
 /**
- * Parse a datetime string as local time, stripping any timezone indicator.
- * Airtable may return times with a 'Z' suffix (UTC), but our app treats all
- * times as local time (user enters local time, should see local time).
+ * Parse a datetime string from Airtable.
+ * Airtable stores times as proper UTC (with Z suffix).
+ * Example: 12pm Eastern is stored as "17:00:00.000Z" (5pm UTC).
+ *
+ * This function parses the UTC time correctly and returns a Date object.
+ * When formatted for display in the browser, it will show in the user's local timezone.
+ *
+ * @deprecated Use parseUTC from @/lib/timezone for new code
  */
 export function parseAsLocalTime(dateStr: string): Date {
-  // Remove timezone indicators (Z, +00:00, etc.) to treat as local time
-  const localStr = dateStr.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '');
-  return parseISO(localStr);
+  // Parse as proper UTC - do NOT strip the Z suffix
+  return new Date(dateStr);
 }
 
 /**
@@ -196,36 +201,36 @@ export function isSessionStartingSoon(session: Session, withinMinutes: number = 
 }
 
 /**
- * Format session date for display
+ * Format session date for display in Eastern timezone
  */
 export function formatSessionDate(dateStr?: string): string {
   if (!dateStr) return "";
   try {
-    return format(parseAsLocalTime(dateStr), "EEE, MMM d, yyyy");
+    return formatAsEastern(dateStr, "EEE, MMM d, yyyy");
   } catch {
     return dateStr;
   }
 }
 
 /**
- * Format session time for display
+ * Format session time for display in Eastern timezone with "ET" suffix
  */
 export function formatSessionTime(dateStr?: string): string {
   if (!dateStr) return "";
   try {
-    return format(parseAsLocalTime(dateStr), "h:mm a");
+    return `${formatAsEastern(dateStr, "h:mm a")} ${TIMEZONE_ABBR}`;
   } catch {
     return "";
   }
 }
 
 /**
- * Get month/year string from date for grouping
+ * Get month/year string from date for grouping (Eastern timezone)
  */
 export function getSessionMonth(dateStr?: string): string {
   if (!dateStr) return "No Date";
   try {
-    return format(parseAsLocalTime(dateStr), "MMMM yyyy");
+    return formatAsEastern(dateStr, "MMMM yyyy");
   } catch {
     return "No Date";
   }

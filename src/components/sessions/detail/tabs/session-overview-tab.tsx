@@ -19,9 +19,10 @@ import {
   Building2,
   CalendarDays,
 } from "lucide-react";
-import { format, formatDistanceToNow, isPast } from "date-fns";
+import { isPast, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { BlurredMeetingLink } from "@/components/sessions/blurred-meeting-link";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
@@ -157,7 +158,7 @@ export function SessionOverviewTab({
                   <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="font-medium">
-                      {format(parseAsLocalTime(session.scheduledStart), "EEEE, MMMM d, yyyy")}
+                      {formatAsEastern(session.scheduledStart, "EEEE, MMMM d, yyyy")}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {isPast(parseAsLocalTime(session.scheduledStart))
@@ -170,7 +171,7 @@ export function SessionOverviewTab({
                   <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="font-medium">
-                      {format(parseAsLocalTime(session.scheduledStart), "h:mm a")}
+                      {formatAsEastern(session.scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
                     </p>
                     {session.duration && (
                       <p className="text-sm text-muted-foreground">

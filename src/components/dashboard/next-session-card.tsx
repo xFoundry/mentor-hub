@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { format, isToday, isTomorrow, differenceInDays } from "date-fns";
+import { isToday, isTomorrow, differenceInDays } from "date-fns";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
 interface NextSessionCardProps {
@@ -43,12 +44,12 @@ export function NextSessionCard({
     if (isToday(startTime)) return "Today";
     if (isTomorrow(startTime)) return "Tomorrow";
     const daysAway = differenceInDays(startTime, new Date());
-    if (daysAway <= 7) return format(startTime, "EEEE"); // Day name
-    return format(startTime, "MMM d"); // Month day
+    if (daysAway <= 7) return session.scheduledStart ? formatAsEastern(session.scheduledStart, "EEEE") : ""; // Day name
+    return session.scheduledStart ? formatAsEastern(session.scheduledStart, "MMM d") : ""; // Month day
   };
 
-  // Get formatted time
-  const timeDisplay = startTime ? format(startTime, "h:mm a") : "";
+  // Get formatted time with timezone
+  const timeDisplay = session.scheduledStart ? `${formatAsEastern(session.scheduledStart, "h:mm a")} ${TIMEZONE_ABBR}` : "";
   const dateLabel = getDateLabel();
 
   // Display the other party based on user type

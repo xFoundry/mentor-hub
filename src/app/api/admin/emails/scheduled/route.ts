@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { executeQuery } from "@/lib/baseql";
 import { getResendClient, rateLimitedResend } from "@/lib/resend";
 import { parseScheduledEmailIds } from "@/lib/notifications/scheduler";
+import { calculateScheduleTimes, toEasternISOString } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
 interface ScheduledEmailInfo {
@@ -76,21 +77,28 @@ export async function GET() {
         const recipient = parts.slice(1).join("_");
         const emailType = parts[0];
 
-        // Calculate scheduledFor from session data (always available)
-        // Strip timezone indicators to treat as local time (matches app behavior)
+        // Calculate scheduledFor from session data using timezone utility
+        // Times from Airtable are proper UTC, converted to Eastern for display
         let scheduledFor: string | null = null;
         if (session.scheduledStart) {
-          const localStr = (session.scheduledStart as string).replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
-          const start = new Date(localStr);
-          const duration = session.duration || 60;
+          const times = calculateScheduleTimes(
+            session.scheduledStart as string,
+            session.duration || 60
+          );
 
+          let targetTime: Date;
           if (emailType === "prep48h") {
-            scheduledFor = new Date(start.getTime() - 48 * 60 * 60 * 1000).toISOString();
+            targetTime = times.prep48h;
           } else if (emailType === "prep24h") {
-            scheduledFor = new Date(start.getTime() - 24 * 60 * 60 * 1000).toISOString();
+            targetTime = times.prep24h;
           } else if (emailType === "feedbackImmediate") {
-            scheduledFor = new Date(start.getTime() + duration * 60 * 1000).toISOString();
+            targetTime = times.feedbackImmediate;
+          } else {
+            targetTime = times.sessionStart;
           }
+
+          // Format as ISO-like string in Eastern time for frontend display
+          scheduledFor = toEasternISOString(targetTime);
         }
 
         const emailInfo: ScheduledEmailInfo = {

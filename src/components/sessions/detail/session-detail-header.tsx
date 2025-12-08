@@ -36,9 +36,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 import { SessionPhaseIndicator, SessionCountdown } from "./session-phase-indicator";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 import type { SessionPhase } from "@/hooks/use-session-phase";
 import type { UserType } from "@/lib/permissions";
@@ -278,14 +278,14 @@ export function SessionDetailHeader({
             {session.scheduledStart && (
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4" />
-                <span>{format(parseAsLocalTime(session.scheduledStart), "EEE, MMM d, yyyy")}</span>
+                <span>{formatAsEastern(session.scheduledStart, "EEE, MMM d, yyyy")}</span>
               </div>
             )}
             {session.scheduledStart && (
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 <span>
-                  {format(parseAsLocalTime(session.scheduledStart), "h:mm a")}
+                  {formatAsEastern(session.scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
                   {session.duration && ` · ${session.duration} min`}
                 </span>
               </div>

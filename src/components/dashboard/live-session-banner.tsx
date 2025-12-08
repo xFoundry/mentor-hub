@@ -6,8 +6,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow, differenceInMinutes, addMinutes } from "date-fns";
+import { differenceInMinutes, addMinutes } from "date-fns";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { useNow } from "@/hooks/use-now";
 import type { Session } from "@/types/schema";
 import type { SessionPhase } from "@/hooks/use-session-phase";
@@ -119,9 +120,9 @@ export function LiveSessionBanner({
                       )}
                     </>
                   ) : (
-                    startTime && (
+                    session.scheduledStart && (
                       <>
-                        {format(startTime, "h:mm a")} &middot; {duration} min
+                        {formatAsEastern(session.scheduledStart, "h:mm a")} {TIMEZONE_ABBR} &middot; {duration} min
                       </>
                     )
                   )}

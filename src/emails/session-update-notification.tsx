@@ -1,6 +1,7 @@
 import { Section, Text, Hr } from "@react-email/components";
 import * as React from "react";
 import { EmailLayout, EmailButton } from "./components";
+import { formatAsEastern } from "@/lib/timezone";
 import type { SessionChanges } from "@/lib/notifications/types";
 
 interface SessionUpdateNotificationProps {
@@ -38,17 +39,8 @@ export function SessionUpdateNotificationEmail({
 
   const formatTime = (isoString: string): string => {
     try {
-      // Strip timezone indicators to treat as local time (matches app behavior)
-      const localStr = isoString.replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
-      const date = new Date(localStr);
-      return date.toLocaleString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+      // Format in Eastern time (America/New_York) with ET suffix for consistent display
+      return `${formatAsEastern(isoString, "EEE, MMM d 'at' h:mm a")} ET`;
     } catch {
       return isoString;
     }

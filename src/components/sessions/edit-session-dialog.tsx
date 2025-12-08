@@ -88,14 +88,13 @@ export function EditSessionDialog({
   session,
   onSave,
 }: EditSessionDialogProps) {
-  // Parse scheduledStart into date and time
-  // Strip timezone indicator to treat as local time (Airtable may add 'Z')
+  // Parse scheduledStart (UTC) into date and time for form fields
+  // Times from Airtable are proper UTC - browser will display in local timezone
   const parseDateTime = (isoString?: string) => {
     if (!isoString) return { date: "", time: "" };
     try {
-      // Remove timezone indicators to treat as local time
-      const localStr = isoString.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '');
-      const parsed = parseISO(localStr);
+      // Parse as UTC - format will display in browser's local timezone (Eastern for our users)
+      const parsed = new Date(isoString);
       return {
         date: format(parsed, "yyyy-MM-dd"),
         time: format(parsed, "HH:mm"),
@@ -225,11 +224,14 @@ export function EditSessionDialog({
 
     const updates: Record<string, any> = {};
 
-    // Combine date and time into scheduledStart
-    const newScheduledStart = `${scheduledDate}T${scheduledTime}:00`;
-    const originalDateTime = parseDateTime(session.scheduledStart);
-    const originalScheduledStart = originalDateTime.date && originalDateTime.time
-      ? `${originalDateTime.date}T${originalDateTime.time}:00`
+    // Combine date and time into scheduledStart (convert local input to UTC)
+    // User enters time in their local timezone (Eastern), we convert to UTC for storage
+    const localDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+    const newScheduledStart = localDateTime.toISOString();
+
+    // Compare with original - also convert to ISO for consistent comparison
+    const originalScheduledStart = session.scheduledStart
+      ? new Date(session.scheduledStart).toISOString()
       : "";
 
     // Only include changed fields
@@ -390,7 +392,7 @@ export function EditSessionDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="time">
-                Time <span className="text-destructive">*</span>
+                Time (ET) <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="time"

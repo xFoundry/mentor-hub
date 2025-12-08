@@ -18,7 +18,7 @@ import { Loader2, Info, Mail, Users } from "lucide-react";
 import type { Session } from "@/types/schema";
 import type { SessionChanges, SessionParticipant } from "@/lib/notifications/types";
 import { getSessionParticipants } from "@/lib/notifications/scheduler";
-import { format } from "date-fns";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 
 interface SessionUpdateConfirmationDialogProps {
   open: boolean;
@@ -87,9 +87,8 @@ export function SessionUpdateConfirmationDialog({
 
     if (type === "scheduledStart") {
       try {
-        // Strip timezone indicators to treat as local time (matches app behavior)
-        const localStr = (value as string).replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
-        return format(new Date(localStr), "MMM d, yyyy 'at' h:mm a");
+        // Format in Eastern timezone with ET suffix
+        return `${formatAsEastern(value as string, "MMM d, yyyy 'at' h:mm a")} ${TIMEZONE_ABBR}`;
       } catch {
         return String(value);
       }

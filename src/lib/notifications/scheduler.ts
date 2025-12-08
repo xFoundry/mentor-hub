@@ -8,75 +8,41 @@
  */
 
 import { render } from "@react-email/render";
-import { format, parseISO } from "date-fns";
 import {
   getResendClient,
   getFromEmail,
   getAppUrl,
-  isEmailEnabled,
   getEffectiveRecipient,
   getSubjectPrefix,
   isTestModeEnabled,
   rateLimitedResend,
 } from "../resend";
+import {
+  calculateScheduleTimes,
+  formatDateForEmail,
+  formatTimeForEmail,
+  hoursUntil,
+  isValidScheduleTime,
+} from "../timezone";
 import { MeetingPrepReminderEmail } from "@/emails/meeting-prep-reminder";
 import { ImmediateFeedbackReminderEmail } from "@/emails/immediate-feedback-reminder";
 import { SessionUpdateNotificationEmail } from "@/emails/session-update-notification";
 import type { Session, Contact, Team } from "@/types/schema";
 import type { ScheduledEmailIds, SessionChanges, SessionParticipant } from "./types";
 
-// Maximum days in advance Resend allows scheduling (30 days)
-const MAX_SCHEDULE_DAYS = 30;
+// Note: MAX_SCHEDULE_DAYS (30) is now defined in ../timezone as the default for isValidScheduleTime
 
 /**
  * Calculate email schedule times based on session start and duration
- * Uses parseAsLocalTime to treat stored times as local (consistent with app display)
+ * Re-exported from timezone utility for backward compatibility
  */
 export function calculateEmailTimes(scheduledStart: string, durationMinutes: number) {
-  // Strip timezone indicators to treat as local time (matches app behavior)
-  const localStr = scheduledStart.replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
-  const start = new Date(localStr);
-  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-
+  const times = calculateScheduleTimes(scheduledStart, durationMinutes);
   return {
-    prep48h: new Date(start.getTime() - 48 * 60 * 60 * 1000),
-    prep24h: new Date(start.getTime() - 24 * 60 * 60 * 1000),
-    feedbackImmediate: end,
+    prep48h: times.prep48h,
+    prep24h: times.prep24h,
+    feedbackImmediate: times.feedbackImmediate,
   };
-}
-
-/**
- * Parse a date string as local time (strips timezone indicators)
- * This matches how the app displays times to users - treating stored times as local
- */
-function parseAsLocalTime(dateStr: string): Date {
-  // Remove timezone indicators (Z, +00:00, etc.) to treat as local time
-  const localStr = dateStr.replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
-  return parseISO(localStr);
-}
-
-/**
- * Format a date for display in emails
- * Accepts ISO string and treats it as local time (consistent with app display)
- */
-function formatDateForEmail(dateStr: string): string {
-  try {
-    return format(parseAsLocalTime(dateStr), "EEEE, MMMM d, yyyy");
-  } catch {
-    return dateStr;
-  }
-}
-
-/**
- * Format a time for display in emails
- * Accepts ISO string and treats it as local time (consistent with app display)
- */
-function formatTimeForEmail(dateStr: string): string {
-  try {
-    return format(parseAsLocalTime(dateStr), "h:mm a");
-  } catch {
-    return "";
-  }
 }
 
 /**
@@ -93,14 +59,7 @@ function getStudentsFromSession(session: Session): Contact[] {
     .filter((c): c is Contact => !!c && !!c.email);
 }
 
-/**
- * Check if a scheduled time is valid (not in the past and within 30 days)
- */
-function isValidScheduleTime(scheduledFor: Date): boolean {
-  const now = new Date();
-  const maxDate = new Date(now.getTime() + MAX_SCHEDULE_DAYS * 24 * 60 * 60 * 1000);
-  return scheduledFor > now && scheduledFor <= maxDate;
-}
+// Note: isValidScheduleTime is imported from ../timezone
 
 /**
  * Schedule all emails for a new session
@@ -549,11 +508,8 @@ export async function handlePrepReminderRescheduling(
     return currentEmailIds;
   }
 
-  const now = new Date();
-  // Strip timezone indicators to treat as local time (consistent with calculateEmailTimes)
-  const localStr = (session.scheduledStart || "").replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
-  const newStart = new Date(localStr);
-  const hoursUntilSession = (newStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+  // Calculate hours until session using proper UTC parsing
+  const hoursUntilSession = hoursUntil(session.scheduledStart || "");
 
   console.log(`[Scheduler] Session is ${hoursUntilSession.toFixed(1)} hours away - cancelling old emails`);
 

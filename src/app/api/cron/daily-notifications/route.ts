@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { format, addHours } from "date-fns";
 import { executeQuery } from "@/lib/baseql";
 import {
   sendNotificationBatch,
@@ -10,8 +9,11 @@ import {
 import {
   hasMentorFeedback,
   isSessionEligibleForFeedback,
-  parseAsLocalTime,
 } from "@/components/sessions/session-transformers";
+import {
+  getSessionEndTime,
+  formatInEastern,
+} from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
 /**
@@ -145,10 +147,7 @@ async function fetchAllSessions(): Promise<Session[]> {
 function isSessionComplete(session: Session, now: Date): boolean {
   if (!session.scheduledStart) return false;
 
-  const startTime = parseAsLocalTime(session.scheduledStart);
-  const durationMs = (session.duration || 60) * 60 * 1000;
-  const endTime = new Date(startTime.getTime() + durationMs);
-
+  const endTime = getSessionEndTime(session.scheduledStart, session.duration || 60);
   return now > endTime;
 }
 
@@ -170,8 +169,7 @@ function generateFeedbackFollowupNotifications(
     if (!isSessionEligibleForFeedback(session)) continue;
     if (!session.scheduledStart) continue;
 
-    const startTime = parseAsLocalTime(session.scheduledStart);
-    const endTime = addHours(startTime, (session.duration || 60) / 60);
+    const endTime = getSessionEndTime(session.scheduledStart, session.duration || 60);
     const hoursSinceEnd = (now.getTime() - endTime.getTime()) / (1000 * 60 * 60);
 
     // Only send 20-28 hours after session end (24h window)
@@ -182,7 +180,8 @@ function generateFeedbackFollowupNotifications(
 
     if (!mentor || !team) continue;
 
-    const sessionDate = format(startTime, "MMMM d");
+    // Format date in Eastern time for email display
+    const sessionDate = formatInEastern(new Date(session.scheduledStart), "MMMM d");
 
     // Check mentor feedback - only send if NOT already submitted
     if (!hasMentorFeedback(session) && mentor.email) {

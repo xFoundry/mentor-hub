@@ -12,8 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteSession } from "@/hooks/use-delete-session";
 import type { Session } from "@/types/schema";
-import { format } from "date-fns";
-import { parseAsLocalTime } from "./session-transformers";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 
 interface DeleteSessionDialogProps {
   open: boolean;
@@ -33,7 +32,7 @@ export function DeleteSessionDialog({
   if (!session) return null;
 
   const sessionDate = session.scheduledStart
-    ? format(parseAsLocalTime(session.scheduledStart), "MMM d, yyyy 'at' h:mm a")
+    ? `${formatAsEastern(session.scheduledStart, "MMM d, yyyy 'at' h:mm a")} ${TIMEZONE_ABBR}`
     : "Unscheduled";
 
   const teamName = session.team?.[0]?.teamName || "Unknown team";

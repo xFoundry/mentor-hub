@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Clock, Video, ArrowRight } from "lucide-react";
-import { format, isToday, isTomorrow, differenceInDays, isFuture } from "date-fns";
+import { isToday, isTomorrow, differenceInDays, isFuture } from "date-fns";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
 interface UpcomingSessionsCardProps {
@@ -57,7 +58,7 @@ export function UpcomingSessionsCard({
     if (isTomorrow(date)) return "Tomorrow";
     const daysUntil = differenceInDays(date, new Date());
     if (daysUntil > 0 && daysUntil <= 7) return `In ${daysUntil} days`;
-    return format(date, "EEEE, MMM d");
+    return formatAsEastern(dateStr, "EEEE, MMM d");
   };
 
   if (isLoading) {
@@ -145,7 +146,7 @@ export function UpcomingSessionsCard({
             <div className="flex items-center gap-2">
               <Clock className="text-muted-foreground h-4 w-4" />
               <span className="font-medium">
-                {format(parseAsLocalTime((nextSession as any).scheduledStart), "h:mm a")}
+                {formatAsEastern((nextSession as any).scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
               </span>
               {(nextSession as any).duration && (
                 <span className="text-muted-foreground">
