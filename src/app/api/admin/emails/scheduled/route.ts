@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { executeQuery } from "@/lib/baseql";
 import { getResendClient, rateLimitedResend } from "@/lib/resend";
 import { parseScheduledEmailIds } from "@/lib/notifications/scheduler";
-import { calculateScheduleTimes, toEasternISOString } from "@/lib/timezone";
+import { calculateScheduleTimes } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
 interface ScheduledEmailInfo {
@@ -97,8 +97,8 @@ export async function GET() {
             targetTime = times.sessionStart;
           }
 
-          // Format as ISO-like string in Eastern time for frontend display
-          scheduledFor = toEasternISOString(targetTime);
+          // Return proper UTC ISO string - frontend will convert to Eastern for display
+          scheduledFor = targetTime.toISOString();
         }
 
         const emailInfo: ScheduledEmailInfo = {
