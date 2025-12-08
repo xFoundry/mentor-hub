@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Video, MapPin, Clock, Radio, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Video, MapPin, Clock, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -18,10 +19,10 @@ interface SidebarMeetingBannerProps {
  * Displays above the sidebar footer for students and mentors
  */
 export function SidebarMeetingBanner({ userEmail }: SidebarMeetingBannerProps) {
+  const router = useRouter();
   const { state } = useSidebar();
   const {
     displaySession,
-    phase,
     phaseConfig,
     isLive,
     isStartingSoon,
@@ -60,12 +61,24 @@ export function SidebarMeetingBanner({ userEmail }: SidebarMeetingBannerProps) {
     ? "border-l-amber-500"
     : "border-l-blue-500";
 
+  const handleCardClick = () => {
+    router.push(`/sessions/${displaySession.id}`);
+  };
+
   return (
     <div className="px-3 py-2">
-      <Link
-        href={`/sessions/${displaySession.id}`}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleCardClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleCardClick();
+          }
+        }}
         className={cn(
-          "block rounded-lg border border-l-4 p-3 transition-colors hover:bg-accent/50",
+          "block rounded-lg border border-l-4 p-3 transition-colors hover:bg-accent/50 cursor-pointer",
           borderColorClass,
           phaseConfig.bgColor
         )}
@@ -109,7 +122,7 @@ export function SidebarMeetingBanner({ userEmail }: SidebarMeetingBannerProps) {
             <ChevronRight className="h-3 w-3" />
           </div>
         )}
-      </Link>
+      </div>
     </div>
   );
 }

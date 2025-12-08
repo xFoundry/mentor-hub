@@ -35,9 +35,7 @@ import {
   Lock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { SessionPhaseIndicator, SessionCountdown } from "./session-phase-indicator";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { SessionPhaseIndicator } from "./session-phase-indicator";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 import type { SessionPhase } from "@/hooks/use-session-phase";
@@ -108,7 +106,6 @@ export function SessionDetailHeader({
   };
 
   const team = session.team?.[0];
-  const mentor = session.mentor?.[0];
   const isLive = phase === "during";
   const isStartingSoon = phase === "starting-soon";
 
@@ -303,45 +300,6 @@ export function SessionDetailHeader({
             ID: {session.sessionId || session.id}
           </p>
         </div>
-
-        {/* Countdown alert for starting soon */}
-        {phase === "starting-soon" && (
-          <SessionCountdown
-            minutesUntilStart={minutesUntilStart}
-            timeUntilStart={timeUntilStart}
-            phase={phase}
-            className="shrink-0"
-          />
-        )}
-
-        {/* Join meeting button for live sessions */}
-        {isLive && session.meetingUrl && !isMeetingLocked && (
-          <Button
-            size="lg"
-            onClick={handleJoinMeeting}
-            className={cn(
-              "gap-2 shrink-0 animate-pulse bg-green-600 hover:bg-green-700",
-              "shadow-lg shadow-green-600/25"
-            )}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-            </span>
-            Join Live Meeting
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        )}
-        {isLive && session.meetingUrl && isMeetingLocked && (
-          <div className="flex flex-col items-center gap-2 shrink-0 p-4 border rounded-lg bg-amber-50 dark:bg-amber-950/30">
-            <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-            <p className="text-sm font-medium text-center">Meeting link is locked</p>
-            <Button size="sm" onClick={onPrepare} className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Submit Prep to Join
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
