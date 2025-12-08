@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { mutate } from "swr";
-import { updateSession as updateSessionApi } from "@/lib/baseql";
 import type { Session } from "@/types/schema";
 import { toast } from "sonner";
 
@@ -17,10 +16,18 @@ interface UpdateSessionInput {
   granolaNotesUrl?: string;
   summary?: string;
   fullTranscript?: string;
+  locationId?: string;
+  /**
+   * Contact IDs to send update notification emails to.
+   * - null or undefined: No notification emails sent
+   * - string[]: Send to these specific contacts
+   */
+  notificationRecipients?: string[] | null;
 }
 
 /**
  * Hook to update a session (staff only)
+ * Uses API route to ensure email rescheduling happens server-side
  */
 export function useUpdateSession() {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -34,15 +41,31 @@ export function useUpdateSession() {
     setError(null);
 
     try {
-      const result = await updateSessionApi(sessionId, updates);
+      // Call API route (handles session update + email rescheduling)
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update session");
+      }
+
+      const data = await response.json();
 
       // Invalidate session-related caches
       await invalidateSessionCaches();
 
-      toast.success("Session updated successfully");
-      // BaseQL update_* mutations return the updated record
-      const session = result.update_sessions;
-      return Array.isArray(session) ? session[0] : session;
+      // Show success message with email info if applicable
+      if (data.emailsSent > 0) {
+        toast.success(`Session updated. ${data.emailsSent} notification email${data.emailsSent > 1 ? "s" : ""} sent.`);
+      } else {
+        toast.success("Session updated successfully");
+      }
+
+      return data.session;
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to update session");
       setError(error);

@@ -6,6 +6,7 @@ import {
   MessageSquare,
   Users2,
   UserCircle,
+  Mail,
 } from "lucide-react";
 import type { UserType } from "@/types/schema";
 import type { LucideIcon } from "lucide-react";
@@ -140,6 +141,11 @@ export function getNavItems(userType: UserType): NavGroup[] {
         {
           title: "Settings",
           items: [
+            {
+              title: "Email Management",
+              url: "/admin/emails",
+              icon: Mail,
+            },
             {
               title: "Impersonate User",
               url: "/impersonate",

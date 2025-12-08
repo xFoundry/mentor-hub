@@ -1,21 +1,30 @@
 /**
  * Email Notification Service
  *
- * Handles sending scheduled email notifications for:
- * - Pre-meeting preparation reminders (48h, 24h before)
- * - Post-session feedback reminders (24h after)
- * - Overdue task digests (daily)
+ * Handles sending email notifications for:
+ * - Meeting prep reminders (48h, 24h before) - for students
+ * - Immediate feedback reminders (at session end) - for all participants
+ * - Feedback follow-up reminders (24h after session) - only if no feedback submitted
  */
 
-import { getResendClient, getFromEmail, getAppUrl, isEmailEnabled } from "../resend";
-import { PreMeetingReminderEmail } from "@/emails/pre-meeting-reminder";
-import { FeedbackReminderEmail } from "@/emails/feedback-reminder";
-import { TaskOverdueDigestEmail } from "@/emails/task-overdue-digest";
+import {
+  getResendClient,
+  getFromEmail,
+  getAppUrl,
+  isEmailEnabled,
+  getEffectiveRecipient,
+  getSubjectPrefix,
+  isTestModeEnabled,
+  rateLimitedResend,
+} from "../resend";
+import { MeetingPrepReminderEmail } from "@/emails/meeting-prep-reminder";
+import { ImmediateFeedbackReminderEmail } from "@/emails/immediate-feedback-reminder";
+import { FeedbackFollowupReminderEmail } from "@/emails/feedback-followup-reminder";
 import type {
   NotificationBatchResult,
-  PreMeetingReminderPayload,
-  FeedbackReminderPayload,
-  TaskOverdueDigestPayload,
+  MeetingPrepReminderPayload,
+  ImmediateFeedbackReminderPayload,
+  FeedbackFollowupReminderPayload,
   AnyNotificationPayload,
   NotificationResult,
 } from "./types";
@@ -43,17 +52,24 @@ export async function sendNotification(
       return { success: false, error: "Failed to render email" };
     }
 
-    const result = await resend.emails.send({
-      from: getFromEmail(),
-      to: payload.recipientEmail,
-      subject: emailContent.subject,
-      react: emailContent.component,
-    });
+    const effectiveRecipient = getEffectiveRecipient(payload.recipientEmail);
+    const subjectPrefix = getSubjectPrefix();
+    const testIndicator = isTestModeEnabled() ? ` (to: ${payload.recipientEmail})` : "";
+
+    const result = await rateLimitedResend(() =>
+      resend.emails.send({
+        from: getFromEmail(),
+        to: effectiveRecipient,
+        subject: `${subjectPrefix}${emailContent.subject}${testIndicator}`,
+        react: emailContent.component,
+      })
+    );
 
     if (result.error) {
       return { success: false, error: result.error.message };
     }
 
+    console.log(`[Notifications] Sent ${payload.type} to ${payload.recipientEmail} (to: ${effectiveRecipient})`);
     return { success: true, notificationId: result.data?.id };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -103,13 +119,13 @@ function renderEmail(
   const appUrl = getAppUrl();
 
   switch (payload.type) {
-    case "pre-meeting-reminder-48h":
-    case "pre-meeting-reminder-24h": {
-      const p = payload as PreMeetingReminderPayload;
-      const urgency = payload.type === "pre-meeting-reminder-24h" ? "tomorrow" : "in 2 days";
+    case "meeting-prep-reminder-48h":
+    case "meeting-prep-reminder-24h": {
+      const p = payload as MeetingPrepReminderPayload;
+      const urgency = payload.type === "meeting-prep-reminder-24h" ? "tomorrow" : "in 2 days";
       return {
-        subject: `Prepare for your session ${urgency}`,
-        component: PreMeetingReminderEmail({
+        subject: `Submit meeting prep to unlock Zoom link - session ${urgency}`,
+        component: MeetingPrepReminderEmail({
           recipientName: p.recipientName,
           sessionType: p.session.sessionType || "Session",
           mentorName: p.mentorName,
@@ -121,29 +137,35 @@ function renderEmail(
       };
     }
 
-    case "feedback-reminder": {
-      const p = payload as FeedbackReminderPayload;
+    case "immediate-feedback-reminder": {
+      const p = payload as ImmediateFeedbackReminderPayload;
       return {
-        subject: `Share your feedback from ${p.session.sessionType || "your session"}`,
-        component: FeedbackReminderEmail({
+        subject: p.role === "student"
+          ? `How was your session with ${p.otherPartyName}?`
+          : `Quick feedback on your session with ${p.otherPartyName}`,
+        component: ImmediateFeedbackReminderEmail({
+          recipientName: p.recipientName,
+          role: p.role,
+          sessionType: p.session.sessionType || "Session",
+          otherPartyName: p.otherPartyName,
+          sessionDate: p.sessionDate,
+          sessionTime: p.sessionTime,
+          sessionUrl: `${appUrl}/sessions/${p.session.id}?tab=feedback`,
+        }),
+      };
+    }
+
+    case "feedback-followup-reminder": {
+      const p = payload as FeedbackFollowupReminderPayload;
+      return {
+        subject: `Reminder: Share your feedback from ${p.session.sessionType || "your session"}`,
+        component: FeedbackFollowupReminderEmail({
           recipientName: p.recipientName,
           role: p.role,
           sessionType: p.session.sessionType || "Session",
           otherPartyName: p.otherPartyName,
           sessionDate: p.sessionDate,
           sessionUrl: `${appUrl}/sessions/${p.session.id}?tab=feedback`,
-        }),
-      };
-    }
-
-    case "task-overdue-digest": {
-      const p = payload as TaskOverdueDigestPayload;
-      return {
-        subject: `You have ${p.tasks.length} overdue task${p.tasks.length !== 1 ? "s" : ""}`,
-        component: TaskOverdueDigestEmail({
-          recipientName: p.recipientName,
-          tasks: p.tasks,
-          tasksUrl: `${appUrl}/tasks`,
         }),
       };
     }

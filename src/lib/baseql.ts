@@ -1024,6 +1024,7 @@ export async function getSessionDetail(
         fullTranscript
         agenda
         keyTopics
+        scheduledEmailIds
         mentor {
           id
           fullName
@@ -1711,6 +1712,7 @@ export async function updateSession(
     summary?: string;
     fullTranscript?: string;
     locationId?: string;
+    scheduledEmailIds?: string;
   }
 ): Promise<{ update_sessions: Session }> {
   const mutation = `
@@ -1727,6 +1729,7 @@ export async function updateSession(
       $summary: String
       $fullTranscript: String
       $locations: [String!]
+      $scheduledEmailIds: String
     ) {
       update_sessions(
         id: $id
@@ -1741,6 +1744,7 @@ export async function updateSession(
         summary: $summary
         fullTranscript: $fullTranscript
         locations: $locations
+        scheduledEmailIds: $scheduledEmailIds
       ) {
         id
         sessionId
@@ -1754,6 +1758,7 @@ export async function updateSession(
         granolaNotesUrl
         summary
         fullTranscript
+        scheduledEmailIds
         mentor {
           id
           fullName
@@ -1784,6 +1789,7 @@ export async function updateSession(
   if (updates.granolaNotesUrl !== undefined) variables.granolaNotesUrl = updates.granolaNotesUrl;
   if (updates.summary !== undefined) variables.summary = updates.summary;
   if (updates.fullTranscript !== undefined) variables.fullTranscript = updates.fullTranscript;
+  if (updates.scheduledEmailIds !== undefined) variables.scheduledEmailIds = updates.scheduledEmailIds;
 
   return executeMutation(mutation, variables);
 }

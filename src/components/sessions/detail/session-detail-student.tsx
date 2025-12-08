@@ -113,6 +113,7 @@ export function SessionDetailStudent({
         canUpdate={false}
         canDelete={false}
         hasNotes={hasNotes}
+        hasSubmittedPrep={userHasSubmitted}
         onViewNotes={() => setIsViewNotesDialogOpen(true)}
         onAddFeedback={() => openFeedbackDialog(session)}
         onPrepare={() => setIsPreMeetingWizardOpen(true)}
@@ -163,6 +164,8 @@ export function SessionDetailStudent({
             session={session}
             userType="student"
             onViewNotes={() => setIsViewNotesDialogOpen(true)}
+            hasSubmittedPrep={userHasSubmitted}
+            onPrepare={() => setIsPreMeetingWizardOpen(true)}
           />
         </TabsContent>
 

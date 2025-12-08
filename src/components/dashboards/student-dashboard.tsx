@@ -13,14 +13,18 @@ import { Calendar, CheckSquare, Users, MessageSquare, Plus } from "lucide-react"
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { LiveSessionBanner } from "@/components/dashboard/live-session-banner";
+import { NextSessionCard, NoUpcomingSessionCard } from "@/components/dashboard/next-session-card";
+import { TeamSummary } from "@/components/dashboard/team-summary";
 import { SessionList } from "@/components/shared/session-list";
 import { TaskList } from "@/components/shared/task-list";
 import { TaskDetailSheet } from "@/components/tasks";
-import { TeamCard } from "@/components/shared/team-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import type { UserContext, Task } from "@/types/schema";
 import { hasMenteeFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
+import { getSessionPhase, type SessionPhase } from "@/hooks/use-session-phase";
+import { useNow } from "@/hooks/use-now";
 
 interface StudentDashboardProps {
   userContext: UserContext;
@@ -32,6 +36,8 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext.email, selectedCohortId);
   const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(userContext.email, selectedCohortId);
   const { team, isLoading: isTeamLoading } = useUserTeam(userContext.email);
+  // Update time every 30 seconds for phase detection
+  const now = useNow(30000);
 
   // Task detail sheet state - store ID only, look up from array for fresh data
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -93,6 +99,32 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
       });
   }, [sessions]);
 
+  // Find live or starting-soon session for banner
+  const { liveSession, startingSoonSession, nextUpcomingSession } = useMemo(() => {
+    let liveSession = null;
+    let startingSoonSession = null;
+
+    for (const s of sessions) {
+      const phase = getSessionPhase(s, now);
+      if (phase === "during" && !liveSession) {
+        liveSession = s;
+      } else if (phase === "starting-soon" && !startingSoonSession) {
+        startingSoonSession = s;
+      }
+    }
+
+    // Next upcoming is first session after any live/starting-soon
+    const nextUpcomingSession = upcomingSessions.find(
+      (s) => s.id !== liveSession?.id && s.id !== startingSoonSession?.id
+    ) || upcomingSessions[0] || null;
+
+    return { liveSession, startingSoonSession, nextUpcomingSession };
+  }, [sessions, upcomingSessions, now]);
+
+  // Session to show in banner (live takes priority)
+  const bannerSession = liveSession || startingSoonSession;
+  const bannerPhase = bannerSession ? getSessionPhase(bannerSession, now) : null;
+
   // Open tasks
   const openTasks = useMemo(() => {
     return tasks.filter((t) => t.status !== "Completed" && t.status !== "Cancelled");
@@ -141,30 +173,27 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
         subtitle={team ? `Team: ${team.teamName}` : "Your mentorship journey"}
       />
 
-      {/* My Team Card */}
+      {/* Live/Starting Soon Session Banner */}
+      {bannerSession && bannerPhase && (
+        <LiveSessionBanner
+          session={bannerSession}
+          phase={bannerPhase}
+          isMentor={false}
+        />
+      )}
+
+      {/* Next Session Card (only if no banner showing) */}
+      {!bannerSession && (
+        nextUpcomingSession ? (
+          <NextSessionCard session={nextUpcomingSession} isMentor={false} />
+        ) : (
+          <NoUpcomingSessionCard />
+        )
+      )}
+
+      {/* Condensed Team Summary (collapsible) */}
       {team && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              My Team
-            </CardTitle>
-            <CardDescription>Your team and teammates</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : (
-              <TeamCard
-                team={team}
-                variant="detailed"
-                showStats
-                showMembers
-                href={`/teams/${team.id}`}
-              />
-            )}
-          </CardContent>
-        </Card>
+        <TeamSummary team={team} defaultCollapsed={true} />
       )}
 
       {/* Stats Grid */}

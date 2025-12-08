@@ -32,6 +32,7 @@ import {
   Calendar,
   Clock,
   Users2,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ interface SessionDetailHeaderProps {
   canUpdate: boolean;
   canDelete: boolean;
   hasNotes: boolean;
+  hasSubmittedPrep?: boolean;
   // Callbacks
   onEdit?: () => void;
   onDelete?: () => void;
@@ -73,6 +75,7 @@ export function SessionDetailHeader({
   canUpdate,
   canDelete,
   hasNotes,
+  hasSubmittedPrep,
   onEdit,
   onDelete,
   onAddNotes,
@@ -82,6 +85,9 @@ export function SessionDetailHeader({
 }: SessionDetailHeaderProps) {
   const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
+
+  // Meeting link is locked for students who haven't submitted prep
+  const isMeetingLocked = userType === "student" && !hasSubmittedPrep;
 
   const handleCopyLink = async () => {
     const url = `${window.location.origin}/sessions/${session.id}`;
@@ -138,11 +144,24 @@ export function SessionDetailHeader({
           </TooltipProvider>
 
           {/* Primary action based on phase */}
-          {isLive && session.meetingUrl && (
+          {isLive && session.meetingUrl && !isMeetingLocked && (
             <Button onClick={handleJoinMeeting} className="gap-2 bg-green-600 hover:bg-green-700">
               <Video className="h-4 w-4" />
               Join Meeting
             </Button>
+          )}
+          {isLive && session.meetingUrl && isMeetingLocked && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={onPrepare} variant="outline" className="gap-2">
+                    <Lock className="h-4 w-4" />
+                    Submit Prep to Join
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Meeting link is locked until you submit your prep</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           {isStartingSoon && canSubmitPrep && (
@@ -188,10 +207,16 @@ export function SessionDetailHeader({
                 </DropdownMenuItem>
               )}
 
-              {session.meetingUrl && !isLive && (
+              {session.meetingUrl && !isLive && !isMeetingLocked && (
                 <DropdownMenuItem onClick={handleJoinMeeting} className="gap-2">
                   <ExternalLink className="h-4 w-4" />
                   Open Meeting Link
+                </DropdownMenuItem>
+              )}
+              {session.meetingUrl && !isLive && isMeetingLocked && (
+                <DropdownMenuItem onClick={onPrepare} className="gap-2">
+                  <Lock className="h-4 w-4" />
+                  Submit Prep to Unlock
                 </DropdownMenuItem>
               )}
 
@@ -290,7 +315,7 @@ export function SessionDetailHeader({
         )}
 
         {/* Join meeting button for live sessions */}
-        {isLive && session.meetingUrl && (
+        {isLive && session.meetingUrl && !isMeetingLocked && (
           <Button
             size="lg"
             onClick={handleJoinMeeting}
@@ -306,6 +331,16 @@ export function SessionDetailHeader({
             Join Live Meeting
             <ExternalLink className="h-4 w-4" />
           </Button>
+        )}
+        {isLive && session.meetingUrl && isMeetingLocked && (
+          <div className="flex flex-col items-center gap-2 shrink-0 p-4 border rounded-lg bg-amber-50 dark:bg-amber-950/30">
+            <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm font-medium text-center">Meeting link is locked</p>
+            <Button size="sm" onClick={onPrepare} className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Submit Prep to Join
+            </Button>
+          </div>
         )}
       </div>
     </div>

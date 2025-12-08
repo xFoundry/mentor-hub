@@ -2,16 +2,17 @@
  * Types for the email notification system
  */
 
-import type { Session, Task, Contact } from "@/types/schema";
+import type { Session, Contact } from "@/types/schema";
 
 /**
  * Notification types supported by the system
  */
 export type NotificationType =
-  | "pre-meeting-reminder-48h"
-  | "pre-meeting-reminder-24h"
-  | "feedback-reminder"
-  | "task-overdue-digest";
+  | "meeting-prep-reminder-48h"
+  | "meeting-prep-reminder-24h"
+  | "immediate-feedback-reminder"
+  | "feedback-followup-reminder"
+  | "session-update-notification";
 
 /**
  * Base notification payload
@@ -24,10 +25,10 @@ export interface NotificationPayload {
 }
 
 /**
- * Pre-meeting reminder notification
+ * Meeting prep reminder notification (48h and 24h before session)
  */
-export interface PreMeetingReminderPayload extends NotificationPayload {
-  type: "pre-meeting-reminder-48h" | "pre-meeting-reminder-24h";
+export interface MeetingPrepReminderPayload extends NotificationPayload {
+  type: "meeting-prep-reminder-48h" | "meeting-prep-reminder-24h";
   session: Session;
   mentorName: string;
   sessionDate: string;
@@ -36,10 +37,22 @@ export interface PreMeetingReminderPayload extends NotificationPayload {
 }
 
 /**
- * Feedback reminder notification
+ * Immediate feedback reminder notification (sent at session end)
  */
-export interface FeedbackReminderPayload extends NotificationPayload {
-  type: "feedback-reminder";
+export interface ImmediateFeedbackReminderPayload extends NotificationPayload {
+  type: "immediate-feedback-reminder";
+  session: Session;
+  role: "student" | "mentor";
+  otherPartyName: string;
+  sessionDate: string;
+  sessionTime: string;
+}
+
+/**
+ * Feedback follow-up reminder notification (sent 24h after session if no feedback)
+ */
+export interface FeedbackFollowupReminderPayload extends NotificationPayload {
+  type: "feedback-followup-reminder";
   session: Session;
   role: "student" | "mentor";
   otherPartyName: string;
@@ -47,26 +60,13 @@ export interface FeedbackReminderPayload extends NotificationPayload {
 }
 
 /**
- * Task overdue digest notification
- */
-export interface TaskOverdueDigestPayload extends NotificationPayload {
-  type: "task-overdue-digest";
-  tasks: Array<{
-    id: string;
-    name: string;
-    dueDate: string;
-    daysOverdue: number;
-    priority: string;
-  }>;
-}
-
-/**
  * Union type for all notification payloads
  */
 export type AnyNotificationPayload =
-  | PreMeetingReminderPayload
-  | FeedbackReminderPayload
-  | TaskOverdueDigestPayload;
+  | MeetingPrepReminderPayload
+  | ImmediateFeedbackReminderPayload
+  | FeedbackFollowupReminderPayload
+  | SessionUpdateNotificationPayload;
 
 /**
  * Result of sending a notification
@@ -101,9 +101,44 @@ export interface SessionWithParticipants extends Session {
 }
 
 /**
- * Contact with their overdue tasks
+ * Scheduled email tracking - maps email key to Resend email ID
+ * Stored as JSON in the session's scheduledEmailIds field
  */
-export interface ContactWithOverdueTasks {
-  contact: Contact;
-  tasks: Task[];
+export interface ScheduledEmailIds {
+  [key: string]: string; // e.g., "prep48h_email@example.com": "resend-email-id"
+}
+
+/**
+ * Tracks changes made to a session for notification purposes
+ */
+export interface SessionChanges {
+  scheduledStart?: { old: string; new: string };
+  duration?: { old: number; new: number };
+  locationId?: { old: string; new: string };
+  locationName?: { old: string; new: string };
+  meetingUrl?: { old: string; new: string };
+}
+
+/**
+ * Session update notification payload
+ */
+export interface SessionUpdateNotificationPayload extends NotificationPayload {
+  type: "session-update-notification";
+  session: Session;
+  changes: SessionChanges;
+  role: "student" | "mentor";
+  teamName: string;
+  mentorName: string;
+  sessionDate: string;
+  sessionTime: string;
+}
+
+/**
+ * Participant info for recipient selection
+ */
+export interface SessionParticipant {
+  id: string;
+  name: string;
+  email: string;
+  role: "mentor" | "student";
 }

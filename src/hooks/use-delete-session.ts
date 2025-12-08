@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { mutate } from "swr";
-import { deleteSession as deleteSessionApi } from "@/lib/baseql";
 import { toast } from "sonner";
 
 /**
  * Hook to delete a session (staff only)
+ * Uses API route to ensure email cancellation happens server-side
  */
 export function useDeleteSession() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -17,7 +17,15 @@ export function useDeleteSession() {
     setError(null);
 
     try {
-      await deleteSessionApi(sessionId);
+      // Call API route (handles session deletion + email cancellation)
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete session");
+      }
 
       // Invalidate session-related caches
       await invalidateSessionCaches();

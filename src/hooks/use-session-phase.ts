@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { differenceInHours, differenceInMinutes, addMinutes, isPast, formatDistanceToNow } from "date-fns";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { useNow } from "@/hooks/use-now";
 import type { Session } from "@/types/schema";
 
 /**
@@ -70,8 +71,10 @@ export const SESSION_PHASE_CONFIG: Record<SessionPhase, {
 
 /**
  * Calculate the current phase of a session
+ * @param session - The session to check
+ * @param now - Optional current time (defaults to new Date())
  */
-export function getSessionPhase(session: Session | null): SessionPhase {
+export function getSessionPhase(session: Session | null, now?: Date): SessionPhase {
   if (!session) return "upcoming";
 
   // Handle terminal statuses first
@@ -83,23 +86,23 @@ export function getSessionPhase(session: Session | null): SessionPhase {
   if (!session.scheduledStart) return "upcoming";
 
   try {
-    const now = new Date();
+    const currentTime = now ?? new Date();
     const startTime = parseAsLocalTime(session.scheduledStart);
     const duration = session.duration || 60; // Default 60 minutes
     const endTime = addMinutes(startTime, duration);
 
     // Check if we're during the meeting
-    if (now >= startTime && now <= endTime) {
+    if (currentTime >= startTime && currentTime <= endTime) {
       return "during";
     }
 
     // Check if past end time (but not marked completed)
-    if (isPast(endTime)) {
+    if (currentTime >= endTime) {
       return "completed";
     }
 
     // Check how soon the meeting starts
-    const hoursUntilStart = differenceInHours(startTime, now);
+    const hoursUntilStart = differenceInHours(startTime, currentTime);
     if (hoursUntilStart <= 24 && hoursUntilStart >= 0) {
       return "starting-soon";
     }
@@ -112,8 +115,10 @@ export function getSessionPhase(session: Session | null): SessionPhase {
 
 /**
  * Get time-related information about a session
+ * @param session - The session to check
+ * @param now - Optional current time (defaults to new Date())
  */
-export function getSessionTimeInfo(session: Session | null): {
+export function getSessionTimeInfo(session: Session | null, now?: Date): {
   timeUntilStart: string | null;
   timeSinceEnd: string | null;
   minutesUntilStart: number | null;
@@ -133,13 +138,13 @@ export function getSessionTimeInfo(session: Session | null): {
   }
 
   try {
-    const now = new Date();
+    const currentTime = now ?? new Date();
     const startTime = parseAsLocalTime(session.scheduledStart);
     const duration = session.duration || 60;
     const endTime = addMinutes(startTime, duration);
 
-    const minutesUntilStart = differenceInMinutes(startTime, now);
-    const minutesSinceEnd = differenceInMinutes(now, endTime);
+    const minutesUntilStart = differenceInMinutes(startTime, currentTime);
+    const minutesSinceEnd = differenceInMinutes(currentTime, endTime);
 
     return {
       timeUntilStart: minutesUntilStart > 0
@@ -192,12 +197,16 @@ export interface UseSessionPhaseReturn {
 
 /**
  * Hook to get session phase and related state
+ * Automatically updates every 30 seconds to keep time displays accurate
  */
 export function useSessionPhase(session: Session | null): UseSessionPhaseReturn {
+  // Update every 30 seconds to keep time displays current
+  const now = useNow(30000);
+
   return useMemo(() => {
-    const phase = getSessionPhase(session);
+    const phase = getSessionPhase(session, now);
     const phaseConfig = SESSION_PHASE_CONFIG[phase];
-    const timeInfo = getSessionTimeInfo(session);
+    const timeInfo = getSessionTimeInfo(session, now);
 
     // Prep is eligible for upcoming/starting-soon sessions that aren't cancelled
     const isEligibleForPrep =
@@ -226,7 +235,7 @@ export function useSessionPhase(session: Session | null): UseSessionPhaseReturn 
       isEligibleForPrep,
       isEligibleForFeedback,
     };
-  }, [session]);
+  }, [session, now]);
 }
 
 /**

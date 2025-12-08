@@ -150,6 +150,7 @@ export interface Session {
   feedback?: SessionFeedback[];
   sessionFeedback?: SessionFeedback[]; // Alias for feedback (set by useSessions hook)
   preMeetingSubmissions?: PreMeetingSubmission[];
+  scheduledEmailIds?: string; // JSON string storing Resend email IDs for scheduled notifications
   created?: string;
   lastModified?: string;
 }

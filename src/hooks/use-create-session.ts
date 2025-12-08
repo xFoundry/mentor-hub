@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { mutate } from "swr";
-import { createSession as createSessionApi } from "@/lib/baseql";
 import type { Session } from "@/types/schema";
 import { toast } from "sonner";
 
@@ -22,6 +21,7 @@ interface CreateSessionInput {
 
 /**
  * Hook to create a new session (staff only)
+ * Uses API route to ensure email scheduling happens server-side
  */
 export function useCreateSession() {
   const [isCreating, setIsCreating] = useState(false);
@@ -32,15 +32,31 @@ export function useCreateSession() {
     setError(null);
 
     try {
-      const result = await createSessionApi(input);
+      // Call API route (handles session creation + email scheduling)
+      const response = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create session");
+      }
+
+      const data = await response.json();
 
       // Invalidate session-related caches
       await invalidateSessionCaches();
 
-      toast.success("Session created successfully");
-      // BaseQL insert_* mutations return an array of inserted records
-      const sessions = result.insert_sessions;
-      return Array.isArray(sessions) ? sessions[0] : sessions;
+      const scheduledCount = data.scheduledEmails || 0;
+      if (scheduledCount > 0) {
+        toast.success(`Session created and ${scheduledCount} reminder emails scheduled`);
+      } else {
+        toast.success("Session created successfully");
+      }
+
+      return data.session;
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to create session");
       setError(error);

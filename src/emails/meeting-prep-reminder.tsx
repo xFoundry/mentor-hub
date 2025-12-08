@@ -2,7 +2,7 @@ import { Section, Text, Hr } from "@react-email/components";
 import * as React from "react";
 import { EmailLayout, EmailButton } from "./components";
 
-interface PreMeetingReminderProps {
+interface MeetingPrepReminderProps {
   recipientName: string;
   sessionType: string;
   mentorName: string;
@@ -10,13 +10,15 @@ interface PreMeetingReminderProps {
   sessionTime: string;
   hoursUntilSession: number;
   sessionUrl: string;
+  teamName?: string;
 }
 
 /**
- * Pre-meeting reminder email for students
+ * Meeting prep reminder email for students
  * Sent 48h and 24h before upcoming sessions
+ * Key difference from old pre-meeting reminder: emphasizes Zoom link is locked until prep is submitted
  */
-export function PreMeetingReminderEmail({
+export function MeetingPrepReminderEmail({
   recipientName,
   sessionType,
   mentorName,
@@ -24,13 +26,13 @@ export function PreMeetingReminderEmail({
   sessionTime,
   hoursUntilSession,
   sessionUrl,
-}: PreMeetingReminderProps) {
+}: MeetingPrepReminderProps) {
   const urgencyText =
     hoursUntilSession <= 24
       ? "tomorrow"
       : `in ${Math.round(hoursUntilSession / 24)} days`;
 
-  const previewText = `Prepare for your ${sessionType} with ${mentorName} ${urgencyText}`;
+  const previewText = `Submit meeting prep to unlock your Zoom link - session ${urgencyText}`;
 
   return (
     <EmailLayout previewText={previewText}>
@@ -40,10 +42,21 @@ export function PreMeetingReminderEmail({
 
       <Text style={paragraph}>
         Your <strong>{sessionType}</strong> with <strong>{mentorName}</strong> is
-        coming up {urgencyText}. Take a few minutes to prepare so you can make
-        the most of your time together.
+        coming up {urgencyText}. Submit your meeting prep to unlock access to the
+        Zoom link.
       </Text>
 
+      {/* Alert Box - Zoom Link Locked Notice */}
+      <Section style={alertBox}>
+        <Text style={alertHeading}>Meeting Link Locked</Text>
+        <Text style={alertText}>
+          Your Zoom link is hidden until you submit your meeting prep. This helps
+          ensure productive sessions by making sure both you and your mentor are
+          prepared.
+        </Text>
+      </Section>
+
+      {/* Session Details */}
       <Section style={detailsBox}>
         <Text style={detailsHeading}>Session Details</Text>
         <Text style={detailsText}>
@@ -58,25 +71,20 @@ export function PreMeetingReminderEmail({
       </Section>
 
       <Section style={buttonContainer}>
-        <EmailButton href={sessionUrl}>Prepare Now</EmailButton>
+        <EmailButton href={sessionUrl}>Submit Meeting Prep</EmailButton>
       </Section>
 
       <Hr style={hr} />
 
-      <Text style={tipHeading}>Preparation Tips</Text>
-      <Text style={tipText}>
-        - Review any tasks or action items from your last session
-      </Text>
-      <Text style={tipText}>
-        - Think about questions you want to ask your mentor
-      </Text>
-      <Text style={tipText}>
-        - Note any challenges or successes you want to discuss
-      </Text>
+      <Text style={tipHeading}>What to Include in Your Prep</Text>
+      <Text style={tipText}>- Topics or questions you want to discuss</Text>
+      <Text style={tipText}>- Updates on action items from previous sessions</Text>
+      <Text style={tipText}>- Any challenges or wins you want to share</Text>
+      <Text style={tipText}>- Materials or links relevant to your conversation</Text>
 
       <Text style={footer}>
-        Being prepared helps you and your mentor have more productive
-        conversations and ensures you get the guidance you need.
+        Once you submit your prep, you'll immediately gain access to the meeting
+        link. Your mentor will also be able to review your prep before the session.
       </Text>
     </EmailLayout>
   );
@@ -95,6 +103,28 @@ const paragraph: React.CSSProperties = {
   lineHeight: "26px",
   color: "#334155",
   margin: "0 0 16px",
+};
+
+const alertBox: React.CSSProperties = {
+  backgroundColor: "#fef3c7",
+  borderRadius: "8px",
+  padding: "20px",
+  margin: "24px 0",
+  border: "1px solid #fcd34d",
+};
+
+const alertHeading: React.CSSProperties = {
+  fontSize: "14px",
+  fontWeight: "600",
+  color: "#92400e",
+  margin: "0 0 8px",
+};
+
+const alertText: React.CSSProperties = {
+  fontSize: "14px",
+  lineHeight: "22px",
+  color: "#92400e",
+  margin: "0",
 };
 
 const detailsBox: React.CSSProperties = {
@@ -154,4 +184,4 @@ const footer: React.CSSProperties = {
   fontStyle: "italic",
 };
 
-export default PreMeetingReminderEmail;
+export default MeetingPrepReminderEmail;

@@ -135,8 +135,7 @@ export function SessionPhaseIndicator({
         <TooltipContent
           side="bottom"
           className={cn(
-            "max-w-xs",
-            config.bgColor,
+            "max-w-xs bg-popover dark:bg-popover",
             config.borderColor,
             config.color
           )}

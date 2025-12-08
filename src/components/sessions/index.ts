@@ -25,6 +25,9 @@ export { EditSessionDialog } from "./edit-session-dialog";
 // Delete Session Dialog
 export { DeleteSessionDialog } from "./delete-session-dialog";
 
+// Session Update Confirmation Dialog
+export { SessionUpdateConfirmationDialog } from "./session-update-confirmation-dialog";
+
 // Meeting Notes Dialogs
 export { AddMeetingNotesDialog } from "./add-meeting-notes-dialog";
 export { ViewMeetingNotesDialog } from "./view-meeting-notes-dialog";

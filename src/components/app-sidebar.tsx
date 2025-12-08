@@ -26,6 +26,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getNavItems } from "@/components/nav-items";
 import { useEffectiveUser } from "@/hooks/use-effective-user";
 import { CohortHeaderDropdown } from "@/components/cohort-header-dropdown";
+import { SidebarMeetingBanner } from "@/components/sidebar/sidebar-meeting-banner";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -111,6 +112,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         ))}
       </SidebarContent>
+
+      {/* Meeting banner for students and mentors */}
+      {(userType === "student" || userType === "mentor") && userContext?.email && (
+        <SidebarMeetingBanner userEmail={userContext.email} />
+      )}
 
       <SidebarFooter>
         <SidebarMenu>

@@ -12,14 +12,17 @@ import { Calendar, CheckSquare, MessageSquare, Users, AlertCircle } from "lucide
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { LiveSessionBanner } from "@/components/dashboard/live-session-banner";
+import { NextSessionCard, NoUpcomingSessionCard } from "@/components/dashboard/next-session-card";
+import { TeamsSummary } from "@/components/dashboard/teams-summary";
 import { SessionList } from "@/components/shared/session-list";
 import { TaskList } from "@/components/shared/task-list";
 import { TaskDetailSheet } from "@/components/tasks";
-import { TeamCard } from "@/components/shared/team-card";
-import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserContext, Task } from "@/types/schema";
 import { hasMentorFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
+import { getSessionPhase } from "@/hooks/use-session-phase";
+import { useNow } from "@/hooks/use-now";
 
 interface MentorDashboardProps {
   userContext: UserContext;
@@ -31,6 +34,8 @@ export function MentorDashboard({ userContext }: MentorDashboardProps) {
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext.email, selectedCohortId);
   const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(userContext.email, selectedCohortId);
   const { teams, isLoading: isTeamsLoading } = useMentorTeams();
+  // Update time every 30 seconds for phase detection
+  const now = useNow(30000);
 
   // Task detail sheet state - store ID only, look up from array for fresh data
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -84,6 +89,32 @@ export function MentorDashboard({ userContext }: MentorDashboardProps) {
       });
   }, [sessions]);
 
+  // Find live or starting-soon session for banner
+  const { liveSession, startingSoonSession, nextUpcomingSession } = useMemo(() => {
+    let liveSession = null;
+    let startingSoonSession = null;
+
+    for (const s of sessions) {
+      const phase = getSessionPhase(s, now);
+      if (phase === "during" && !liveSession) {
+        liveSession = s;
+      } else if (phase === "starting-soon" && !startingSoonSession) {
+        startingSoonSession = s;
+      }
+    }
+
+    // Next upcoming is first session after any live/starting-soon
+    const nextUpcomingSession = upcomingSessions.find(
+      (s) => s.id !== liveSession?.id && s.id !== startingSoonSession?.id
+    ) || upcomingSessions[0] || null;
+
+    return { liveSession, startingSoonSession, nextUpcomingSession };
+  }, [sessions, upcomingSessions, now]);
+
+  // Session to show in banner (live takes priority)
+  const bannerSession = liveSession || startingSoonSession;
+  const bannerPhase = bannerSession ? getSessionPhase(bannerSession, now) : null;
+
   // Open tasks
   const openTasks = useMemo(() => {
     return tasks.filter((t) => t.status !== "Completed" && t.status !== "Cancelled");
@@ -131,44 +162,26 @@ export function MentorDashboard({ userContext }: MentorDashboardProps) {
         subtitle={`You mentor ${stats.teamCount} team${stats.teamCount !== 1 ? "s" : ""}`}
       />
 
-      {/* My Teams - Prominent Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            My Teams
-          </CardTitle>
-          <CardDescription>Teams you are currently mentoring</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-32 w-full" />
-              ))}
-            </div>
-          ) : teams.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="No teams assigned yet"
-              description="Your mentee teams will appear here"
-            />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {teams.map((team) => (
-                <TeamCard
-                  key={team.id}
-                  team={team}
-                  variant="compact"
-                  showStats
-                  showMembers
-                  href={`/teams/${team.id}`}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Live/Starting Soon Session Banner */}
+      {bannerSession && bannerPhase && (
+        <LiveSessionBanner
+          session={bannerSession}
+          phase={bannerPhase}
+          isMentor={true}
+        />
+      )}
+
+      {/* Next Session Card (only if no banner showing) */}
+      {!bannerSession && (
+        nextUpcomingSession ? (
+          <NextSessionCard session={nextUpcomingSession} isMentor={true} />
+        ) : (
+          <NoUpcomingSessionCard />
+        )
+      )}
+
+      {/* Condensed Teams Summary (collapsible) */}
+      <TeamsSummary teams={teams} defaultCollapsed={true} />
 
       {/* Stats Grid */}
       <StatsGrid stats={statsData} isLoading={isLoading} columns={4} />

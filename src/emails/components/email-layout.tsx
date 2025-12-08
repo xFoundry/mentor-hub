@@ -8,6 +8,7 @@ import {
   Text,
   Link,
   Hr,
+  Img,
 } from "@react-email/components";
 import * as React from "react";
 
@@ -28,7 +29,12 @@ export function EmailLayout({ previewText, children }: EmailLayoutProps) {
         <Container style={container}>
           {/* Header */}
           <Section style={header}>
-            <Text style={logo}>Mentor Hub</Text>
+            <Img
+              src={`${process.env.NEXT_PUBLIC_APP_URL || "https://mentorhub.xfoundry.org"}/x-icon-blue.png`}
+              width="40"
+              alt="XFoundry Mentor Hub"
+              style={logoImage}
+            />
           </Section>
 
           {/* Content */}
@@ -82,10 +88,7 @@ const header: React.CSSProperties = {
   borderBottom: "1px solid #e6ebf1",
 };
 
-const logo: React.CSSProperties = {
-  fontSize: "24px",
-  fontWeight: "bold",
-  color: "#0f172a",
+const logoImage: React.CSSProperties = {
   margin: "0",
 };
 

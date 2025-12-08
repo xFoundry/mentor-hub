@@ -22,6 +22,7 @@ import {
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { BlurredMeetingLink } from "@/components/sessions/blurred-meeting-link";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
 
@@ -29,14 +30,20 @@ interface SessionOverviewTabProps {
   session: Session;
   userType: UserType;
   onViewNotes?: () => void;
+  hasSubmittedPrep?: boolean;
+  onPrepare?: () => void;
 }
 
 export function SessionOverviewTab({
   session,
   userType,
   onViewNotes,
+  hasSubmittedPrep,
+  onPrepare,
 }: SessionOverviewTabProps) {
   const isMentor = userType === "mentor";
+  const isStudent = userType === "student";
+  const isLocked = isStudent && !hasSubmittedPrep;
   const mentor = session.mentor?.[0];
   const team = session.team?.[0];
   const teamMembers = team?.members || [];
@@ -212,16 +219,11 @@ export function SessionOverviewTab({
               </div>
             )}
 
-            {session.meetingUrl ? (
-              <Button variant="outline" size="sm" asChild className="w-full">
-                <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Join Meeting
-                </a>
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">No meeting link set</p>
-            )}
+            <BlurredMeetingLink
+              meetingUrl={session.meetingUrl}
+              isLocked={isLocked}
+              onPrepare={onPrepare}
+            />
           </CardContent>
         </Card>
       </div>

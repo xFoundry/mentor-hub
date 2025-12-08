@@ -23,7 +23,9 @@ import {
 import { Loader2, Save } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { Session } from "@/types/schema";
+import type { SessionChanges } from "@/lib/notifications/types";
 import { LocationSelector } from "./location-selector";
+import { SessionUpdateConfirmationDialog } from "./session-update-confirmation-dialog";
 
 const SESSION_TYPES = [
   { value: "Team Check-in", label: "Team Check-in" },
@@ -73,8 +75,12 @@ interface EditSessionDialogProps {
     meetingUrl?: string;
     locationId?: string;
     agenda?: string;
+    notificationRecipients?: string[] | null;
   }) => Promise<void>;
 }
+
+// Fields that trigger the notification confirmation dialog
+const NOTIFICATION_TRIGGER_FIELDS = ["scheduledStart", "duration", "locationId", "meetingUrl"];
 
 export function EditSessionDialog({
   open,
@@ -114,6 +120,11 @@ export function EditSessionDialog({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Confirmation dialog state
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, any> | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<SessionChanges | null>(null);
 
   // Reset form when session changes or dialog opens
   useEffect(() => {
@@ -161,61 +172,139 @@ export function EditSessionDialog({
     }
   };
 
+  // Helper to check if updates contain notification-triggering changes
+  const hasNotificationTriggeringChanges = (updates: Record<string, any>): boolean => {
+    return NOTIFICATION_TRIGGER_FIELDS.some((field) => field in updates);
+  };
+
+  // Build SessionChanges object for the confirmation dialog
+  const buildChangesForConfirmation = (updates: Record<string, any>): SessionChanges => {
+    const changes: SessionChanges = {};
+    const originalDateTime = parseDateTime(session.scheduledStart);
+    const originalScheduledStart = originalDateTime.date && originalDateTime.time
+      ? `${originalDateTime.date}T${originalDateTime.time}:00`
+      : "";
+
+    if (updates.scheduledStart && updates.scheduledStart !== originalScheduledStart) {
+      changes.scheduledStart = {
+        old: session.scheduledStart || "",
+        new: updates.scheduledStart,
+      };
+    }
+    if (updates.duration && updates.duration !== session.duration) {
+      changes.duration = {
+        old: session.duration || 60,
+        new: updates.duration,
+      };
+    }
+    if (updates.locationId !== undefined) {
+      const oldLocationId = session.locations?.[0]?.id || "";
+      const newLocationId = updates.locationId || "";
+      if (oldLocationId !== newLocationId) {
+        changes.locationId = { old: oldLocationId, new: newLocationId };
+        changes.locationName = {
+          old: session.locations?.[0]?.name || "",
+          new: "", // Will be resolved by the API
+        };
+      }
+    }
+    if (updates.meetingUrl !== undefined && updates.meetingUrl !== (session.meetingUrl || "")) {
+      changes.meetingUrl = {
+        old: session.meetingUrl || "",
+        new: updates.meetingUrl || "",
+      };
+    }
+
+    return changes;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate()) return;
 
-    setIsSubmitting(true);
+    const updates: Record<string, any> = {};
 
-    try {
-      const updates: Record<string, any> = {};
+    // Combine date and time into scheduledStart
+    const newScheduledStart = `${scheduledDate}T${scheduledTime}:00`;
+    const originalDateTime = parseDateTime(session.scheduledStart);
+    const originalScheduledStart = originalDateTime.date && originalDateTime.time
+      ? `${originalDateTime.date}T${originalDateTime.time}:00`
+      : "";
 
-      // Combine date and time into scheduledStart
-      const newScheduledStart = `${scheduledDate}T${scheduledTime}:00`;
-      const originalDateTime = parseDateTime(session.scheduledStart);
-      const originalScheduledStart = originalDateTime.date && originalDateTime.time
-        ? `${originalDateTime.date}T${originalDateTime.time}:00`
-        : "";
+    // Only include changed fields
+    if (sessionType !== session.sessionType) {
+      updates.sessionType = sessionType;
+    }
+    if (status !== session.status) {
+      updates.status = status;
+    }
+    if (newScheduledStart !== originalScheduledStart) {
+      updates.scheduledStart = newScheduledStart;
+    }
+    if (parseInt(duration) !== session.duration) {
+      updates.duration = parseInt(duration);
+    }
+    if (meetingPlatform !== (session.meetingPlatform || "")) {
+      updates.meetingPlatform = meetingPlatform || undefined;
+    }
+    if (meetingUrl !== (session.meetingUrl || "")) {
+      updates.meetingUrl = meetingUrl || undefined;
+    }
+    // Handle location changes
+    const currentLocationId = session.locations?.[0]?.id || "";
+    if (meetingPlatform === "In-Person") {
+      if (locationId !== currentLocationId) {
+        updates.locationId = locationId || undefined;
+      }
+    } else if (currentLocationId) {
+      // Clear location if switching away from In-Person
+      updates.locationId = undefined;
+    }
+    if (agenda !== (session.agenda || "")) {
+      updates.agenda = agenda || undefined;
+    }
 
-      // Only include changed fields
-      if (sessionType !== session.sessionType) {
-        updates.sessionType = sessionType;
-      }
-      if (status !== session.status) {
-        updates.status = status;
-      }
-      if (newScheduledStart !== originalScheduledStart) {
-        updates.scheduledStart = newScheduledStart;
-      }
-      if (parseInt(duration) !== session.duration) {
-        updates.duration = parseInt(duration);
-      }
-      if (meetingPlatform !== (session.meetingPlatform || "")) {
-        updates.meetingPlatform = meetingPlatform || undefined;
-      }
-      if (meetingUrl !== (session.meetingUrl || "")) {
-        updates.meetingUrl = meetingUrl || undefined;
-      }
-      // Handle location changes
-      const currentLocationId = session.locations?.[0]?.id || "";
-      if (meetingPlatform === "In-Person") {
-        if (locationId !== currentLocationId) {
-          updates.locationId = locationId || undefined;
-        }
-      } else if (currentLocationId) {
-        // Clear location if switching away from In-Person
-        updates.locationId = undefined;
-      }
-      if (agenda !== (session.agenda || "")) {
-        updates.agenda = agenda || undefined;
-      }
+    // If no changes, just close the dialog
+    if (Object.keys(updates).length === 0) {
+      onOpenChange(false);
+      return;
+    }
 
-      // Only call save if there are changes
-      if (Object.keys(updates).length > 0) {
+    // Check if changes trigger the notification confirmation
+    if (hasNotificationTriggeringChanges(updates)) {
+      // Store updates and show confirmation dialog
+      const changes = buildChangesForConfirmation(updates);
+      setPendingUpdates(updates);
+      setPendingChanges(changes);
+      setShowConfirmation(true);
+    } else {
+      // No notification-triggering changes, save directly
+      setIsSubmitting(true);
+      try {
         await onSave(updates);
+        onOpenChange(false);
+      } catch (error) {
+        console.error("Error updating session:", error);
+      } finally {
+        setIsSubmitting(false);
       }
+    }
+  };
 
+  // Handle confirmation dialog save
+  const handleConfirmedSave = async (selectedRecipientIds: string[] | null) => {
+    if (!pendingUpdates) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        ...pendingUpdates,
+        notificationRecipients: selectedRecipientIds,
+      });
+      setPendingUpdates(null);
+      setPendingChanges(null);
+      setShowConfirmation(false);
       onOpenChange(false);
     } catch (error) {
       console.error("Error updating session:", error);
@@ -430,6 +519,22 @@ export function EditSessionDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Confirmation dialog for notification-triggering changes */}
+      <SessionUpdateConfirmationDialog
+        open={showConfirmation}
+        onOpenChange={(open) => {
+          setShowConfirmation(open);
+          if (!open) {
+            setPendingUpdates(null);
+            setPendingChanges(null);
+          }
+        }}
+        session={session}
+        changes={pendingChanges || {}}
+        onConfirm={handleConfirmedSave}
+        isSubmitting={isSubmitting}
+      />
     </Dialog>
   );
 }
