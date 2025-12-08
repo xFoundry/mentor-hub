@@ -35,7 +35,10 @@ import {
   Plus,
 } from "lucide-react";
 import { format, isFuture } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import {
+  parseAsLocalTime,
+  getMentorParticipants,
+} from "@/components/sessions/session-transformers";
 import Link from "next/link";
 import type { Session, Task } from "@/types/schema";
 import type { UserContext } from "@/types/schema";
@@ -189,25 +192,45 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
     .map((m: any) => m.contact?.[0]?.id)
     .filter(Boolean);
 
-  // Extract unique mentors from sessions
+  // Extract unique mentors from sessions (including multi-mentor sessions)
   const mentors = useMemo(() => {
-    const mentorMap = new Map();
+    const mentorMap = new Map<string, {
+      id: string;
+      fullName: string;
+      email?: string;
+      sessionCount: number;
+      leadCount: number;
+    }>();
+
     sessions.forEach((session: any) => {
-      const mentor = session.mentor?.[0];
-      if (mentor && !mentorMap.has(mentor.id)) {
-        mentorMap.set(mentor.id, {
-          ...mentor,
-          sessionCount: 1,
-        });
-      } else if (mentor) {
+      // Get all mentor participants from this session
+      const participants = getMentorParticipants(session);
+
+      participants.forEach((participant) => {
+        const mentor = participant.contact;
+        if (!mentor?.id) return;
+
         const existing = mentorMap.get(mentor.id);
-        mentorMap.set(mentor.id, {
-          ...existing,
-          sessionCount: existing.sessionCount + 1,
-        });
-      }
+        if (existing) {
+          mentorMap.set(mentor.id, {
+            ...existing,
+            sessionCount: existing.sessionCount + 1,
+            leadCount: existing.leadCount + (participant.isLead ? 1 : 0),
+          });
+        } else {
+          mentorMap.set(mentor.id, {
+            id: mentor.id,
+            fullName: mentor.fullName || "Unknown",
+            email: mentor.email,
+            sessionCount: 1,
+            leadCount: participant.isLead ? 1 : 0,
+          });
+        }
+      });
     });
-    return Array.from(mentorMap.values());
+
+    // Sort by session count descending
+    return Array.from(mentorMap.values()).sort((a, b) => b.sessionCount - a.sessionCount);
   }, [sessions]);
 
   // Calculate stats
@@ -484,11 +507,26 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  {mentors.map((mentor: any) => (
-                    <Badge key={mentor.id} variant="secondary" className="px-3 py-1">
-                      {mentor.fullName} ({mentor.sessionCount} session{mentor.sessionCount !== 1 ? "s" : ""})
-                    </Badge>
-                  ))}
+                  {mentors.map((mentor) => {
+                    // Show role distribution: "Lead" if mostly lead, "Supporting" if mostly supporting
+                    const roleLabel = mentor.leadCount === mentor.sessionCount
+                      ? "Lead"
+                      : mentor.leadCount === 0
+                        ? "Supporting"
+                        : `${mentor.leadCount} lead`;
+                    return (
+                      <Badge
+                        key={mentor.id}
+                        variant={mentor.leadCount > 0 ? "default" : "secondary"}
+                        className="px-3 py-1"
+                      >
+                        {mentor.fullName} · {mentor.sessionCount} session{mentor.sessionCount !== 1 ? "s" : ""}
+                        {mentor.sessionCount > 1 && mentor.leadCount > 0 && mentor.leadCount < mentor.sessionCount && (
+                          <span className="text-xs opacity-75 ml-1">({roleLabel})</span>
+                        )}
+                      </Badge>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

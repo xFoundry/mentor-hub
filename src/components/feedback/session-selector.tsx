@@ -17,6 +17,8 @@ import {
   parseAsLocalTime,
   isSessionEligibleForFeedback,
   SESSION_TYPE_CONFIG,
+  getLeadMentor,
+  getMentorParticipants,
   type SessionType,
 } from "@/components/sessions/session-transformers";
 import type { Session } from "@/types/schema";
@@ -83,7 +85,20 @@ function getSessionEligibility(
 function SessionItemContent({ session, userType }: { session: Session; userType: UserType }) {
   const date = session.scheduledStart ? parseAsLocalTime(session.scheduledStart) : null;
   const teamName = session.team?.[0]?.teamName;
-  const mentorName = session.mentor?.[0]?.fullName;
+
+  // Format mentor display for multiple mentors
+  const mentorParticipants = getMentorParticipants(session);
+  const leadMentor = getLeadMentor(session);
+  const mentorName = (() => {
+    if (mentorParticipants.length === 0) return leadMentor?.fullName || undefined;
+    const leadName = leadMentor?.fullName || mentorParticipants[0]?.contact?.fullName;
+    const otherCount = mentorParticipants.length - 1;
+    if (!leadName) return undefined;
+    if (otherCount === 0) return leadName;
+    if (otherCount === 1) return `${leadName} +1`;
+    return `${leadName} +${otherCount}`;
+  })();
+
   const sessionTypeConfig = SESSION_TYPE_CONFIG[session.sessionType as SessionType];
 
   return (
@@ -169,7 +184,20 @@ export function SessionSelector({
     ? parseAsLocalTime(selectedSession.scheduledStart)
     : null;
   const selectedTeam = selectedSession?.team?.[0]?.teamName;
-  const selectedMentor = selectedSession?.mentor?.[0]?.fullName;
+
+  // Format selected mentor display
+  const selectedMentor = useMemo(() => {
+    if (!selectedSession) return undefined;
+    const participants = getMentorParticipants(selectedSession);
+    const lead = getLeadMentor(selectedSession);
+    if (participants.length === 0) return lead?.fullName;
+    const leadName = lead?.fullName || participants[0]?.contact?.fullName;
+    const otherCount = participants.length - 1;
+    if (!leadName) return undefined;
+    if (otherCount === 0) return leadName;
+    if (otherCount === 1) return `${leadName} +1 other`;
+    return `${leadName} +${otherCount} others`;
+  }, [selectedSession]);
   const selectedTypeConfig = selectedSession?.sessionType
     ? SESSION_TYPE_CONFIG[selectedSession.sessionType as SessionType]
     : null;

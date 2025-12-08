@@ -31,6 +31,7 @@ import { useSessionPhase, getDefaultTabForPhase } from "@/hooks/use-session-phas
 import { hasMentorFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
 import { useUpdateSession } from "@/hooks/use-update-session";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
+import { useMentors } from "@/hooks/use-mentors";
 import type { Session, Task, UserContext } from "@/types/schema";
 import type { TeamMember } from "@/hooks/use-team-members";
 
@@ -55,6 +56,10 @@ export function SessionDetailStaff({
   const { openFeedbackDialog } = useFeedbackDialog();
   const { updateSession } = useUpdateSession();
   const phaseInfo = useSessionPhase(session);
+
+  // Fetch mentors for the session's cohort (for edit dialog)
+  const cohortId = session.cohort?.[0]?.id;
+  const { mentors: availableMentors } = useMentors(cohortId);
 
   // Dialog states
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -214,6 +219,7 @@ export function SessionDetailStaff({
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         session={session}
+        availableMentors={availableMentors}
         onSave={async (updates) => {
           await updateSession(session.id, updates);
         }}

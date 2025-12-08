@@ -21,11 +21,12 @@ import {
 } from "lucide-react";
 import { isPast, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getMentorParticipants } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { BlurredMeetingLink } from "@/components/sessions/blurred-meeting-link";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
+import { Crown } from "lucide-react";
 
 interface SessionOverviewTabProps {
   session: Session;
@@ -45,7 +46,7 @@ export function SessionOverviewTab({
   const isMentor = userType === "mentor";
   const isStudent = userType === "student";
   const isLocked = isStudent && !hasSubmittedPrep;
-  const mentor = session.mentor?.[0];
+  const mentorParticipants = getMentorParticipants(session);
   const team = session.team?.[0];
   const teamMembers = team?.members || [];
   const hasNotes = session.summary || session.fullTranscript;
@@ -116,26 +117,63 @@ export function SessionOverviewTab({
             </div>
           </CardContent>
         </Card>
-      ) : mentor ? (
+      ) : mentorParticipants.length > 0 ? (
         <Card className="overflow-hidden">
           <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 ring-2 ring-background shadow-lg">
-                <AvatarImage src={mentor.headshot?.[0]?.url} alt={mentor.fullName} />
-                <AvatarFallback className="text-lg">{getInitials(mentor.fullName)}</AvatarFallback>
-              </Avatar>
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  {mentor.fullName}
-                </h3>
-                {mentor.email && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Mail className="h-3 w-3" />
-                    {mentor.email}
-                  </p>
-                )}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <User className="h-5 w-5" />
               </div>
+              <div>
+                <h3 className="text-lg font-semibold leading-none">
+                  {mentorParticipants.length === 1 ? "Your Mentor" : "Your Mentors"}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {mentorParticipants.length} mentor{mentorParticipants.length !== 1 ? "s" : ""} assigned
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {mentorParticipants.map((participant) => {
+                const mentor = participant.contact;
+                if (!mentor) return null;
+                return (
+                  <div
+                    key={participant.id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg p-3",
+                      participant.isLead
+                        ? "bg-amber-50/80 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800"
+                        : "bg-background/50 border"
+                    )}
+                  >
+                    <Avatar className={cn(
+                      "h-12 w-12",
+                      participant.isLead && "ring-2 ring-amber-400"
+                    )}>
+                      <AvatarImage src={mentor.headshot?.[0]?.url} alt={mentor.fullName} />
+                      <AvatarFallback>{getInitials(mentor.fullName)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">{mentor.fullName}</p>
+                        {participant.isLead && (
+                          <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/50 dark:text-amber-400 gap-1 text-xs">
+                            <Crown className="h-3 w-3" />
+                            Lead
+                          </Badge>
+                        )}
+                      </div>
+                      {mentor.email && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 truncate">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          {mentor.email}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </Card>

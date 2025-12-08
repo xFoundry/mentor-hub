@@ -1,5 +1,5 @@
 import { isPast, isFuture } from "date-fns";
-import type { Session } from "@/types/schema";
+import type { Session, Contact, EnrichedMentorParticipant } from "@/types/schema";
 import type { UserType } from "@/types/schema";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 
@@ -109,13 +109,74 @@ export function isSessionPast(session: Session): boolean {
 
 /**
  * Check if a user is the mentor for a session
+ * Checks sessionParticipants first, falls back to mentor[]
  * @param session - The session to check
  * @param userEmail - The current user's email
- * @returns true if the user is the mentor for this session
+ * @returns true if the user is a mentor for this session
  */
 export function isCurrentUserMentor(session: Session, userEmail?: string): boolean {
-  if (!userEmail || !session.mentor) return false;
-  return session.mentor.some(m => m.email === userEmail);
+  if (!userEmail) return false;
+
+  // Check sessionParticipants first
+  const participants = session.sessionParticipants || [];
+  if (participants.length > 0) {
+    return participants.some(
+      (p) => (p.status === "Active" || !p.status) && p.contact?.[0]?.email === userEmail
+    );
+  }
+
+  // Fall back to legacy mentor field
+  return session.mentor?.some((m) => m.email === userEmail) ?? false;
+}
+
+/**
+ * Get all mentor participants from a session with enriched data
+ * Uses sessionParticipants, falls back to mentor[]
+ */
+export function getMentorParticipants(session: Session): EnrichedMentorParticipant[] {
+  const participants = session.sessionParticipants || [];
+
+  // Statuses that exclude a participant from showing
+  const excludedStatuses = ["Cancelled", "Declined", "No-Show"];
+
+  // Filter out cancelled/declined mentors and enrich
+  const mentorParticipants = participants
+    .filter((p) => !p.status || !excludedStatuses.includes(p.status))
+    .map((p) => ({
+      ...p,
+      contact: p.contact?.[0] || ({} as Contact),
+      isLead: p.role === "Lead Mentor",
+    }));
+
+  // If we have participants, return them sorted (lead first)
+  if (mentorParticipants.length > 0) {
+    return mentorParticipants.sort((a, b) => {
+      if (a.isLead !== b.isLead) return a.isLead ? -1 : 1;
+      return (a.contact?.fullName || "").localeCompare(b.contact?.fullName || "");
+    });
+  }
+
+  // Fall back to legacy mentor field
+  if (session.mentor?.length) {
+    return session.mentor.map((mentor, i) => ({
+      id: `legacy-${mentor.id}`,
+      role: i === 0 ? "Lead Mentor" : "Supporting Mentor",
+      contact: mentor,
+      isLead: i === 0,
+    } as EnrichedMentorParticipant));
+  }
+
+  return [];
+}
+
+/**
+ * Get lead mentor contact from a session
+ * Uses sessionParticipants, falls back to mentor[0]
+ */
+export function getLeadMentor(session: Session): Contact | null {
+  const mentors = getMentorParticipants(session);
+  const lead = mentors.find((m) => m.isLead);
+  return lead?.contact || mentors[0]?.contact || null;
 }
 
 /**
@@ -301,9 +362,12 @@ export function searchSessions(sessions: Session[], query: string): Session[] {
   const searchTerms = query.toLowerCase().trim().split(/\s+/);
 
   return sessions.filter(session => {
+    // Include all mentor names in searchable text
+    const mentorNames = getMentorParticipants(session).map(p => p.contact?.fullName);
+
     const searchableText = [
       session.team?.[0]?.teamName,
-      session.mentor?.[0]?.fullName,
+      ...mentorNames,
       session.sessionType,
       session.agenda,
       session.status,
@@ -360,8 +424,8 @@ export function sortSessions(
         break;
       }
       case "mentor": {
-        const aMentor = a.mentor?.[0]?.fullName || "";
-        const bMentor = b.mentor?.[0]?.fullName || "";
+        const aMentor = getLeadMentor(a)?.fullName || "";
+        const bMentor = getLeadMentor(b)?.fullName || "";
         comparison = aMentor.localeCompare(bMentor);
         break;
       }

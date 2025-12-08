@@ -1,31 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSession as createSessionInDb, getSessionDetail, updateSession } from "@/lib/baseql";
+import { createSession as createSessionInDb, getSessionDetail, updateSession, addMentorsToSession } from "@/lib/baseql";
 import { scheduleSessionEmails, stringifyScheduledEmailIds } from "@/lib/notifications/scheduler";
+
+interface MentorInput {
+  contactId: string;
+  role: "Lead Mentor" | "Supporting Mentor" | "Observer";
+}
 
 /**
  * POST /api/sessions
  *
  * Create a new session and schedule notification emails
+ * Supports both legacy single mentorId and new mentors array format
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Extract mentors - support both legacy mentorId and new mentors array
+    const mentors: MentorInput[] = body.mentors || [];
+    const legacyMentorId = body.mentorId;
+
+    // Get lead mentor ID for the legacy mentor field
+    const leadMentor = mentors.find(m => m.role === "Lead Mentor");
+    const mentorIdForSession = leadMentor?.contactId || legacyMentorId || mentors[0]?.contactId;
+
     // Validate required fields
-    const { sessionType, scheduledStart, mentorId, teamId } = body;
-    if (!sessionType || !scheduledStart || !mentorId || !teamId) {
+    const { sessionType, scheduledStart, teamId } = body;
+    if (!sessionType || !scheduledStart || !teamId) {
       return NextResponse.json(
-        { error: "Missing required fields: sessionType, scheduledStart, mentorId, teamId" },
+        { error: "Missing required fields: sessionType, scheduledStart, teamId" },
         { status: 400 }
       );
     }
 
-    // Create session in BaseQL
+    if (!mentorIdForSession && mentors.length === 0) {
+      return NextResponse.json(
+        { error: "At least one mentor is required" },
+        { status: 400 }
+      );
+    }
+
+    // Create session in BaseQL (with lead mentor for backwards compatibility)
     const result = await createSessionInDb({
       sessionType: body.sessionType,
       scheduledStart: body.scheduledStart,
       duration: body.duration,
-      mentorId: body.mentorId,
+      mentorId: mentorIdForSession,
       teamId: body.teamId,
       cohortId: body.cohortId,
       meetingPlatform: body.meetingPlatform,
@@ -41,6 +62,25 @@ export async function POST(request: NextRequest) {
 
     if (!createdSession?.id) {
       return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
+    }
+
+    // Create sessionParticipants for all mentors (new schema)
+    if (mentors.length > 0) {
+      try {
+        await addMentorsToSession(createdSession.id, mentors);
+        console.log(`[Sessions API] Created ${mentors.length} sessionParticipants for session ${createdSession.id}`);
+      } catch (participantError) {
+        // Log but don't fail - session is created, participants are supplemental
+        console.error(`[Sessions API] Failed to create sessionParticipants:`, participantError);
+      }
+    } else if (legacyMentorId) {
+      // Backwards compat: create single participant from legacy mentorId
+      try {
+        await addMentorsToSession(createdSession.id, [{ contactId: legacyMentorId, role: "Lead Mentor" }]);
+        console.log(`[Sessions API] Created sessionParticipant from legacy mentorId for session ${createdSession.id}`);
+      } catch (participantError) {
+        console.error(`[Sessions API] Failed to create sessionParticipant from legacy:`, participantError);
+      }
     }
 
     // Fetch full session with team members for email scheduling

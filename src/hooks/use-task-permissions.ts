@@ -3,6 +3,7 @@
 import { useMemo, useCallback } from "react";
 import type { Task, UserType } from "@/types/schema";
 import { hasPermission, canUpdateField } from "@/lib/permissions";
+import { isCurrentUserMentor } from "@/components/sessions/session-transformers";
 
 /**
  * Task field names that can be updated
@@ -142,7 +143,7 @@ export function useTaskPermissions(
     // Mentors can only edit tasks from sessions they mentored
     if (userType === "mentor") {
       return task.session?.some(session =>
-        session.mentor?.some(mentor => mentor.email === userEmail)
+        isCurrentUserMentor(session, userEmail)
       ) ?? false;
     }
 
@@ -167,7 +168,7 @@ export function useTaskPermissions(
     // Mentors can only drag tasks from their sessions
     if (userType === "mentor") {
       return task.session?.some(session =>
-        session.mentor?.some(mentor => mentor.email === userEmail)
+        isCurrentUserMentor(session, userEmail)
       ) ?? false;
     }
 
@@ -224,7 +225,7 @@ export function getEditableFields(
   // Mentors can edit tasks from their sessions
   if (userType === "mentor") {
     const isFromSession = task.session?.some(s =>
-      s.mentor?.some(m => m.email === userEmail)
+      isCurrentUserMentor(s, userEmail)
     );
     return isFromSession ? MENTOR_EDITABLE_FIELDS : [];
   }

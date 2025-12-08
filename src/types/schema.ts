@@ -28,7 +28,10 @@ export interface Contact {
   // Relationships
   members?: Member[];
   participation?: Participation[];
+  /** @deprecated Use sessionParticipants instead */
   mentorshipSessionsMentor?: Session[];
+  /** Sessions this contact is a mentor for (via sessionParticipants junction) */
+  sessionParticipants?: SessionParticipant[];
   actionItemsAssignedTo?: Task[];
   sessionFeedback?: SessionFeedback[];
   updates?: Update[];
@@ -140,7 +143,10 @@ export interface Session {
   keyTopics?: string[];
   status?: "Scheduled" | "In Progress" | "Completed" | "Cancelled" | "No-Show";
   // Relationships
+  /** @deprecated Use sessionParticipants instead for mentor data */
   mentor?: Contact[];
+  /** Junction table for session mentors with roles */
+  sessionParticipants?: SessionParticipant[];
   team?: Team[];
   cohort?: Cohort[];
   locations?: Location[];
@@ -153,6 +159,33 @@ export interface Session {
   scheduledEmailIds?: string; // JSON string storing Resend email IDs for scheduled notifications
   created?: string;
   lastModified?: string;
+}
+
+/**
+ * Session participant - links contacts to sessions with roles (for mentors)
+ * Note: Students continue to be derived from team membership
+ */
+export interface SessionParticipant {
+  id: string;
+  participantId?: string;
+  participantType?: "Mentor" | "Student"; // Currently only "Mentor" is used
+  role?: "Lead Mentor" | "Supporting Mentor" | "Observer";
+  attended?: boolean;
+  attendanceNotes?: string;
+  status?: "Active" | "Invited" | "Declined" | "Cancelled" | "No-Show";
+  created?: string;
+  lastModified?: string;
+  // Relationships
+  session?: Session[];
+  contact?: Contact[];
+}
+
+/**
+ * Helper type for UI components with resolved contact data
+ */
+export interface EnrichedMentorParticipant extends Omit<SessionParticipant, 'contact'> {
+  contact: Contact;
+  isLead: boolean;
 }
 
 export interface SessionFeedback {

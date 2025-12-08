@@ -9,12 +9,14 @@ import {
 import {
   hasMentorFeedback,
   isSessionEligibleForFeedback,
+  getMentorParticipants,
+  getLeadMentor,
 } from "@/components/sessions/session-transformers";
 import {
   getSessionEndTime,
   formatInEastern,
 } from "@/lib/timezone";
-import type { Session } from "@/types/schema";
+import type { Session, Contact } from "@/types/schema";
 
 /**
  * Daily Notifications Cron Job
@@ -115,6 +117,18 @@ async function fetchAllSessions(): Promise<Session[]> {
           fullName
           email
         }
+        sessionParticipants {
+          id
+          participantId
+          participantType
+          role
+          status
+          contact {
+            id
+            fullName
+            email
+          }
+        }
         team {
           id
           teamName
@@ -156,8 +170,27 @@ function isSessionComplete(session: Session, now: Date): boolean {
 // ============================================================================
 
 /**
+ * Format mentor name(s) for display in emails
+ * Returns: "Alex Smith" or "Alex Smith + 2 other mentors"
+ */
+function formatMentorNameForEmail(session: Session): string {
+  const leadMentor = getLeadMentor(session);
+  const allMentors = getMentorParticipants(session);
+
+  if (!leadMentor) return "your mentor";
+
+  const leadName = leadMentor.fullName || "your mentor";
+  const otherCount = allMentors.length - 1;
+
+  if (otherCount <= 0) return leadName;
+  if (otherCount === 1) return `${leadName} + 1 other mentor`;
+  return `${leadName} + ${otherCount} other mentors`;
+}
+
+/**
  * Generate 24h feedback follow-up reminder notifications
  * Only sends if the participant hasn't submitted feedback yet
+ * Sends to ALL mentors (not just lead) who haven't submitted feedback
  */
 function generateFeedbackFollowupNotifications(
   sessions: Session[],
@@ -175,16 +208,33 @@ function generateFeedbackFollowupNotifications(
     // Only send 20-28 hours after session end (24h window)
     if (hoursSinceEnd < 20 || hoursSinceEnd > 28) continue;
 
-    const mentor = session.mentor?.[0];
     const team = session.team?.[0];
+    if (!team) continue;
 
-    if (!mentor || !team) continue;
+    // Get all mentors using multi-mentor helper
+    const mentorParticipants = getMentorParticipants(session);
+    const mentorIds = new Set(mentorParticipants.map(p => p.contact?.id).filter(Boolean));
 
     // Format date in Eastern time for email display
     const sessionDate = formatInEastern(new Date(session.scheduledStart), "MMMM d");
 
-    // Check mentor feedback - only send if NOT already submitted
-    if (!hasMentorFeedback(session) && mentor.email) {
+    // Check mentor feedback - send to ALL mentors who haven't submitted
+    // Note: hasMentorFeedback checks if ANY mentor feedback exists, so we check per-mentor
+    const feedbackList = session.feedback || session.sessionFeedback || [];
+    const mentorsWithFeedback = new Set(
+      feedbackList
+        .filter((f: any) => f.role === "Mentor")
+        .map((f: any) => f.respondant?.[0]?.id)
+        .filter(Boolean)
+    );
+
+    for (const participant of mentorParticipants) {
+      const mentor = participant.contact;
+      if (!mentor?.email || !mentor?.id) continue;
+
+      // Skip if this specific mentor has already submitted feedback
+      if (mentorsWithFeedback.has(mentor.id)) continue;
+
       notifications.push({
         type: "feedback-followup-reminder",
         recipientEmail: mentor.email,
@@ -198,17 +248,19 @@ function generateFeedbackFollowupNotifications(
     }
 
     // Check student feedback - only send if NOT already submitted
+    // Exclude mentors from student list
     const students = team.members?.filter(
-      (m: any) => m.contact?.[0]?.id !== mentor.id
+      (m: any) => !mentorIds.has(m.contact?.[0]?.id)
     );
+
+    // Use formatted mentor name for students (shows lead + count of others)
+    const mentorNameForStudents = formatMentorNameForEmail(session);
 
     for (const member of students || []) {
       const contact = member.contact?.[0];
       if (!contact?.email) continue;
 
       // Check if this student has already provided feedback
-      // Note: Query returns `feedback`, but Session type may alias it as `sessionFeedback`
-      const feedbackList = session.feedback || session.sessionFeedback || [];
       const hasFeedback = feedbackList.some(
         (f: any) => f.role === "Mentee" && f.respondant?.[0]?.id === contact.id
       );
@@ -222,7 +274,7 @@ function generateFeedbackFollowupNotifications(
         contactId: contact.id,
         session,
         role: "student",
-        otherPartyName: mentor.fullName || "your mentor",
+        otherPartyName: mentorNameForStudents,
         sessionDate,
       });
     }

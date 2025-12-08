@@ -8,6 +8,7 @@
 import type {
   Participation,
   Session,
+  SessionParticipant,
   Task,
   Update,
   SessionFeedback,
@@ -569,6 +570,23 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
             bio
             linkedIn
           }
+          sessionParticipants {
+            id
+            participantId
+            participantType
+            role
+            attended
+            attendanceNotes
+            status
+            contact {
+              id
+              fullName
+              email
+              headshot
+              bio
+              linkedIn
+            }
+          }
           tasks {
             id
             taskId
@@ -661,6 +679,21 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
           email
           headshot
         }
+        sessionParticipants {
+          id
+          participantId
+          participantType
+          role
+          attended
+          attendanceNotes
+          status
+          contact {
+            id
+            fullName
+            email
+            headshot
+          }
+        }
         team {
           id
           teamName
@@ -681,6 +714,10 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
               headshot
             }
           }
+        }
+        cohort {
+          id
+          shortName
         }
         tasks {
           id
@@ -807,6 +844,21 @@ export async function getStudentSessions(
                 email
                 headshot
               }
+              sessionParticipants {
+                id
+                participantId
+                participantType
+                role
+                attended
+                attendanceNotes
+                status
+                contact {
+                  id
+                  fullName
+                  email
+                  headshot
+                }
+              }
               team {
                 id
                 teamName
@@ -827,6 +879,10 @@ export async function getStudentSessions(
                     headshot
                   }
                 }
+              }
+              cohort {
+                id
+                shortName
               }
               tasks {
                 id
@@ -882,34 +938,43 @@ export async function getStudentSessions(
             }
           }
         }
-        mentorshipSessionsMentor {
+        sessionParticipants(
+          _filter: {
+            participantType: {_eq: "Mentor"}
+          }
+        ) {
           id
-          sessionId
-          sessionType
-          scheduledStart
-          duration
+          role
           status
-          meetingPlatform
-          meetingUrl
-          recordingUrl
-          granolaNotesUrl
-          summary
-          fullTranscript
-          agenda
-          keyTopics
-          team {
+          session {
             id
-            teamName
-            cohorts {
+            sessionId
+            sessionType
+            scheduledStart
+            duration
+            status
+            meetingPlatform
+            meetingUrl
+            recordingUrl
+            granolaNotesUrl
+            summary
+            fullTranscript
+            agenda
+            keyTopics
+            mentor {
               id
-              shortName
+              fullName
+              email
+              headshot
             }
-            members(
-              _filter: {
-                status: {_eq: "Active"}
-              }
-            ) {
+            sessionParticipants {
               id
+              participantId
+              participantType
+              role
+              attended
+              attendanceNotes
+              status
               contact {
                 id
                 fullName
@@ -917,56 +982,81 @@ export async function getStudentSessions(
                 headshot
               }
             }
-          }
-          tasks {
-            id
-            taskId
-            name
-            description
-            status
-            priority
-            dueDate
-            assignedTo {
+            team {
               id
-              fullName
+              teamName
+              cohorts {
+                id
+                shortName
+              }
+              members(
+                _filter: {
+                  status: {_eq: "Active"}
+                }
+              ) {
+                id
+                contact {
+                  id
+                  fullName
+                  email
+                  headshot
+                }
+              }
             }
-          }
-          feedback {
-            id
-            role
-            whatWentWell
-            areasForImprovement
-            additionalNeeds
-            suggestedNextSteps
-            rating
-            actionabilityOfAdvice
-            contentRelevance
-            mentorPreparedness
-            respondant {
+            cohort {
               id
-              fullName
-              email
-              headshot
+              shortName
             }
-          }
-          locations {
-            id
-            name
-            building
-            address
-          }
-          preMeetingSubmissions {
-            id
-            agendaItems
-            questions
-            topicsToDiscuss
-            materialsLinks
-            submitted
-            respondant {
+            tasks {
               id
-              fullName
-              email
-              headshot
+              taskId
+              name
+              description
+              status
+              priority
+              dueDate
+              assignedTo {
+                id
+                fullName
+              }
+            }
+            feedback {
+              id
+              role
+              whatWentWell
+              areasForImprovement
+              additionalNeeds
+              suggestedNextSteps
+              rating
+              actionabilityOfAdvice
+              contentRelevance
+              mentorPreparedness
+              respondant {
+                id
+                fullName
+                email
+                headshot
+              }
+            }
+            locations {
+              id
+              name
+              building
+              address
+            }
+            preMeetingSubmissions {
+              id
+              agendaItems
+              questions
+              topicsToDiscuss
+              materialsLinks
+              submitted
+              respondant {
+                id
+                fullName
+                email
+                headshot
+              }
             }
           }
         }
@@ -976,9 +1066,16 @@ export async function getStudentSessions(
 
   const result = await executeQuery<{ contacts: any[] }>(query, { email });
 
-  // Extract members and mentor sessions from the contact
+  // Extract members from the contact
   const members = result.contacts?.[0]?.members || [];
-  const mentorSessions = result.contacts?.[0]?.mentorshipSessionsMentor || [];
+
+  // Extract mentor sessions from sessionParticipants junction table
+  // Filter out cancelled/declined participants (keep Active, null, undefined, or empty status)
+  const participantRecords = (result.contacts?.[0]?.sessionParticipants || [])
+    .filter((p: any) => !p.status || p.status === "Active" || p.status === "Invited");
+  const mentorSessions = participantRecords
+    .flatMap((p: any) => p.session || [])
+    .filter(Boolean);
 
   // Transform mentor sessions to add students from team members
   const transformedMentorSessions = mentorSessions.map((session: any) => {
@@ -1030,6 +1127,23 @@ export async function getSessionDetail(
           fullName
           email
           headshot
+        }
+        sessionParticipants {
+          id
+          participantId
+          participantType
+          role
+          attended
+          attendanceNotes
+          status
+          contact {
+            id
+            fullName
+            email
+            headshot
+            bio
+            linkedIn
+          }
         }
         team {
           id
@@ -1273,6 +1387,17 @@ export async function getStudentTeamTasks(
                   id
                   fullName
                   email
+                }
+                sessionParticipants {
+                  id
+                  participantType
+                  role
+                  status
+                  contact {
+                    id
+                    fullName
+                    email
+                  }
                 }
               }
               team {
@@ -1713,6 +1838,8 @@ export async function updateSession(
     fullTranscript?: string;
     locationId?: string;
     scheduledEmailIds?: string;
+    /** Update legacy mentor field (for backwards compatibility) */
+    mentorId?: string;
   }
 ): Promise<{ update_sessions: Session }> {
   const mutation = `
@@ -1730,6 +1857,7 @@ export async function updateSession(
       $fullTranscript: String
       $locations: [String!]
       $scheduledEmailIds: String
+      $mentor: [String!]
     ) {
       update_sessions(
         id: $id
@@ -1745,6 +1873,7 @@ export async function updateSession(
         fullTranscript: $fullTranscript
         locations: $locations
         scheduledEmailIds: $scheduledEmailIds
+        mentor: $mentor
       ) {
         id
         sessionId
@@ -1790,6 +1919,7 @@ export async function updateSession(
   if (updates.summary !== undefined) variables.summary = updates.summary;
   if (updates.fullTranscript !== undefined) variables.fullTranscript = updates.fullTranscript;
   if (updates.scheduledEmailIds !== undefined) variables.scheduledEmailIds = updates.scheduledEmailIds;
+  if (updates.mentorId !== undefined) variables.mentor = [updates.mentorId];
 
   return executeMutation(mutation, variables);
 }
@@ -1934,6 +2064,21 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
               email
               headshot
             }
+            sessionParticipants {
+              id
+              participantId
+              participantType
+              role
+              attended
+              attendanceNotes
+              status
+              contact {
+                id
+                fullName
+                email
+                headshot
+              }
+            }
             tasks {
               id
               taskId
@@ -2003,6 +2148,21 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
             email
             headshot
           }
+          sessionParticipants {
+            id
+            participantId
+            participantType
+            role
+            attended
+            attendanceNotes
+            status
+            contact {
+              id
+              fullName
+              email
+              headshot
+            }
+          }
           tasks {
             id
             taskId
@@ -2055,6 +2215,7 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
 
 /**
  * Get mentor's teams (teams they mentor via sessions)
+ * Uses sessionParticipants junction table to find mentor's sessions
  */
 export async function getMentorTeams(email: string): Promise<{ teams: any[] }> {
   const query = `
@@ -2064,45 +2225,52 @@ export async function getMentorTeams(email: string): Promise<{ teams: any[] }> {
       ) {
         id
         fullName
-        mentorshipSessionsMentor(
-          _order_by: { scheduledStart: "desc" }
+        sessionParticipants(
+          _filter: {
+            participantType: {_eq: "Mentor"}
+          }
         ) {
           id
-          sessionId
-          sessionType
-          scheduledStart
+          role
           status
-          team {
+          session {
             id
-            teamId
-            teamName
-            teamStatus
-            cohorts {
+            sessionId
+            sessionType
+            scheduledStart
+            status
+            team {
               id
-              shortName
-            }
-            members(
-              _filter: { status: {_eq: "Active"} }
-            ) {
-              id
-              contact {
+              teamId
+              teamName
+              teamStatus
+              cohorts {
                 id
-                fullName
-                email
-                headshot
+                shortName
+              }
+              members(
+                _filter: { status: {_eq: "Active"} }
+              ) {
+                id
+                contact {
+                  id
+                  fullName
+                  email
+                  headshot
+                }
+              }
+              actionItems(
+                _filter: { status: {_in: ["Not Started", "In Progress"]} }
+              ) {
+                id
+                taskId
+                status
               }
             }
-            actionItems(
-              _filter: { status: {_in: ["Not Started", "In Progress"]} }
-            ) {
+            feedback {
               id
-              taskId
-              status
+              role
             }
-          }
-          feedback {
-            id
-            role
           }
         }
       }
@@ -2110,7 +2278,14 @@ export async function getMentorTeams(email: string): Promise<{ teams: any[] }> {
   `;
 
   const result = await executeQuery<{ contacts: any[] }>(query, { email });
-  const sessions = result.contacts?.[0]?.mentorshipSessionsMentor || [];
+
+  // Extract sessions from sessionParticipants junction table
+  // Filter out cancelled/declined participants (keep Active, null, undefined, or empty status)
+  const participantRecords = (result.contacts?.[0]?.sessionParticipants || [])
+    .filter((p: any) => !p.status || p.status === "Active" || p.status === "Invited");
+  const sessions = participantRecords
+    .flatMap((p: any) => p.session || [])
+    .filter(Boolean);
 
   // Extract unique teams and group sessions by team
   const teamMap = new Map<string, any>();
@@ -2700,4 +2875,222 @@ export async function updatePreMeetingSubmission(
     id: submissionId,
     ...updates,
   });
+}
+
+// ====================
+// Session Participants (Mentors) CRUD
+// ====================
+
+/**
+ * Create a session participant (mentor) record
+ */
+export async function createSessionParticipant(input: {
+  sessionId: string;
+  contactId: string;
+  role?: "Lead Mentor" | "Supporting Mentor" | "Observer";
+  status?: string;
+}): Promise<{ insert_sessionParticipants: SessionParticipant }> {
+  const mutation = `
+    mutation CreateSessionParticipant(
+      $session: [String!]!
+      $contact: [String!]!
+      $participantType: String
+      $role: String
+      $status: String
+    ) {
+      insert_sessionParticipants(
+        session: $session
+        contact: $contact
+        participantType: $participantType
+        role: $role
+        status: $status
+      ) {
+        id
+        participantId
+        participantType
+        role
+        attended
+        attendanceNotes
+        status
+        contact {
+          id
+          fullName
+          email
+          headshot
+        }
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    session: [input.sessionId],
+    contact: [input.contactId],
+    participantType: "Mentor",
+    role: input.role || "Lead Mentor",
+    status: input.status || "Active",
+  });
+}
+
+/**
+ * Update a session participant (attendance, role, status)
+ */
+export async function updateSessionParticipant(
+  participantId: string,
+  updates: {
+    role?: string;
+    attended?: boolean;
+    attendanceNotes?: string;
+    status?: string;
+  }
+): Promise<{ update_sessionParticipants: SessionParticipant }> {
+  const mutation = `
+    mutation UpdateSessionParticipant(
+      $id: String!
+      $role: String
+      $attended: Boolean
+      $attendanceNotes: String
+      $status: String
+    ) {
+      update_sessionParticipants(
+        id: $id
+        role: $role
+        attended: $attended
+        attendanceNotes: $attendanceNotes
+        status: $status
+      ) {
+        id
+        participantId
+        participantType
+        role
+        attended
+        attendanceNotes
+        status
+        contact {
+          id
+          fullName
+          email
+          headshot
+        }
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    id: participantId,
+    role: updates.role,
+    attended: updates.attended,
+    attendanceNotes: updates.attendanceNotes,
+    status: updates.status,
+  });
+}
+
+/**
+ * Delete a session participant
+ */
+export async function deleteSessionParticipant(
+  participantId: string
+): Promise<{ delete_sessionParticipants: { id: string } }> {
+  const mutation = `
+    mutation DeleteSessionParticipant($id: String!) {
+      delete_sessionParticipants(id: $id) {
+        id
+      }
+    }
+  `;
+
+  return executeMutation(mutation, { id: participantId });
+}
+
+/**
+ * Bulk add mentors to a session
+ */
+export async function addMentorsToSession(
+  sessionId: string,
+  mentors: Array<{ contactId: string; role?: string }>
+): Promise<SessionParticipant[]> {
+  const results = await Promise.all(
+    mentors.map((mentor, index) =>
+      createSessionParticipant({
+        sessionId,
+        contactId: mentor.contactId,
+        role: (mentor.role as "Lead Mentor" | "Supporting Mentor" | "Observer") ||
+          (index === 0 ? "Lead Mentor" : "Supporting Mentor"),
+        status: "Active",
+      })
+    )
+  );
+
+  return results.map((r) => r.insert_sessionParticipants);
+}
+
+// ====================
+// Session Mentor Helper Functions
+// ====================
+
+/**
+ * Get mentors from session (uses sessionParticipants, falls back to mentor[])
+ */
+export function getSessionMentors(session: Session): Contact[] {
+  // Try sessionParticipants first
+  const participants = session.sessionParticipants || [];
+  const activeMentors = participants
+    .filter((p) => p.status === "Active" || !p.status)
+    .map((p) => p.contact?.[0])
+    .filter((c): c is Contact => Boolean(c));
+
+  if (activeMentors.length > 0) {
+    return activeMentors;
+  }
+
+  // Fall back to legacy mentor field
+  return session.mentor || [];
+}
+
+/**
+ * Get lead mentor from session
+ */
+export function getSessionLeadMentor(session: Session): Contact | undefined {
+  // Try sessionParticipants first
+  const participants = session.sessionParticipants || [];
+  const leadParticipant = participants.find(
+    (p) => p.role === "Lead Mentor" && (p.status === "Active" || !p.status)
+  );
+
+  if (leadParticipant?.contact?.[0]) {
+    return leadParticipant.contact[0];
+  }
+
+  // Fall back: first active participant or legacy mentor
+  const firstActive = participants.find(
+    (p) => p.status === "Active" || !p.status
+  );
+  if (firstActive?.contact?.[0]) {
+    return firstActive.contact[0];
+  }
+
+  // Fall back to legacy mentor field
+  return session.mentor?.[0];
+}
+
+/**
+ * Check if a contact is a mentor for a session
+ */
+export function isContactSessionMentor(
+  session: Session,
+  contactEmail: string
+): boolean {
+  // Try sessionParticipants first
+  const participants = session.sessionParticipants || [];
+  const isMentorViaParticipants = participants.some(
+    (p) =>
+      (p.status === "Active" || !p.status) &&
+      p.contact?.[0]?.email === contactEmail
+  );
+
+  if (participants.length > 0) {
+    return isMentorViaParticipants;
+  }
+
+  // Fall back to legacy mentor field
+  return session.mentor?.some((m) => m.email === contactEmail) ?? false;
 }

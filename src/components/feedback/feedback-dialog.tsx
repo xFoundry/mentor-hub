@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getLeadMentor } from "@/components/sessions/session-transformers";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
 import { useUserType } from "@/hooks/use-user-type";
 import { useFeedback } from "@/hooks/use-feedback";
@@ -110,7 +110,7 @@ export function FeedbackDialog() {
     : "";
 
   const teamName = session?.team?.[0]?.teamName;
-  const mentorName = session?.mentor?.[0]?.fullName;
+  const mentorName = session ? getLeadMentor(session)?.fullName : undefined;
 
   const handleSubmit = async (data: FeedbackFormValues) => {
     if (!session || !userContext) return;

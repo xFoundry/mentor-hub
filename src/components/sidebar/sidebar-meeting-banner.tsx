@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useSidebarSession } from "@/hooks/use-sidebar-session";
 import { useSidebar } from "@/components/ui/sidebar";
+import { getLeadMentor } from "@/components/sessions/session-transformers";
 import type { Session } from "@/types/schema";
 
 interface SidebarMeetingBannerProps {
@@ -51,7 +52,7 @@ export function SidebarMeetingBanner({ userEmail }: SidebarMeetingBannerProps) {
 
   const isInPerson = displaySession.meetingPlatform === "In-Person";
   const hasMeetingUrl = !!displaySession.meetingUrl;
-  const mentorName = displaySession.mentor?.[0]?.fullName || "Mentor";
+  const mentorName = getLeadMentor(displaySession)?.fullName || "Mentor";
   const sessionType = displaySession.sessionType || "Session";
 
   // Determine border color based on phase

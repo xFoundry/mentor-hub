@@ -37,9 +37,12 @@ import {
   hasMentorFeedback,
   isSessionEligibleForFeedback,
   isCurrentUserMentor,
+  getMentorParticipants,
+  getLeadMentor,
   type SessionStatus,
   type SessionType,
 } from "../session-transformers";
+import { MentorAvatarStack } from "@/components/shared/mentor-avatar-stack";
 import { TableColumnHeader } from "@/components/kibo-ui/table";
 
 interface CreateColumnsOptions {
@@ -286,32 +289,20 @@ export function createSessionTableColumns({
       ),
       cell: ({ row }) => {
         const session = row.original;
-        const mentor = session.mentor?.[0];
-        // Always check if current user is the mentor (regardless of restriction setting)
-        const isUserMentor = isCurrentUserMentor(session, userEmail);
+        const mentors = getMentorParticipants(session);
 
-        if (!mentor) {
+        if (mentors.length === 0) {
           return <span className="text-muted-foreground">-</span>;
         }
 
-        const initials = mentor.fullName
-          ?.split(" ")
-          .map((n: string) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2) || "?";
-
         return (
-          <div className="flex items-center gap-2 text-sm">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={mentor.headshot?.[0]?.url} alt={mentor.fullName} />
-              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-            </Avatar>
-            <span className="truncate max-w-[150px]">{mentor.fullName}</span>
-            {isUserMentor && (
-              <Badge variant="secondary" className="text-xs py-0 px-1.5">You</Badge>
-            )}
-          </div>
+          <MentorAvatarStack
+            session={session}
+            size="sm"
+            maxDisplay={2}
+            currentUserEmail={userEmail}
+            showNames={mentors.length === 1}
+          />
         );
       },
     });

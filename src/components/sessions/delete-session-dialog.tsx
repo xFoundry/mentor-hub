@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
 import { useDeleteSession } from "@/hooks/use-delete-session";
+import { getMentorParticipants } from "@/components/sessions/session-transformers";
 import type { Session } from "@/types/schema";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 
@@ -37,7 +38,15 @@ export function DeleteSessionDialog({
     : "Unscheduled";
 
   const teamName = session.team?.[0]?.teamName || "Unknown team";
-  const mentorName = session.mentor?.[0]?.fullName || "Unknown mentor";
+
+  // Get all mentors with roles
+  const mentorParticipants = getMentorParticipants(session);
+  const mentorDisplay = mentorParticipants.length > 0
+    ? mentorParticipants.map(p => {
+        const name = p.contact?.fullName || "Unknown";
+        return p.isLead ? `${name} (Lead)` : name;
+      }).join(", ")
+    : "No mentors assigned";
 
   const handleDelete = async () => {
     const success = await deleteSession(session.id);
@@ -75,7 +84,7 @@ export function DeleteSessionDialog({
               <div className="rounded-md border bg-muted/50 p-3 space-y-1 text-sm">
                 <p><span className="font-medium">Type:</span> {session.sessionType || "Session"}</p>
                 <p><span className="font-medium">Team:</span> {teamName}</p>
-                <p><span className="font-medium">Mentor:</span> {mentorName}</p>
+                <p><span className="font-medium">{mentorParticipants.length === 1 ? "Mentor" : "Mentors"}:</span> {mentorDisplay}</p>
                 <p><span className="font-medium">Date:</span> {sessionDate}</p>
                 {session.status && (
                   <p><span className="font-medium">Status:</span> {session.status}</p>

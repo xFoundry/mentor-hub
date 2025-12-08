@@ -10,7 +10,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight, Calendar, Users, User, MessageSquarePlus } from "lucide-react";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import {
+  getMentorParticipants,
+  getLeadMentor,
+} from "@/components/sessions/session-transformers";
 import { formatAsEastern } from "@/lib/timezone";
 import { FeedbackCard } from "./feedback-card";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
@@ -41,7 +44,19 @@ export function FeedbackSessionGroup({
     : "";
 
   const teamName = session.team?.[0]?.teamName;
-  const mentorName = session.mentor?.[0]?.fullName;
+
+  // Format mentor name(s) for display
+  const mentorParticipants = getMentorParticipants(session);
+  const leadMentor = getLeadMentor(session);
+  const mentorName = (() => {
+    if (mentorParticipants.length === 0) return leadMentor?.fullName;
+    const lead = leadMentor?.fullName || mentorParticipants[0]?.contact?.fullName;
+    const otherCount = mentorParticipants.length - 1;
+    if (!lead) return undefined;
+    if (otherCount === 0) return lead;
+    if (otherCount === 1) return `${lead} +1`;
+    return `${lead} +${otherCount}`;
+  })();
 
   // Find user's own feedback for editing
   const findUserFeedback = (fb: SessionFeedback) => {

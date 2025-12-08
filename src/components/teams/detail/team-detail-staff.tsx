@@ -9,7 +9,7 @@ import { TaskDetailSheet } from "@/components/tasks";
 import { useTeamMutations } from "@/hooks/use-team-mutations";
 import { useTasks } from "@/hooks/use-tasks";
 import { isFuture } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getMentorParticipants } from "@/components/sessions/session-transformers";
 import {
   Calendar,
   CheckSquare,
@@ -86,25 +86,28 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
     .map((m) => m.contact?.[0]?.id)
     .filter(Boolean) as string[];
 
-  // Extract unique mentors from sessions
+  // Extract unique mentors from sessions (using sessionParticipants)
   const mentors = useMemo<TeamMentor[]>(() => {
     const mentorMap = new Map<string, TeamMentor>();
     sessions.forEach((session) => {
-      const mentor = session.mentor?.[0];
-      if (mentor?.id) {
-        const existing = mentorMap.get(mentor.id);
-        if (existing) {
-          existing.sessionCount++;
-        } else {
-          mentorMap.set(mentor.id, {
-            id: mentor.id,
-            fullName: mentor.fullName,
-            email: mentor.email,
-            headshot: mentor.headshot,
-            sessionCount: 1,
-          });
+      const mentorParticipants = getMentorParticipants(session);
+      mentorParticipants.forEach((mp) => {
+        const mentor = mp.contact;
+        if (mentor?.id) {
+          const existing = mentorMap.get(mentor.id);
+          if (existing) {
+            existing.sessionCount++;
+          } else {
+            mentorMap.set(mentor.id, {
+              id: mentor.id,
+              fullName: mentor.fullName,
+              email: mentor.email,
+              headshot: mentor.headshot,
+              sessionCount: 1,
+            });
+          }
         }
-      }
+      });
     });
     return Array.from(mentorMap.values());
   }, [sessions]);

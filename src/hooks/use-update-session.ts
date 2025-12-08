@@ -5,6 +5,11 @@ import { mutate } from "swr";
 import type { Session } from "@/types/schema";
 import { toast } from "sonner";
 
+interface MentorInput {
+  contactId: string;
+  role: "Lead Mentor" | "Supporting Mentor" | "Observer";
+}
+
 interface UpdateSessionInput {
   sessionType?: string;
   scheduledStart?: string;
@@ -23,6 +28,8 @@ interface UpdateSessionInput {
    * - string[]: Send to these specific contacts
    */
   notificationRecipients?: string[] | null;
+  /** Updated mentor list with roles */
+  mentors?: MentorInput[];
 }
 
 /**

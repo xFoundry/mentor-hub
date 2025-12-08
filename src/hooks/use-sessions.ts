@@ -45,24 +45,34 @@ export function useSessions(email?: string, cohortId?: string) {
         }
       }
 
-      // Transform all sessions to add students from team members and aliases
+      // Transform all sessions to add students from team members, extract mentors, and add aliases
       const transformedSessions = sessions.map((session) => {
         // Extract students from team members if not already present
-        if (!session.students && session.team?.[0]?.members) {
-          const students = session.team[0].members
+        let students = session.students;
+        if (!students && session.team?.[0]?.members) {
+          students = session.team[0].members
             ?.map((member: any) => member.contact?.[0])
             .filter(Boolean) || [];
-
-          return {
-            ...session,
-            students,
-            actionItems: session.tasks || session.actionItems,
-            sessionFeedback: session.feedback || session.sessionFeedback,
-          };
         }
+
+        // Extract mentors from sessionParticipants (with backwards compatibility)
+        const participants = session.sessionParticipants || [];
+        const mentorParticipants = participants.filter(
+          (p: any) => p.status === "Active" || !p.status
+        );
+        const mentors = mentorParticipants
+          .map((p: any) => p.contact?.[0])
+          .filter(Boolean);
+
+        // Backwards compat: populate mentor[] from sessionParticipants if available
+        const mentor = mentors.length > 0 ? mentors : session.mentor;
 
         return {
           ...session,
+          students,
+          mentor,                          // Backwards compat (array of all mentors)
+          mentors,                         // NEW: explicit all mentors array
+          sessionParticipants: participants,
           actionItems: session.tasks || session.actionItems,
           sessionFeedback: session.feedback || session.sessionFeedback,
         };

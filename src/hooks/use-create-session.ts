@@ -5,11 +5,19 @@ import { mutate } from "swr";
 import type { Session } from "@/types/schema";
 import { toast } from "sonner";
 
+interface MentorInput {
+  contactId: string;
+  role: "Lead Mentor" | "Supporting Mentor" | "Observer";
+}
+
 interface CreateSessionInput {
   sessionType: string;
   scheduledStart: string;
   duration?: number;
-  mentorId: string;
+  /** @deprecated Use mentors array instead */
+  mentorId?: string;
+  /** Array of mentors with roles - first Lead Mentor is also set as legacy mentor */
+  mentors?: MentorInput[];
   teamId: string;
   cohortId?: string;
   meetingPlatform?: string;

@@ -20,13 +20,9 @@ import {
   SessionNotesTab,
 } from "./tabs";
 import { TaskDetailSheet } from "@/components/tasks";
-import {
-  EditSessionDialog,
-  ViewMeetingNotesDialog,
-} from "@/components/sessions";
+import { ViewMeetingNotesDialog } from "@/components/sessions";
 import { useSessionPhase, getDefaultTabForPhase } from "@/hooks/use-session-phase";
 import { hasMentorFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
-import { useUpdateSession } from "@/hooks/use-update-session";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
 import type { Session, Task, UserContext } from "@/types/schema";
 import type { TeamMember } from "@/hooks/use-team-members";
@@ -49,11 +45,9 @@ export function SessionDetailMentor({
   onCreateUpdate,
 }: SessionDetailMentorProps) {
   const { openFeedbackDialog } = useFeedbackDialog();
-  const { updateSession } = useUpdateSession();
   const phaseInfo = useSessionPhase(session);
 
   // Dialog states
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
 
   // Task sheet state
@@ -108,10 +102,9 @@ export function SessionDetailMentor({
         timeUntilStart={phaseInfo.timeUntilStart}
         needsFeedback={needsFeedback}
         canSubmitPrep={false}
-        canUpdate={true}
+        canUpdate={false}
         canDelete={false}
         hasNotes={hasNotes}
-        onEdit={() => setIsEditDialogOpen(true)}
         onViewNotes={() => setIsViewNotesDialogOpen(true)}
         onAddFeedback={() => openFeedbackDialog(session)}
       />
@@ -210,15 +203,6 @@ export function SessionDetailMentor({
       </Tabs>
 
       {/* Dialogs */}
-      <EditSessionDialog
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        session={session}
-        onSave={async (updates) => {
-          await updateSession(session.id, updates);
-        }}
-      />
-
       {hasNotes && (
         <ViewMeetingNotesDialog
           open={isViewNotesDialogOpen}

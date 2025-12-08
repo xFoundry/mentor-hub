@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateSession as updateSessionInDb, getSessionDetail, deleteSession as deleteSessionInDb } from "@/lib/baseql";
+import {
+  updateSession as updateSessionInDb,
+  getSessionDetail,
+  deleteSession as deleteSessionInDb,
+  createSessionParticipant,
+  updateSessionParticipant,
+  deleteSessionParticipant,
+} from "@/lib/baseql";
 import {
   scheduleSessionEmails,
   cancelSessionEmails,
@@ -9,6 +16,11 @@ import {
   handlePrepReminderRescheduling,
 } from "@/lib/notifications/scheduler";
 import type { SessionChanges } from "@/lib/notifications/types";
+
+interface MentorInput {
+  contactId: string;
+  role: "Lead Mentor" | "Supporting Mentor" | "Observer";
+}
 
 /**
  * PUT /api/sessions/[id]
@@ -23,8 +35,9 @@ export async function PUT(
     const { id: sessionId } = await params;
     const body = await request.json();
 
-    // Extract notification recipients from body (separate from update fields)
-    const { notificationRecipients, ...updateFields } = body;
+    // Extract notification recipients and mentors from body (separate from update fields)
+    const { notificationRecipients, mentors, ...updateFields } = body;
+    const mentorUpdates: MentorInput[] | undefined = mentors;
 
     // Get current session to compare changes
     const currentSessionResult = await getSessionDetail(sessionId);
@@ -90,6 +103,65 @@ export async function PUT(
     });
 
     const updatedSession = result.update_sessions;
+
+    // Handle mentor updates (add/remove/update sessionParticipants)
+    if (mentorUpdates && Array.isArray(mentorUpdates)) {
+      try {
+        const currentParticipants = currentSession.sessionParticipants || [];
+        const currentMentorIds = new Set(
+          currentParticipants.map(p => p.contact?.[0]?.id).filter(Boolean)
+        );
+        const newMentorIds = new Set(mentorUpdates.map(m => m.contactId));
+
+        // Find mentors to add, remove, and update
+        const mentorsToAdd = mentorUpdates.filter(m => !currentMentorIds.has(m.contactId));
+        const mentorsToRemove = currentParticipants.filter(
+          p => p.contact?.[0]?.id && !newMentorIds.has(p.contact[0].id)
+        );
+        const mentorsToUpdate = mentorUpdates.filter(m => {
+          const existing = currentParticipants.find(p => p.contact?.[0]?.id === m.contactId);
+          return existing && existing.role !== m.role;
+        });
+
+        // Remove mentors no longer in the list
+        for (const participant of mentorsToRemove) {
+          await deleteSessionParticipant(participant.id);
+          console.log(`[Sessions API] Removed mentor participant ${participant.id}`);
+        }
+
+        // Add new mentors
+        for (const mentor of mentorsToAdd) {
+          await createSessionParticipant({
+            sessionId,
+            contactId: mentor.contactId,
+            role: mentor.role,
+            status: "Active",
+          });
+          console.log(`[Sessions API] Added mentor ${mentor.contactId} as ${mentor.role}`);
+        }
+
+        // Update roles for existing mentors
+        for (const mentor of mentorsToUpdate) {
+          const existing = currentParticipants.find(p => p.contact?.[0]?.id === mentor.contactId);
+          if (existing) {
+            await updateSessionParticipant(existing.id, { role: mentor.role });
+            console.log(`[Sessions API] Updated mentor ${mentor.contactId} to ${mentor.role}`);
+          }
+        }
+
+        // Update legacy mentor field with lead mentor for backwards compatibility
+        const leadMentor = mentorUpdates.find(m => m.role === "Lead Mentor");
+        if (leadMentor) {
+          await updateSessionInDb(sessionId, { mentorId: leadMentor.contactId });
+        }
+
+        console.log(`[Sessions API] Synced mentors for session ${sessionId}: ` +
+          `+${mentorsToAdd.length} -${mentorsToRemove.length} ~${mentorsToUpdate.length}`);
+      } catch (error) {
+        console.error(`[Sessions API] Failed to sync mentors:`, error);
+        // Don't fail the whole update - mentor sync is supplemental
+      }
+    }
 
     // Handle email rescheduling/cancellation
     const currentEmailIds = parseScheduledEmailIds(currentSession.scheduledEmailIds as string);

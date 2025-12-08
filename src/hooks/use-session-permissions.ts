@@ -3,7 +3,7 @@
 import { useMemo, useCallback } from "react";
 import type { Session, UserType } from "@/types/schema";
 import { hasPermission } from "@/lib/permissions";
-import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
+import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isCurrentUserMentor } from "@/components/sessions/session-transformers";
 
 /**
  * Permissions for session operations
@@ -110,7 +110,7 @@ export function useSessionPermissions(
 
     // Mentors can only add feedback to their own sessions
     if (userType === "mentor") {
-      const isSessionMentor = session.mentor?.some(m => m.email === userEmail);
+      const isSessionMentor = isCurrentUserMentor(session, userEmail);
       if (!isSessionMentor) return false;
       return !hasMentorFeedback(session);
     }

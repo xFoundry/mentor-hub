@@ -13,6 +13,7 @@ import {
 import { SessionCard } from "./session-card";
 import { EmptyState } from "./empty-state";
 import { Calendar, ChevronDown, ChevronRight, ArrowRight } from "lucide-react";
+import { getLeadMentor, getMentorParticipants } from "@/components/sessions/session-transformers";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
 
@@ -82,9 +83,15 @@ export function SessionList({
         groupId = team?.id || "unassigned";
         groupName = team?.teamName || "Unassigned";
       } else if (groupBy === "mentor") {
-        const mentor = session.mentor?.[0];
-        groupId = mentor?.id || "unassigned";
-        groupName = mentor?.fullName || "Unassigned";
+        // Use lead mentor for grouping with multi-mentor support
+        const leadMentor = getLeadMentor(session);
+        const mentorParticipants = getMentorParticipants(session);
+
+        groupId = leadMentor?.id || "unassigned";
+        // Show "+N" suffix if there are additional mentors
+        const otherCount = mentorParticipants.length > 1 ? mentorParticipants.length - 1 : 0;
+        const baseName = leadMentor?.fullName || "Unassigned";
+        groupName = otherCount > 0 ? `${baseName} +${otherCount}` : baseName;
       } else {
         groupId = "all";
         groupName = "All Sessions";

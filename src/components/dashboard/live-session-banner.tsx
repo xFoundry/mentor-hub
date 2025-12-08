@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Video, MapPin, ExternalLink, Clock, Radio } from "lucide-react";
+import { Video, MapPin, ExternalLink, Clock, Radio, FileText } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { differenceInMinutes, addMinutes } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getMentorParticipants, getLeadMentor } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { useNow } from "@/hooks/use-now";
 import type { Session } from "@/types/schema";
@@ -18,6 +18,8 @@ interface LiveSessionBannerProps {
   phase: SessionPhase;
   /** Whether current user is a mentor (affects messaging) */
   isMentor?: boolean;
+  /** Whether the current student has submitted pre-meeting prep (only relevant for students) */
+  hasSubmittedPrep?: boolean;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function LiveSessionBanner({
   session,
   phase,
   isMentor = false,
+  hasSubmittedPrep = false,
   className,
 }: LiveSessionBannerProps) {
   // Update time every 30 seconds - must be called before any early returns
@@ -42,7 +45,20 @@ export function LiveSessionBanner({
     return null;
   }
 
-  const mentorContact = session.mentor?.[0];
+  // Get mentors using multi-mentor helpers
+  const mentorParticipants = getMentorParticipants(session);
+  const leadMentor = getLeadMentor(session);
+
+  // Format mentor display: "Alex Smith" or "Alex Smith + 1 other"
+  const mentorDisplay = (() => {
+    if (mentorParticipants.length === 0) return "your mentor";
+    const leadName = leadMentor?.fullName || mentorParticipants[0]?.contact?.fullName || "your mentor";
+    const otherCount = mentorParticipants.length - 1;
+    if (otherCount === 0) return leadName;
+    if (otherCount === 1) return `${leadName} + 1 other`;
+    return `${leadName} + ${otherCount} others`;
+  })();
+
   const teamName = session.team?.[0]?.teamName;
   const sessionType = session.sessionType || "Session";
   const isInPerson = session.meetingPlatform === "In-Person";
@@ -59,7 +75,7 @@ export function LiveSessionBanner({
   const minutesUntilEnd = endTime ? differenceInMinutes(endTime, now) : null;
 
   // Display the other party based on user type
-  const otherParty = isMentor ? teamName : mentorContact?.fullName;
+  const otherParty = isMentor ? teamName : mentorDisplay;
   const otherPartyLabel = isMentor ? "with team" : "with";
 
   return (
@@ -141,7 +157,21 @@ export function LiveSessionBanner({
                 See Location
               </Link>
             </Button>
+          ) : !isMentor && !hasSubmittedPrep ? (
+            // Students without pre-meeting submission see "Submit Meeting Prep" button
+            <Button
+              variant={isLive ? "default" : "outline"}
+              size="sm"
+              className={cn(isLive && "bg-amber-600 hover:bg-amber-700")}
+              asChild
+            >
+              <Link href={`/sessions/${session.id}?tab=preparation`}>
+                <FileText className="mr-2 h-4 w-4" />
+                Submit Meeting Prep
+              </Link>
+            </Button>
           ) : hasMeetingUrl ? (
+            // Mentors or students with submitted prep see "Join Meeting" button
             <Button
               variant={isLive ? "default" : "outline"}
               size="sm"

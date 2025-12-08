@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Star, Calendar, Edit, Users, User } from "lucide-react";
 import { format } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import {
+  parseAsLocalTime,
+  getMentorParticipants,
+  getLeadMentor,
+} from "@/components/sessions/session-transformers";
 import type { Session, SessionFeedback, Contact, UserType } from "@/types/schema";
 
 interface FeedbackCardProps {
@@ -78,7 +82,19 @@ export function FeedbackCard({
     : "";
 
   const teamName = session.team?.[0]?.teamName;
-  const mentorName = session.mentor?.[0]?.fullName;
+
+  // Format mentor name(s) for display
+  const mentorParticipants = getMentorParticipants(session);
+  const leadMentor = getLeadMentor(session);
+  const mentorName = (() => {
+    if (mentorParticipants.length === 0) return leadMentor?.fullName;
+    const lead = leadMentor?.fullName || mentorParticipants[0]?.contact?.fullName;
+    const otherCount = mentorParticipants.length - 1;
+    if (!lead) return undefined;
+    if (otherCount === 0) return lead;
+    if (otherCount === 1) return `${lead} +1`;
+    return `${lead} +${otherCount}`;
+  })();
 
   // Check if there's any text content (respecting mentor visibility rules)
   const hasTextContent = showLimitedView

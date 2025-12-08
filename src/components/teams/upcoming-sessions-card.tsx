@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Clock, Video, ArrowRight } from "lucide-react";
 import { isToday, isTomorrow, differenceInDays, isFuture } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getLeadMentor } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
@@ -100,7 +100,7 @@ export function UpcomingSessionsCard({
     );
   }
 
-  const mentor = (nextSession as any).mentor?.[0];
+  const mentor = getLeadMentor(nextSession);
   const mentorInitials = mentor?.fullName
     ?.split(" ")
     .map((n: string) => n[0])

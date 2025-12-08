@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Calendar, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Loader2, Plus, X, Crown, Users, Eye } from "lucide-react";
 import { useUserType } from "@/hooks/use-user-type";
 import { useTeams } from "@/hooks/use-teams";
 import { useMentors } from "@/hooks/use-mentors";
@@ -25,6 +26,21 @@ import { useCreateSession } from "@/hooks/use-create-session";
 import { hasPermission } from "@/lib/permissions";
 import { LocationSelector } from "@/components/sessions";
 import { easternToUTC } from "@/lib/timezone";
+import { cn } from "@/lib/utils";
+
+// Mentor role types
+type MentorRole = "Lead Mentor" | "Supporting Mentor" | "Observer";
+
+interface SelectedMentor {
+  contactId: string;
+  role: MentorRole;
+}
+
+const MENTOR_ROLES: { value: MentorRole; label: string; icon: typeof Crown; description: string }[] = [
+  { value: "Lead Mentor", label: "Lead", icon: Crown, description: "Primary facilitator" },
+  { value: "Supporting Mentor", label: "Supporting", icon: Users, description: "Co-facilitator" },
+  { value: "Observer", label: "Observer", icon: Eye, description: "Silent observer" },
+];
 
 const SESSION_TYPES = [
   { value: "Team Check-in", label: "Team Check-in" },
@@ -68,7 +84,7 @@ export default function NewSessionPage() {
 
   const [sessionType, setSessionType] = useState<string>("");
   const [teamId, setTeamId] = useState<string>("");
-  const [mentorId, setMentorId] = useState<string>("");
+  const [selectedMentors, setSelectedMentors] = useState<SelectedMentor[]>([]);
   const [scheduledDate, setScheduledDate] = useState<string>(getDefaultDate);
   const [scheduledTime, setScheduledTime] = useState<string>(getDefaultTime);
   const [duration, setDuration] = useState<string>("60");
@@ -76,6 +92,50 @@ export default function NewSessionPage() {
   const [meetingUrl, setMeetingUrl] = useState<string>("");
   const [locationId, setLocationId] = useState<string>("");
   const [agenda, setAgenda] = useState<string>("");
+
+  // Mentor management helpers
+  const addMentor = useCallback((contactId: string) => {
+    if (selectedMentors.some(m => m.contactId === contactId)) return;
+
+    // First mentor defaults to Lead, others to Supporting
+    const role: MentorRole = selectedMentors.length === 0 ? "Lead Mentor" : "Supporting Mentor";
+    setSelectedMentors(prev => [...prev, { contactId, role }]);
+  }, [selectedMentors]);
+
+  const removeMentor = useCallback((contactId: string) => {
+    setSelectedMentors(prev => {
+      const filtered = prev.filter(m => m.contactId !== contactId);
+      // If we removed the lead and there are still mentors, promote the first one
+      const hadLead = prev.find(m => m.contactId === contactId)?.role === "Lead Mentor";
+      if (hadLead && filtered.length > 0 && !filtered.some(m => m.role === "Lead Mentor")) {
+        filtered[0].role = "Lead Mentor";
+      }
+      return filtered;
+    });
+  }, []);
+
+  const updateMentorRole = useCallback((contactId: string, newRole: MentorRole) => {
+    setSelectedMentors(prev => {
+      // If setting a new Lead, demote the current Lead to Supporting
+      if (newRole === "Lead Mentor") {
+        return prev.map(m => ({
+          ...m,
+          role: m.contactId === contactId ? newRole : (m.role === "Lead Mentor" ? "Supporting Mentor" : m.role)
+        }));
+      }
+      return prev.map(m => m.contactId === contactId ? { ...m, role: newRole } : m);
+    });
+  }, []);
+
+  // Get mentor info by ID
+  const getMentorById = useCallback((contactId: string) => {
+    return mentors.find((m: any) => m.id === contactId);
+  }, [mentors]);
+
+  // Available mentors (not already selected)
+  const availableMentors = mentors.filter(
+    (m: any) => !selectedMentors.some(sm => sm.contactId === m.id)
+  );
 
   const isLoading = isUserLoading || isTeamsLoading || isMentorsLoading;
 
@@ -97,7 +157,9 @@ export default function NewSessionPage() {
     );
   }
 
-  const isFormValid = sessionType && teamId && mentorId && scheduledDate && scheduledTime;
+  // At least one mentor required, and must have a lead
+  const hasLeadMentor = selectedMentors.some(m => m.role === "Lead Mentor");
+  const isFormValid = sessionType && teamId && selectedMentors.length > 0 && hasLeadMentor && scheduledDate && scheduledTime;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +172,7 @@ export default function NewSessionPage() {
     const result = await createSession({
       sessionType,
       teamId,
-      mentorId,
+      mentors: selectedMentors,
       scheduledStart,
       duration: parseInt(duration) || 60,
       meetingPlatform: meetingPlatform || undefined,
@@ -201,21 +263,129 @@ export default function NewSessionPage() {
               </Select>
             </div>
 
-            {/* Mentor */}
-            <div className="space-y-2">
-              <Label htmlFor="mentor">Mentor *</Label>
-              <Select value={mentorId} onValueChange={setMentorId}>
-                <SelectTrigger id="mentor">
-                  <SelectValue placeholder="Select mentor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mentors.map((mentor: any) => (
-                    <SelectItem key={mentor.id} value={mentor.id}>
-                      {mentor.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Mentors - Multiple Selection */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Mentors *</Label>
+                {selectedMentors.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {selectedMentors.length} selected
+                  </span>
+                )}
+              </div>
+
+              {/* Selected Mentors */}
+              {selectedMentors.length > 0 && (
+                <div className="space-y-2">
+                  {selectedMentors.map((selected) => {
+                    const mentor = getMentorById(selected.contactId);
+                    if (!mentor) return null;
+
+                    const roleConfig = MENTOR_ROLES.find(r => r.value === selected.role);
+                    const RoleIcon = roleConfig?.icon || Users;
+
+                    return (
+                      <div
+                        key={selected.contactId}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-lg border p-3",
+                          selected.role === "Lead Mentor"
+                            ? "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20"
+                            : "bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-full",
+                            selected.role === "Lead Mentor"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            <RoleIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{mentor.fullName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{mentor.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Select
+                            value={selected.role}
+                            onValueChange={(value) => updateMentorRole(selected.contactId, value as MentorRole)}
+                          >
+                            <SelectTrigger className="w-[130px] h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MENTOR_ROLES.map((role) => {
+                                const Icon = role.icon;
+                                return (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    <div className="flex items-center gap-2">
+                                      <Icon className="h-3 w-3" />
+                                      {role.label}
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeMentor(selected.contactId)}
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Remove {mentor.fullName}</span>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add Mentor Dropdown */}
+              {availableMentors.length > 0 ? (
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    if (value) addMentor(value);
+                  }}
+                >
+                  <SelectTrigger className={cn(
+                    selectedMentors.length === 0 && "border-dashed"
+                  )}>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Plus className="h-4 w-4" />
+                      <span>{selectedMentors.length === 0 ? "Select a mentor" : "Add another mentor"}</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMentors.map((mentor: any) => (
+                      <SelectItem key={mentor.id} value={mentor.id}>
+                        <div className="flex flex-col">
+                          <span>{mentor.fullName}</span>
+                          <span className="text-xs text-muted-foreground">{mentor.email}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : mentors.length > 0 ? (
+                <p className="text-sm text-muted-foreground">All mentors have been added</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">No mentors available in this cohort</p>
+              )}
+
+              {/* Validation hint */}
+              {selectedMentors.length > 0 && !hasLeadMentor && (
+                <p className="text-sm text-destructive">
+                  Please assign one mentor as Lead Mentor
+                </p>
+              )}
             </div>
 
             {/* Date and Time */}

@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { isToday, isTomorrow, differenceInDays } from "date-fns";
-import { parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getMentorParticipants, getLeadMentor } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
+import { MentorAvatarStack } from "@/components/shared/mentor-avatar-stack";
 import type { Session } from "@/types/schema";
 
 interface NextSessionCardProps {
@@ -28,7 +29,8 @@ export function NextSessionCard({
   isMentor = false,
   className,
 }: NextSessionCardProps) {
-  const mentorContact = session.mentor?.[0];
+  const mentors = getMentorParticipants(session);
+  const leadMentor = getLeadMentor(session);
   const teamName = session.team?.[0]?.teamName;
   const sessionType = session.sessionType || "Session";
   const isInPerson = session.meetingPlatform === "In-Person";
@@ -53,12 +55,22 @@ export function NextSessionCard({
   const dateLabel = getDateLabel();
 
   // Display the other party based on user type
-  const otherParty = isMentor ? teamName : mentorContact?.fullName;
-  const otherPartyLabel = isMentor ? "with team" : "with";
+  const getOtherPartyText = () => {
+    if (isMentor) {
+      return `with team ${teamName || ""}`;
+    }
+    if (mentors.length === 0) {
+      return "";
+    }
+    if (mentors.length === 1) {
+      return `with ${leadMentor?.fullName || "mentor"}`;
+    }
+    return `with ${leadMentor?.fullName || "mentor"} +${mentors.length - 1}`;
+  };
 
-  // Get avatar info
-  const avatarUrl = mentorContact?.headshot?.[0]?.url;
-  const avatarInitials = mentorContact?.fullName
+  // Get avatar info (for single mentor or lead mentor)
+  const avatarUrl = leadMentor?.headshot?.[0]?.url;
+  const avatarInitials = leadMentor?.fullName
     ?.split(" ")
     .map((n) => n[0])
     .join("")
@@ -83,16 +95,24 @@ export function NextSessionCard({
       <CardContent className="space-y-4">
         {/* Session info row */}
         <div className="flex items-center gap-3">
-          {!isMentor && (
-            <Avatar className="h-12 w-12 border">
-              <AvatarImage src={avatarUrl} alt={mentorContact?.fullName} />
-              <AvatarFallback>{avatarInitials}</AvatarFallback>
-            </Avatar>
+          {!isMentor && mentors.length > 0 && (
+            mentors.length === 1 ? (
+              <Avatar className="h-12 w-12 border">
+                <AvatarImage src={avatarUrl} alt={leadMentor?.fullName} />
+                <AvatarFallback>{avatarInitials}</AvatarFallback>
+              </Avatar>
+            ) : (
+              <MentorAvatarStack
+                session={session}
+                size="lg"
+                maxDisplay={3}
+              />
+            )
           )}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-lg leading-tight">{sessionType}</p>
             <p className="text-sm text-muted-foreground truncate">
-              {otherPartyLabel} {otherParty}
+              {getOtherPartyText()}
             </p>
           </div>
           <div className="text-right text-sm text-muted-foreground">

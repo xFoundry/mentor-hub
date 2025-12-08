@@ -4,7 +4,13 @@ import useSWR from "swr";
 import { getSessionsGroupedByTeam } from "@/lib/baseql";
 import { useCohortContext } from "@/contexts/cohort-context";
 import type { Session, Team } from "@/types/schema";
-import { hasMentorFeedback, isSessionEligibleForFeedback, parseAsLocalTime } from "@/components/sessions/session-transformers";
+import {
+  hasMentorFeedback,
+  isSessionEligibleForFeedback,
+  parseAsLocalTime,
+  getLeadMentor,
+  getMentorParticipants,
+} from "@/components/sessions/session-transformers";
 import { isFuture } from "date-fns";
 
 export interface TeamWithSessions extends Team {
@@ -68,11 +74,15 @@ export function useSessionsGroupedByTeam() {
 }
 
 /**
- * Group sessions by mentor (client-side grouping)
+ * Group sessions by lead mentor (client-side grouping)
+ * Uses lead mentor from sessionParticipants, with fallback to legacy mentor field
+ * Sessions with multiple mentors are grouped under the lead mentor only
+ * The session cards will show all mentors assigned
  */
 export function useSessionsGroupedByMentor(sessions: Session[]) {
   const mentorMap = new Map<string, {
     mentor: any;
+    mentorCount: number;  // Track total mentors for display
     sessions: Session[];
     sessionCount: number;
     upcomingCount: number;
@@ -80,10 +90,13 @@ export function useSessionsGroupedByMentor(sessions: Session[]) {
   }>();
 
   sessions.forEach((session: any) => {
-    const mentor = session.mentor?.[0];
-    if (!mentor) return;
+    // Use lead mentor for grouping (falls back to first mentor or legacy mentor field)
+    const leadMentor = getLeadMentor(session);
+    const allMentors = getMentorParticipants(session);
 
-    const existing = mentorMap.get(mentor.id);
+    if (!leadMentor) return;
+
+    const existing = mentorMap.get(leadMentor.id);
     const isUpcoming = session.scheduledStart &&
       isFuture(parseAsLocalTime(session.scheduledStart)) &&
       session.status !== "Cancelled";
@@ -94,9 +107,12 @@ export function useSessionsGroupedByMentor(sessions: Session[]) {
       existing.sessionCount++;
       if (isUpcoming) existing.upcomingCount++;
       if (isCompleted) existing.completedCount++;
+      // Track max mentors across sessions for this group
+      existing.mentorCount = Math.max(existing.mentorCount, allMentors.length);
     } else {
-      mentorMap.set(mentor.id, {
-        mentor,
+      mentorMap.set(leadMentor.id, {
+        mentor: leadMentor,
+        mentorCount: allMentors.length,
         sessions: [session],
         sessionCount: 1,
         upcomingCount: isUpcoming ? 1 : 0,

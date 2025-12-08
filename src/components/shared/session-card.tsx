@@ -5,7 +5,6 @@ import { isPast, isFuture } from "date-fns";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +15,9 @@ import {
 import { Calendar, Clock, MessageSquare, Video, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
-import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isCurrentUserMentor, parseAsLocalTime } from "@/components/sessions/session-transformers";
+import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isCurrentUserMentor, parseAsLocalTime, getMentorParticipants } from "@/components/sessions/session-transformers";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
+import { MentorAvatarStack, MentorTextDisplay } from "@/components/shared/mentor-avatar-stack";
 
 interface SessionCardProps {
   session: Session;
@@ -48,8 +48,8 @@ export function SessionCard({
   onDeleteClick,
 }: SessionCardProps) {
   const { openFeedbackDialog } = useFeedbackDialog();
-  const mentor = session.mentor?.[0];
   const team = session.team?.[0];
+  const mentors = getMentorParticipants(session);
   const isUserMentor = isCurrentUserMentor(session, userEmail);
   const canDelete = userType === "staff" && onDeleteClick;
 
@@ -113,13 +113,12 @@ export function SessionCard({
             {showTeamName && team && (
               <span className="font-medium text-foreground">{team.teamName}</span>
             )}
-            {showMentorName && mentor && (
-              <span className="flex items-center gap-1">
-                with {mentor.fullName}
-                {isUserMentor && (
-                  <Badge variant="secondary" className="text-xs py-0 px-1.5">You</Badge>
-                )}
-              </span>
+            {showMentorName && mentors.length > 0 && (
+              <MentorTextDisplay
+                session={session}
+                currentUserEmail={userEmail}
+                prefix="with"
+              />
             )}
             {session.scheduledStart && (
               <span className="flex items-center gap-1">
@@ -261,18 +260,17 @@ export function SessionCard({
         )}
       </div>
 
-      {(showMentorName && mentor) && (
+      {showMentorName && mentors.length > 0 && (
         <div className="flex items-center gap-2">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={mentor.headshot?.[0]?.url} alt={mentor.fullName} />
-            <AvatarFallback>{mentor.fullName?.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm flex items-center gap-1">
-            Mentor: {mentor.fullName}
-            {isUserMentor && (
-              <Badge variant="secondary" className="text-xs py-0 px-1.5">You</Badge>
-            )}
-          </span>
+          <span className="text-sm text-muted-foreground">Mentor{mentors.length > 1 ? "s" : ""}:</span>
+          <MentorAvatarStack
+            session={session}
+            size="sm"
+            currentUserEmail={userEmail}
+            showNames={true}
+            showRoles={mentors.length > 1}
+            maxDisplay={3}
+          />
         </div>
       )}
 

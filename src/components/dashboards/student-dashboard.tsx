@@ -21,7 +21,7 @@ import { TaskList } from "@/components/shared/task-list";
 import { TaskDetailSheet } from "@/components/tasks";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import type { UserContext, Task } from "@/types/schema";
+import type { UserContext, Task, PreMeetingSubmission } from "@/types/schema";
 import { hasMenteeFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
 import { getSessionPhase, type SessionPhase } from "@/hooks/use-session-phase";
 import { useNow } from "@/hooks/use-now";
@@ -125,6 +125,15 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
   const bannerSession = liveSession || startingSoonSession;
   const bannerPhase = bannerSession ? getSessionPhase(bannerSession, now) : null;
 
+  // Check if user has submitted pre-meeting prep for the banner session
+  const hasSubmittedPrepForBannerSession = useMemo(() => {
+    if (!bannerSession || !userContext.contactId) return false;
+    const submissions: PreMeetingSubmission[] = bannerSession.preMeetingSubmissions || [];
+    return submissions.some(
+      (s: PreMeetingSubmission) => s.respondant?.[0]?.id === userContext.contactId
+    );
+  }, [bannerSession, userContext.contactId]);
+
   // Open tasks
   const openTasks = useMemo(() => {
     return tasks.filter((t) => t.status !== "Completed" && t.status !== "Cancelled");
@@ -179,6 +188,7 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
           session={bannerSession}
           phase={bannerPhase}
           isMentor={false}
+          hasSubmittedPrep={hasSubmittedPrepForBannerSession}
         />
       )}
 
