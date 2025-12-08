@@ -14,7 +14,7 @@
  * then convert to Eastern for display.
  */
 
-import { format as formatTz } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
 
 // The timezone used for displaying all times in the application
 export const APP_TIMEZONE = "America/New_York";
@@ -43,7 +43,7 @@ export function parseUTC(dateStr: string): Date {
  * @returns Formatted string in Eastern time
  */
 export function formatInEastern(date: Date, formatStr: string): string {
-  return formatTz(date, formatStr, { timeZone: APP_TIMEZONE });
+  return formatInTimeZone(date, APP_TIMEZONE, formatStr);
 }
 
 /**
@@ -192,7 +192,7 @@ export function formatTimeWithZone(dateStr: string): string {
  * @returns ISO-like string in Eastern time (e.g., "2024-12-08T13:00:00")
  */
 export function toEasternISOString(date: Date): string {
-  return formatTz(date, "yyyy-MM-dd'T'HH:mm:ss", { timeZone: APP_TIMEZONE });
+  return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss");
 }
 
 /**
