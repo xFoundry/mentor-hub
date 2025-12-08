@@ -155,8 +155,25 @@ export function SessionUpdateConfirmationDialog({
         : 0;
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={isSubmitting ? undefined : onOpenChange}>
       <AlertDialogContent className="max-w-lg">
+        {/* Loading Overlay */}
+        {isSubmitting && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div>
+                <p className="font-medium">Updating session...</p>
+                <p className="text-sm text-muted-foreground">
+                  {recipientCount > 0
+                    ? "Rescheduling emails and sending notifications"
+                    : "Rescheduling reminder emails"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <AlertDialogHeader>
           <AlertDialogTitle>Confirm Session Update</AlertDialogTitle>
           <AlertDialogDescription asChild>

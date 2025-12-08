@@ -208,3 +208,48 @@ export function isValidScheduleTime(scheduledFor: Date, maxDays: number = 30): b
   const maxDate = new Date(now.getTime() + maxDays * 24 * 60 * 60 * 1000);
   return scheduledFor > now && scheduledFor <= maxDate;
 }
+
+/**
+ * Convert a date and time entered in Eastern timezone to a UTC ISO string
+ *
+ * This is used when users enter times in forms (they enter Eastern time)
+ * and we need to store them as proper UTC in Airtable.
+ *
+ * @param dateStr - Date string in YYYY-MM-DD format
+ * @param timeStr - Time string in HH:mm format (24-hour)
+ * @returns UTC ISO string (e.g., "2025-12-08T17:00:00.000Z" for 12:00 ET)
+ */
+export function easternToUTC(dateStr: string, timeStr: string): string {
+  // Parse the date/time components
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hours, minutes] = timeStr.split(":").map(Number);
+
+  // Create a temporary date at the same wall clock time but in UTC
+  // to determine what the Eastern offset is for that date
+  const tempUtcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+
+  // Get the offset for this date in Eastern timezone using Intl API
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIMEZONE,
+    timeZoneName: "shortOffset",
+  });
+  const parts = formatter.formatToParts(tempUtcDate);
+  const tzPart = parts.find((p) => p.type === "timeZoneName");
+
+  // Parse the offset (e.g., "GMT-5" for EST or "GMT-4" for EDT)
+  let offsetHours = -5; // Default to EST
+  if (tzPart) {
+    const match = tzPart.value.match(/GMT([+-])(\d+)/);
+    if (match) {
+      offsetHours = parseInt(match[2]) * (match[1] === "-" ? -1 : 1);
+    }
+  }
+
+  // Convert Eastern to UTC: if Eastern is UTC-5, add 5 hours to get UTC
+  // offsetHours is -5 for EST, so we subtract it (subtract -5 = add 5)
+  const utcTime = new Date(
+    Date.UTC(year, month - 1, day, hours - offsetHours, minutes, 0)
+  );
+
+  return utcTime.toISOString();
+}

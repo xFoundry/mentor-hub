@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 import { useDeleteSession } from "@/hooks/use-delete-session";
 import type { Session } from "@/types/schema";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
@@ -47,8 +48,23 @@ export function DeleteSessionDialog({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={isDeleting ? undefined : onOpenChange}>
       <AlertDialogContent>
+        {/* Loading Overlay */}
+        {isDeleting && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-destructive" />
+              <div>
+                <p className="font-medium">Deleting session...</p>
+                <p className="text-sm text-muted-foreground">
+                  Cancelling scheduled emails
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Session</AlertDialogTitle>
           <AlertDialogDescription asChild>
@@ -78,7 +94,14 @@ export function DeleteSessionDialog({
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? "Deleting..." : "Delete Session"}
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete Session"
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

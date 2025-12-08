@@ -26,6 +26,7 @@ import type { Session } from "@/types/schema";
 import type { SessionChanges } from "@/lib/notifications/types";
 import { LocationSelector } from "./location-selector";
 import { SessionUpdateConfirmationDialog } from "./session-update-confirmation-dialog";
+import { easternToUTC } from "@/lib/timezone";
 
 const SESSION_TYPES = [
   { value: "Team Check-in", label: "Team Check-in" },
@@ -224,10 +225,8 @@ export function EditSessionDialog({
 
     const updates: Record<string, any> = {};
 
-    // Combine date and time into scheduledStart (convert local input to UTC)
-    // User enters time in their local timezone (Eastern), we convert to UTC for storage
-    const localDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
-    const newScheduledStart = localDateTime.toISOString();
+    // Convert Eastern time input to UTC for storage
+    const newScheduledStart = easternToUTC(scheduledDate, scheduledTime);
 
     // Compare with original - also convert to ISO for consistent comparison
     const originalScheduledStart = session.scheduledStart
@@ -316,8 +315,23 @@ export function EditSessionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={isSubmitting ? undefined : onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        {/* Loading Overlay for non-notification-triggering saves */}
+        {isSubmitting && !showConfirmation && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div>
+                <p className="font-medium">Saving changes...</p>
+                <p className="text-sm text-muted-foreground">
+                  Please wait
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <DialogHeader>
           <DialogTitle>Edit Session</DialogTitle>
           <DialogDescription>

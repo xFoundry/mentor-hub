@@ -24,6 +24,7 @@ import { useCohortContext } from "@/contexts/cohort-context";
 import { useCreateSession } from "@/hooks/use-create-session";
 import { hasPermission } from "@/lib/permissions";
 import { LocationSelector } from "@/components/sessions";
+import { easternToUTC } from "@/lib/timezone";
 
 const SESSION_TYPES = [
   { value: "Team Check-in", label: "Team Check-in" },
@@ -103,8 +104,8 @@ export default function NewSessionPage() {
 
     if (!isFormValid) return;
 
-    // Combine date and time
-    const scheduledStart = `${scheduledDate}T${scheduledTime}:00`;
+    // Convert Eastern time input to UTC for storage
+    const scheduledStart = easternToUTC(scheduledDate, scheduledTime);
 
     const result = await createSession({
       sessionType,
@@ -229,7 +230,7 @@ export default function NewSessionPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="time">Time *</Label>
+                <Label htmlFor="time">Time (ET) *</Label>
                 <Input
                   id="time"
                   type="time"
