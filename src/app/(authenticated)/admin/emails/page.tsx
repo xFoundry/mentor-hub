@@ -30,6 +30,7 @@ import {
 import { format, isToday, isTomorrow, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { useUserType } from "@/hooks/use-user-type";
+import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -564,7 +565,7 @@ EMAIL_TEST_RECIPIENT=your-email@example.com`}
                                                 )}
                                                 {email.scheduledFor && (
                                                   <span className="text-xs text-muted-foreground">
-                                                    {format(new Date(email.scheduledFor), "h:mm a")}
+                                                    {formatAsEastern(email.scheduledFor, "h:mm a")} {TIMEZONE_ABBR}
                                                   </span>
                                                 )}
                                                 {email.status === "scheduled" && (
