@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Sparkles } from "lucide-react";
 
 import {
   Sidebar,
@@ -117,6 +117,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {(userType === "student" || userType === "mentor") && userContext?.email && (
         <SidebarMeetingBanner userEmail={userContext.email} />
       )}
+
+      {/* Changelog link */}
+      <div className="mt-auto px-2 py-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/changelog"}>
+              <Link href="/changelog">
+                <Sparkles className="size-4" />
+                <span>What's New</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </div>
 
       <SidebarFooter>
         <SidebarMenu>
