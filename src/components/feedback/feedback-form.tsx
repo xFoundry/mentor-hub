@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Loader2, Send } from "lucide-react";
 import { RatingInput } from "./rating-input";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 import type { SessionFeedback } from "@/types/schema";
 
 // Single unified schema - we'll handle role-specific validation in the component
@@ -226,16 +226,15 @@ export function FeedbackForm({
                 <span className="text-muted-foreground ml-1 font-normal">(Optional)</span>
               </FormLabel>
               <FormControl>
-                <Textarea
+                <RichTextEditor
+                  value={field.value || ""}
+                  onChange={field.onChange}
                   placeholder={
                     isStudent
                       ? "What was most helpful about this session?"
                       : "What did the student do well? What progress have you noticed?"
                   }
-                  rows={3}
-                  className="resize-none"
                   disabled={isSubmitting}
-                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -254,16 +253,15 @@ export function FeedbackForm({
                 <span className="text-muted-foreground ml-1 font-normal">(Optional)</span>
               </FormLabel>
               <FormControl>
-                <Textarea
+                <RichTextEditor
+                  value={field.value || ""}
+                  onChange={field.onChange}
                   placeholder={
                     isStudent
                       ? "What could have been better? What would you like more of?"
                       : "What could the student work on? What challenges did you observe?"
                   }
-                  rows={3}
-                  className="resize-none"
                   disabled={isSubmitting}
-                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -282,16 +280,15 @@ export function FeedbackForm({
                 <span className="text-muted-foreground ml-1 font-normal">(Optional)</span>
               </FormLabel>
               <FormControl>
-                <Textarea
+                <RichTextEditor
+                  value={field.value || ""}
+                  onChange={field.onChange}
                   placeholder={
                     isStudent
                       ? "What additional support or resources would help you?"
                       : "What additional support or resources would be helpful for the student?"
                   }
-                  rows={3}
-                  className="resize-none"
                   disabled={isSubmitting}
-                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -335,12 +332,11 @@ export function FeedbackForm({
                   <span className="text-muted-foreground ml-1 font-normal">(Optional)</span>
                 </FormLabel>
                 <FormControl>
-                  <Textarea
+                  <RichTextEditor
+                    value={field.value || ""}
+                    onChange={field.onChange}
                     placeholder="What actions should the student take before the next session?"
-                    rows={3}
-                    className="resize-none"
                     disabled={isSubmitting}
-                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -361,12 +357,11 @@ export function FeedbackForm({
                   <span className="text-muted-foreground ml-1 font-normal">(Staff only)</span>
                 </FormLabel>
                 <FormControl>
-                  <Textarea
+                  <RichTextEditor
+                    value={field.value || ""}
+                    onChange={field.onChange}
                     placeholder="Internal notes not visible to students..."
-                    rows={3}
-                    className="resize-none"
                     disabled={isSubmitting}
-                    {...field}
                   />
                 </FormControl>
                 <FormDescription>

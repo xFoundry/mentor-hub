@@ -38,6 +38,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-character-count": "^3.12.0",
+    "@tiptap/extension-link": "^3.13.0",
     "@tiptap/extension-placeholder": "^3.12.0",
     "@tiptap/pm": "^3.12.0",
     "@tiptap/react": "^3.12.0",

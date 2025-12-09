@@ -145,6 +145,25 @@
 /* Placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
   color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+  pointer-events: none;
+  float: left;
+  height: 0;
+  content: attr(data-placeholder);
+}
+
+/* Alternative placeholder selector for better compatibility */
+.ProseMirror.is-editor-empty::before {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+  pointer-events: none;
+  position: absolute;
+  content: attr(data-placeholder);
+}
+
+.ProseMirror .is-empty::before {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
   pointer-events: none;
   float: left;
   height: 0;

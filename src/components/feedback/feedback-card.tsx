@@ -24,6 +24,7 @@ import {
   getMentorParticipants,
   getLeadMentor,
 } from "@/components/sessions/session-transformers";
+import { EditorViewer } from "@/components/editor/editor-viewer";
 import type { Session, SessionFeedback, Contact, UserType } from "@/types/schema";
 
 interface FeedbackCardProps {
@@ -100,9 +101,9 @@ function FeedbackSection({
         {title}
         {badge}
       </div>
-      <p className="text-sm text-muted-foreground pl-6 whitespace-pre-wrap">
-        {content}
-      </p>
+      <div className="text-sm text-muted-foreground pl-6">
+        <EditorViewer content={content} />
+      </div>
     </div>
   );
 }
