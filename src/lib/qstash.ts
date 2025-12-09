@@ -11,15 +11,15 @@ import { Client, Receiver } from "@upstash/qstash";
  * QStash client for publishing messages
  */
 export const qstash = new Client({
-  token: process.env.QSTASH_TOKEN!,
+  token: process.env.MENTOR_QSTASH_TOKEN!,
 });
 
 /**
  * QStash receiver for verifying webhook signatures
  */
 export const qstashReceiver = new Receiver({
-  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
+  currentSigningKey: process.env.MENTOR_QSTASH_CURRENT_SIGNING_KEY!,
+  nextSigningKey: process.env.MENTOR_QSTASH_NEXT_SIGNING_KEY!,
 });
 
 /**

@@ -11,8 +11,8 @@ import { Redis } from "@upstash/redis";
  * Redis client for job status storage
  */
 export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  url: process.env.MENTOR_KV_REST_API_URL!,
+  token: process.env.MENTOR_KV_REST_API_TOKEN!,
 });
 
 /**
