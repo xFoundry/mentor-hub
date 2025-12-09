@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { executeQuery } from "@/lib/baseql";
 import { getResendClient, rateLimitedResend } from "@/lib/resend";
-import { parseScheduledEmailIds } from "@/lib/notifications/scheduler";
+import { parseScheduledEmailIds } from "@/lib/notifications/types";
 import { calculateScheduleTimes } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 

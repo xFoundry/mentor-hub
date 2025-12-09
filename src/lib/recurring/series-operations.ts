@@ -23,7 +23,7 @@ import {
   deleteSession,
   deleteSessionsByIds,
 } from "@/lib/baseql";
-import { scheduleSessionEmails, stringifyScheduledEmailIds } from "@/lib/notifications/scheduler";
+import { scheduleSessionEmailsViaQStash } from "@/lib/notifications/qstash-scheduler";
 
 /**
  * Generate a unique series ID
@@ -119,21 +119,15 @@ export async function createRecurringSessions(
         }
       }
 
-      // Schedule emails for this session
+      // Schedule emails for this session via QStash
       try {
         const sessionDetailResult = await getSessionDetail(createdSession.id);
         const fullSession = sessionDetailResult.sessions?.[0];
 
         if (fullSession) {
-          const scheduledEmailIds = await scheduleSessionEmails(fullSession);
-          const emailCount = Object.keys(scheduledEmailIds).length;
-          totalScheduledEmails += emailCount;
-
-          // Save scheduled email IDs
-          if (emailCount > 0) {
-            await updateSession(createdSession.id, {
-              scheduledEmailIds: stringifyScheduledEmailIds(scheduledEmailIds),
-            });
+          const qstashResult = await scheduleSessionEmailsViaQStash(fullSession);
+          if (qstashResult) {
+            totalScheduledEmails += qstashResult.jobCount;
           }
         }
       } catch (emailError) {

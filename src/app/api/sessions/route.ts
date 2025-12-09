@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSession as createSessionInDb, getSessionDetail, updateSession, addMentorsToSession } from "@/lib/baseql";
-import { scheduleSessionEmails, stringifyScheduledEmailIds } from "@/lib/notifications/scheduler";
+import { createSession as createSessionInDb, getSessionDetail, addMentorsToSession } from "@/lib/baseql";
+import { scheduleSessionEmailsViaQStash } from "@/lib/notifications/qstash-scheduler";
 
 interface MentorInput {
   contactId: string;
@@ -92,34 +92,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ session: createdSession });
     }
 
-    // Schedule notification emails
-    let scheduledEmailIds = {};
+    // Schedule notification emails via QStash
+    let batchId: string | null = null;
+
     try {
-      scheduledEmailIds = await scheduleSessionEmails(fullSession);
-      console.log(`[Sessions API] Scheduled ${Object.keys(scheduledEmailIds).length} emails for session ${createdSession.id}`);
+      const qstashResult = await scheduleSessionEmailsViaQStash(fullSession);
+      if (qstashResult) {
+        batchId = qstashResult.batchId;
+        console.log(`[Sessions API] Queued ${qstashResult.jobCount} emails via QStash (batch: ${batchId})`);
+      }
     } catch (error) {
       // Email scheduling failure shouldn't fail the session creation
-      console.error(`[Sessions API] Failed to schedule emails:`, error);
-    }
-
-    // Save scheduled email IDs to Airtable session record
-    if (Object.keys(scheduledEmailIds).length > 0) {
-      const emailIdsJson = stringifyScheduledEmailIds(scheduledEmailIds);
-      console.log(`[Sessions API] Saving scheduled email IDs: ${emailIdsJson}`);
-
-      try {
-        await updateSession(createdSession.id, {
-          scheduledEmailIds: emailIdsJson,
-        });
-        console.log(`[Sessions API] Saved email IDs to session ${createdSession.id}`);
-      } catch (updateError) {
-        console.error(`[Sessions API] Failed to save email IDs to session:`, updateError);
-      }
+      console.error(`[Sessions API] Failed to queue emails via QStash:`, error);
     }
 
     return NextResponse.json({
       session: createdSession,
-      scheduledEmails: Object.keys(scheduledEmailIds).length,
+      emailBatchId: batchId, // Return batch ID for UI progress tracking
     });
   } catch (error) {
     console.error("[Sessions API] Error creating session:", error);

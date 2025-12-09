@@ -18,8 +18,10 @@ import {
 import { usePathname } from "next/navigation";
 import { CohortProvider } from "@/contexts/cohort-context";
 import { BreadcrumbProvider, useBreadcrumb } from "@/contexts/breadcrumb-context";
+import { JobStatusProvider } from "@/contexts/job-status-context";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { ActionNotificationButton } from "@/components/actions";
+import { ActiveJobsNotification } from "@/components/notifications";
 
 /**
  * Layout Content (uses breadcrumb context)
@@ -77,6 +79,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               })}
             </BreadcrumbList>
           </Breadcrumb>
+          {/* Active email jobs notification */}
+          <ActiveJobsNotification />
           {/* Actions notification button */}
           <ActionNotificationButton />
         </header>
@@ -100,10 +104,12 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <CohortProvider>
-      <BreadcrumbProvider>
-        <LayoutContent>{children}</LayoutContent>
-      </BreadcrumbProvider>
-    </CohortProvider>
+    <JobStatusProvider>
+      <CohortProvider>
+        <BreadcrumbProvider>
+          <LayoutContent>{children}</LayoutContent>
+        </BreadcrumbProvider>
+      </CohortProvider>
+    </JobStatusProvider>
   );
 }

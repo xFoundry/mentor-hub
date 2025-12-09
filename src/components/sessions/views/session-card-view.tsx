@@ -12,6 +12,7 @@ import { SessionCard } from "@/components/shared/session-card";
 import { DeleteSessionDialog } from "../delete-session-dialog";
 import { Calendar, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SessionEmailBadge } from "@/components/notifications";
 import type { Session, UserType } from "@/types/schema";
 import {
   groupSessions,
@@ -214,13 +215,17 @@ function SessionCardItem({
   return (
     <div
       className={cn(
-        "transition-colors",
+        "transition-colors relative",
         isClickable && "cursor-pointer",
         needsFeedback && "ring-1 ring-yellow-300 dark:ring-yellow-800 rounded-lg",
         !isUserSession && "opacity-60"
       )}
       onClick={() => isClickable && onSessionClick?.(session)}
     >
+      {/* Email scheduling status badge */}
+      <div className="absolute top-2 right-2 z-10">
+        <SessionEmailBadge sessionId={session.id} variant="icon" />
+      </div>
       <SessionCard
         session={session}
         variant="compact"

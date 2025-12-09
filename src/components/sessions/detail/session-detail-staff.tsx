@@ -10,6 +10,7 @@ import {
   MessageSquare,
   CheckSquare,
   FileText,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionDetailHeader } from "./session-detail-header";
@@ -19,6 +20,7 @@ import {
   SessionFeedbackTab,
   SessionTasksTab,
   SessionNotesTab,
+  SessionEmailsTab,
 } from "./tabs";
 import { TaskDetailSheet } from "@/components/tasks";
 import {
@@ -167,6 +169,10 @@ export function SessionDetailStaff({
               <Badge variant="secondary" className="ml-1 h-2 w-2 p-0 rounded-full" />
             )}
           </TabsTrigger>
+          <TabsTrigger value="emails" className="gap-2">
+            <Mail className="h-4 w-4" />
+            <span className="hidden sm:inline">Emails</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -211,6 +217,10 @@ export function SessionDetailStaff({
             userType="staff"
             onEditNotes={() => setIsNotesDialogOpen(true)}
           />
+        </TabsContent>
+
+        <TabsContent value="emails" className="mt-6">
+          <SessionEmailsTab sessionId={session.id} />
         </TabsContent>
       </Tabs>
 

@@ -44,6 +44,7 @@ import {
 } from "../session-transformers";
 import { MentorAvatarStack } from "@/components/shared/mentor-avatar-stack";
 import { TableColumnHeader } from "@/components/kibo-ui/table";
+import { SessionEmailStatusCell } from "@/components/notifications";
 
 interface CreateColumnsOptions {
   userType: UserType;
@@ -373,6 +374,19 @@ export function createSessionTableColumns({
             <span>Added</span>
           </div>
         );
+      },
+    });
+  }
+
+  // Email status column (for staff users only)
+  if (visibleColumns.includes("emailStatus") && userType === "staff") {
+    columns.push({
+      id: "emailStatus",
+      header: "Emails",
+      size: 80,
+      cell: ({ row }) => {
+        const session = row.original;
+        return <SessionEmailStatusCell sessionId={session.id} />;
       },
     });
   }

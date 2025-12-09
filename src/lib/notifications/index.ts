@@ -181,3 +181,41 @@ function renderEmail(
 export function areNotificationsEnabled(): boolean {
   return isEmailEnabled();
 }
+
+// QStash scheduler exports
+export {
+  scheduleSessionEmailsViaQStash,
+  cancelSessionEmailsViaQStash,
+  cancelRecipientEmailsViaQStash,
+  cancelScheduledEmail,
+  isQStashSchedulerEnabled,
+} from "./qstash-scheduler";
+
+// Job types exports
+export type {
+  EmailJob,
+  EmailJobBatch,
+  EmailJobStatus,
+  EmailJobType,
+  JobProgress,
+  BatchStatus,
+  QStashEmailPayload,
+  QStashCallbackPayload,
+  QStashFailurePayload,
+  DeadLetterEntry,
+} from "./job-types";
+
+// Job store exports
+export {
+  createJobBatch,
+  getJob,
+  getBatch,
+  updateJobStatus,
+  getJobProgress,
+  getJobProgressWithDetails,
+  getSessionBatches,
+  getUserActiveBatches,
+  getDeadLetterQueue,
+  cancelBatchJobs,
+  getSessionJobs,
+} from "./job-store";

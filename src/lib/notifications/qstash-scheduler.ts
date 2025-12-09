@@ -1,0 +1,392 @@
+/**
+ * QStash Email Scheduler
+ *
+ * Schedules emails via QStash instead of Resend's scheduledAt API.
+ * Provides background processing with progress tracking and retry handling.
+ */
+
+import { qstash, getBaseUrl, calculateDelaySeconds, FLOW_CONTROL, RETRY_CONFIG } from "@/lib/qstash";
+import { createJobBatch, updateJobStatus, getSessionJobs, cancelBatchJobs, updateBatchJobStatuses } from "./job-store";
+import { calculateScheduleTimes, formatDateForEmail, formatTimeForEmail, isValidScheduleTime } from "@/lib/timezone";
+import { getMentorParticipants, getLeadMentor } from "@/components/sessions/session-transformers";
+import type { Session, Contact, Team } from "@/types/schema";
+import type { EmailJob, EmailJobType, QStashBatchPayload, BatchRecipient } from "./job-types";
+
+/**
+ * Job group for batch processing
+ * Groups jobs by email type and scheduled time
+ */
+interface JobGroup {
+  type: EmailJobType;
+  scheduledFor: string;
+  jobs: EmailJob[];
+}
+
+/**
+ * Group jobs by type and scheduled time for efficient batch processing
+ * This reduces the number of QStash messages from N to ~3 per session
+ */
+function groupJobsByTypeAndTime(jobs: EmailJob[]): JobGroup[] {
+  const groups = new Map<string, JobGroup>();
+
+  for (const job of jobs) {
+    const key = `${job.type}_${job.scheduledFor}`;
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        type: job.type,
+        scheduledFor: job.scheduledFor,
+        jobs: [],
+      });
+    }
+
+    groups.get(key)!.jobs.push(job);
+  }
+
+  return Array.from(groups.values());
+}
+
+/**
+ * Get all active mentor contacts from a session
+ */
+function getSessionMentors(session: Session): Contact[] {
+  const participants = getMentorParticipants(session);
+  return participants
+    .map(p => p.contact)
+    .filter((c): c is Contact => !!c && !!c.email);
+}
+
+/**
+ * Format mentor name(s) for display in emails
+ */
+function formatMentorNameForEmail(session: Session): string {
+  const leadMentor = getLeadMentor(session);
+  const allMentors = getSessionMentors(session);
+
+  if (!leadMentor) return "your mentor";
+
+  const leadName = leadMentor.fullName || "your mentor";
+  const otherCount = allMentors.length - 1;
+
+  if (otherCount <= 0) return leadName;
+  if (otherCount === 1) return `${leadName} + 1 other mentor`;
+  return `${leadName} + ${otherCount} other mentors`;
+}
+
+/**
+ * Get students from a session's team
+ */
+function getStudentsFromSession(session: Session): Contact[] {
+  const team = session.team?.[0];
+  if (!team) return [];
+
+  const members = (team as Team & { members?: Array<{ contact?: Contact[] }> }).members || [];
+  return members
+    .map((m) => m.contact?.[0])
+    .filter((c): c is Contact => !!c && !!c.email);
+}
+
+/**
+ * Schedule all emails for a session via QStash
+ * Returns the batch ID for progress tracking
+ */
+export async function scheduleSessionEmailsViaQStash(
+  session: Session,
+  createdBy?: string
+): Promise<{ batchId: string; jobCount: number } | null> {
+  if (!session.scheduledStart) {
+    console.log("[QStash Scheduler] No scheduled start - skipping");
+    return null;
+  }
+
+  const baseUrl = getBaseUrl();
+  const times = calculateScheduleTimes(session.scheduledStart, session.duration || 60);
+
+  // Get participants
+  const mentors = getSessionMentors(session);
+  const mentorName = formatMentorNameForEmail(session);
+  const mentorNames = mentors.map(m => m.fullName || "Mentor");
+  const team = session.team?.[0];
+  const teamName = team?.teamName || "the team";
+  const students = getStudentsFromSession(session);
+
+  const sessionDate = formatDateForEmail(session.scheduledStart);
+  const sessionTime = formatTimeForEmail(session.scheduledStart);
+  const sessionName = session.sessionType || "Session";
+
+  console.log(`[QStash Scheduler] Creating jobs for session ${session.id}`);
+  console.log(`[QStash Scheduler] Students: ${students.length}, Mentors: ${mentors.length}`);
+
+  // Build list of jobs to create
+  const jobsToCreate: Omit<EmailJob, "id" | "batchId" | "status" | "attempts" | "createdAt" | "updatedAt">[] = [];
+
+  // Student prep reminders (48h and 24h)
+  for (const student of students) {
+    if (!student.email) continue;
+
+    // 48h prep reminder
+    if (isValidScheduleTime(times.prep48h)) {
+      jobsToCreate.push({
+        sessionId: session.id,
+        type: "prep48h",
+        recipientEmail: student.email,
+        recipientName: student.fullName || "there",
+        scheduledFor: times.prep48h.toISOString(),
+        metadata: {
+          sessionType: sessionName,
+          sessionDate,
+          teamName,
+          mentorNames,
+        },
+      });
+    }
+
+    // 24h prep reminder
+    if (isValidScheduleTime(times.prep24h)) {
+      jobsToCreate.push({
+        sessionId: session.id,
+        type: "prep24h",
+        recipientEmail: student.email,
+        recipientName: student.fullName || "there",
+        scheduledFor: times.prep24h.toISOString(),
+        metadata: {
+          sessionType: sessionName,
+          sessionDate,
+          teamName,
+          mentorNames,
+        },
+      });
+    }
+  }
+
+  // Feedback emails for all participants (at session end)
+  const allParticipants = [
+    ...students.map(s => ({ contact: s, role: "student" as const })),
+    ...mentors.map(m => ({ contact: m, role: "mentor" as const })),
+  ];
+
+  for (const { contact, role } of allParticipants) {
+    if (!contact.email) continue;
+
+    if (isValidScheduleTime(times.feedbackImmediate)) {
+      jobsToCreate.push({
+        sessionId: session.id,
+        type: "feedbackImmediate",
+        recipientEmail: contact.email,
+        recipientName: contact.fullName || "there",
+        scheduledFor: times.feedbackImmediate.toISOString(),
+        metadata: {
+          sessionType: sessionName,
+          sessionDate,
+          teamName,
+          mentorNames,
+        },
+      });
+    }
+  }
+
+  if (jobsToCreate.length === 0) {
+    console.log("[QStash Scheduler] No valid jobs to schedule");
+    return null;
+  }
+
+  // Create job batch in Redis (individual jobs for tracking)
+  const { batchId, jobs } = await createJobBatch(
+    session.id,
+    sessionName,
+    jobsToCreate,
+    createdBy
+  );
+
+  console.log(`[QStash Scheduler] Created batch ${batchId} with ${jobs.length} jobs`);
+
+  // Group jobs by type and scheduled time for efficient batch processing
+  const jobGroups = groupJobsByTypeAndTime(jobs);
+  console.log(`[QStash Scheduler] Grouped into ${jobGroups.length} QStash messages`);
+
+  // Build QStash batch messages (one per group)
+  const messages = jobGroups.map((group) => {
+    // Build recipients for this batch
+    const recipients: BatchRecipient[] = group.jobs.map((job) => ({
+      jobId: job.id,
+      to: job.recipientEmail,
+      recipientName: job.recipientName,
+      // Infer role from email type
+      role: job.type === "feedbackImmediate" && mentors.some(m => m.email === job.recipientEmail)
+        ? "mentor" as const
+        : "student" as const,
+    }));
+
+    // Create batch payload
+    const payload: QStashBatchPayload = {
+      isBatch: true,
+      batchId,
+      sessionId: session.id,
+      type: group.type,
+      scheduledFor: group.scheduledFor,
+      recipients,
+      metadata: group.jobs[0].metadata, // Shared metadata from first job
+    };
+
+    const delay = calculateDelaySeconds(group.scheduledFor);
+
+    return {
+      destination: `${baseUrl}/api/qstash/worker`,
+      body: JSON.stringify(payload),
+      delay,
+      retries: RETRY_CONFIG.retries,
+      callback: `${baseUrl}/api/qstash/callback`,
+      failureCallback: `${baseUrl}/api/qstash/failure`,
+      headers: {
+        "Content-Type": "application/json",
+        "Upstash-Flow-Control-Key": FLOW_CONTROL.key,
+        "Upstash-Flow-Control-Value": `rate=${FLOW_CONTROL.rate},parallelism=${FLOW_CONTROL.parallelism},period=${FLOW_CONTROL.period}`,
+      },
+    };
+  });
+
+  // Batch publish to QStash
+  try {
+    const results = await qstash.batchJSON(messages);
+
+    // Update job statuses with QStash message IDs
+    // Each QStash message covers multiple jobs in a group
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i] as { messageId?: string; error?: string };
+      const group = jobGroups[i];
+
+      if (result.messageId) {
+        // Update all jobs in this group to scheduled
+        await updateBatchJobStatuses(
+          group.jobs.map((job) => ({
+            jobId: job.id,
+            status: "scheduled" as const,
+            metadata: { qstashMessageId: result.messageId },
+          }))
+        );
+        console.log(`[QStash Scheduler] Group ${group.type} (${group.jobs.length} jobs) scheduled: ${result.messageId}`);
+      } else if (result.error) {
+        // Mark all jobs in this group as failed
+        await updateBatchJobStatuses(
+          group.jobs.map((job) => ({
+            jobId: job.id,
+            status: "failed" as const,
+            metadata: { lastError: result.error || "Unknown error" },
+          }))
+        );
+        console.error(`[QStash Scheduler] Group ${group.type} failed to schedule:`, result.error);
+      }
+    }
+
+    console.log(`[QStash Scheduler] Batch ${batchId} published successfully (${messages.length} QStash messages for ${jobs.length} jobs)`);
+
+    return { batchId, jobCount: jobs.length };
+  } catch (error) {
+    console.error("[QStash Scheduler] Batch publish failed:", error);
+
+    // Mark all jobs as failed
+    await updateBatchJobStatuses(
+      jobs.map((job) => ({
+        jobId: job.id,
+        status: "failed" as const,
+        metadata: { lastError: error instanceof Error ? error.message : "Batch publish failed" },
+      }))
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Cancel a specific scheduled email by QStash message ID
+ */
+export async function cancelScheduledEmail(qstashMessageId: string): Promise<boolean> {
+  try {
+    await qstash.messages.delete(qstashMessageId);
+    console.log(`[QStash Scheduler] Cancelled message: ${qstashMessageId}`);
+    return true;
+  } catch (error) {
+    console.error(`[QStash Scheduler] Failed to cancel message ${qstashMessageId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Cancel all scheduled emails for a session
+ */
+export async function cancelSessionEmailsViaQStash(sessionId: string): Promise<{
+  cancelled: number;
+  failed: number;
+}> {
+  const jobs = await getSessionJobs(sessionId);
+  let cancelled = 0;
+  let failed = 0;
+
+  for (const job of jobs) {
+    // Only cancel jobs that are pending or scheduled
+    if (job.status !== "pending" && job.status !== "scheduled") {
+      continue;
+    }
+
+    // Cancel via QStash if we have a message ID
+    if (job.qstashMessageId) {
+      const success = await cancelScheduledEmail(job.qstashMessageId);
+      if (success) {
+        await updateJobStatus(job.id, "cancelled");
+        cancelled++;
+      } else {
+        failed++;
+      }
+    } else {
+      // Job not yet sent to QStash, just update status
+      await updateJobStatus(job.id, "cancelled");
+      cancelled++;
+    }
+  }
+
+  console.log(`[QStash Scheduler] Session ${sessionId}: cancelled ${cancelled}, failed ${failed}`);
+  return { cancelled, failed };
+}
+
+/**
+ * Cancel emails for a specific recipient in a session
+ * Used when removing a participant from a session
+ */
+export async function cancelRecipientEmailsViaQStash(
+  sessionId: string,
+  recipientEmail: string
+): Promise<{ cancelled: number; failed: number }> {
+  const jobs = await getSessionJobs(sessionId);
+  let cancelled = 0;
+  let failed = 0;
+
+  for (const job of jobs) {
+    // Only cancel jobs for this recipient that are pending or scheduled
+    if (job.recipientEmail !== recipientEmail) continue;
+    if (job.status !== "pending" && job.status !== "scheduled") continue;
+
+    if (job.qstashMessageId) {
+      const success = await cancelScheduledEmail(job.qstashMessageId);
+      if (success) {
+        await updateJobStatus(job.id, "cancelled");
+        cancelled++;
+      } else {
+        failed++;
+      }
+    } else {
+      await updateJobStatus(job.id, "cancelled");
+      cancelled++;
+    }
+  }
+
+  console.log(`[QStash Scheduler] Session ${sessionId}, recipient ${recipientEmail}: cancelled ${cancelled}, failed ${failed}`);
+  return { cancelled, failed };
+}
+
+/**
+ * Check if QStash scheduling is enabled
+ * Uses a feature flag for gradual rollout
+ */
+export function isQStashSchedulerEnabled(): boolean {
+  return process.env.USE_QSTASH_SCHEDULER === "true";
+}

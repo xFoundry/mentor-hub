@@ -15,6 +15,8 @@ import {
   SessionDetailMentor,
   SessionDetailStaff,
 } from "@/components/sessions";
+import { EmailJobStatusCard } from "@/components/notifications";
+import { useSessionJobProgress } from "@/contexts/job-status-context";
 import type { TeamMember } from "@/hooks/use-team-members";
 
 export default function SessionDetailPage() {
@@ -26,6 +28,7 @@ export default function SessionDetailPage() {
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext?.email);
   const { tasks: allTasks, updateTask, createUpdate } = useTasks(userContext?.email);
   const { setOverride, clearOverride } = useBreadcrumb();
+  const { progress: jobProgress } = useSessionJobProgress(sessionId);
 
   const isLoading = isUserLoading || isSessionsLoading;
   const session = sessions.find((s) => s.id === sessionId);
@@ -124,10 +127,27 @@ export default function SessionDetailPage() {
     );
   }
 
+  // Check if there are active jobs to show status card
+  const hasActiveJobs = jobProgress &&
+    jobProgress.status !== "completed" &&
+    jobProgress.status !== "failed";
+
+  // Wrapper to include job status card when there are active jobs
+  const renderWithStatusCard = (content: React.ReactNode) => (
+    <>
+      {hasActiveJobs && jobProgress && (
+        <EmailJobStatusCard
+          batchId={jobProgress.batchId}
+        />
+      )}
+      {content}
+    </>
+  );
+
   // Render role-specific view
   switch (userType) {
     case "student":
-      return (
+      return renderWithStatusCard(
         <SessionDetailStudent
           session={session}
           userContext={userContext}
@@ -138,7 +158,7 @@ export default function SessionDetailPage() {
         />
       );
     case "mentor":
-      return (
+      return renderWithStatusCard(
         <SessionDetailMentor
           session={session}
           userContext={userContext}
@@ -149,7 +169,7 @@ export default function SessionDetailPage() {
         />
       );
     case "staff":
-      return (
+      return renderWithStatusCard(
         <SessionDetailStaff
           session={session}
           userContext={userContext}
@@ -161,7 +181,7 @@ export default function SessionDetailPage() {
       );
     default:
       // Fallback to student view if role is unknown
-      return (
+      return renderWithStatusCard(
         <SessionDetailStudent
           session={session}
           userContext={userContext}

@@ -102,10 +102,24 @@ export interface SessionWithParticipants extends Session {
 
 /**
  * Scheduled email tracking - maps email key to Resend email ID
- * Stored as JSON in the session's scheduledEmailIds field
+ * @deprecated Use Redis job store for email tracking (QStash migration)
+ * Kept for backward compatibility with legacy scheduledEmailIds in Airtable
  */
 export interface ScheduledEmailIds {
   [key: string]: string; // e.g., "prep48h_email@example.com": "resend-email-id"
+}
+
+/**
+ * Parse scheduled email IDs from a session's JSON field
+ * @deprecated Use job store functions for QStash-scheduled emails
+ */
+export function parseScheduledEmailIds(jsonString: string | null | undefined): ScheduledEmailIds {
+  if (!jsonString) return {};
+  try {
+    return JSON.parse(jsonString);
+  } catch {
+    return {};
+  }
 }
 
 /**

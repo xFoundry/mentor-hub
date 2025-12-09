@@ -7,14 +7,11 @@ import {
   updateSessionParticipant,
   deleteSessionParticipant,
 } from "@/lib/baseql";
+import { sendSessionUpdateNotifications } from "@/lib/notifications/scheduler";
 import {
-  scheduleSessionEmails,
-  cancelSessionEmails,
-  parseScheduledEmailIds,
-  stringifyScheduledEmailIds,
-  sendSessionUpdateNotifications,
-  handlePrepReminderRescheduling,
-} from "@/lib/notifications/scheduler";
+  scheduleSessionEmailsViaQStash,
+  cancelSessionEmailsViaQStash,
+} from "@/lib/notifications/qstash-scheduler";
 import type { SessionChanges } from "@/lib/notifications/types";
 
 interface MentorInput {
@@ -163,64 +160,37 @@ export async function PUT(
       }
     }
 
-    // Handle email rescheduling/cancellation
-    const currentEmailIds = parseScheduledEmailIds(currentSession.scheduledEmailIds as string);
-    let updatedEmailIds = currentEmailIds;
-
     // Track email send results for response
     let emailsSent = 0;
     let emailsFailed = 0;
 
+    // Handle email rescheduling/cancellation via QStash
     if (statusChangedToCancelled) {
-      // Cancel all scheduled emails
+      // Cancel all scheduled emails via QStash
       try {
-        await cancelSessionEmails(currentEmailIds);
-        updatedEmailIds = {}; // Clear all email IDs
-        console.log(`[Sessions API] Cancelled emails for session ${sessionId}`);
-
-        // Save empty email IDs to Airtable
-        await updateSessionInDb(sessionId, {
-          scheduledEmailIds: stringifyScheduledEmailIds(updatedEmailIds),
-        });
+        const cancelResult = await cancelSessionEmailsViaQStash(sessionId);
+        console.log(`[Sessions API] Cancelled ${cancelResult.cancelled} emails for session ${sessionId}`);
       } catch (error) {
         console.error(`[Sessions API] Failed to cancel emails:`, error);
       }
-    } else if (timeChanged && Object.keys(currentEmailIds).length > 0) {
-      // Reschedule emails with proximity-based logic
-      // Must fetch full session with updated data and team members for email rendering
+    } else if (timeChanged) {
+      // Time/duration changed - cancel existing and reschedule
+      // First cancel any existing scheduled emails
       try {
-        const fullSessionResult = await getSessionDetail(sessionId);
-        const fullSession = fullSessionResult.sessions?.[0];
-        if (fullSession) {
-          updatedEmailIds = await handlePrepReminderRescheduling(
-            fullSession,
-            currentEmailIds
-          );
-          console.log(`[Sessions API] Rescheduled emails for session ${sessionId} (${Object.keys(updatedEmailIds).length} new emails)`);
-
-          // Save updated email IDs to Airtable
-          await updateSessionInDb(sessionId, {
-            scheduledEmailIds: stringifyScheduledEmailIds(updatedEmailIds),
-          });
-        }
+        const cancelResult = await cancelSessionEmailsViaQStash(sessionId);
+        console.log(`[Sessions API] Cancelled ${cancelResult.cancelled} existing emails for reschedule`);
       } catch (error) {
-        console.error(`[Sessions API] Failed to reschedule emails:`, error);
+        console.error(`[Sessions API] Failed to cancel existing emails:`, error);
       }
-    } else if (timeChanged && Object.keys(currentEmailIds).length === 0) {
-      // No existing emails tracked - schedule new ones
-      // This handles the case where session was created before email scheduling was implemented
+
+      // Schedule new emails with updated times
       try {
         const fullSessionResult = await getSessionDetail(sessionId);
         const fullSession = fullSessionResult.sessions?.[0];
         if (fullSession) {
-          updatedEmailIds = await scheduleSessionEmails(fullSession);
-          console.log(`[Sessions API] Scheduled ${Object.keys(updatedEmailIds).length} new emails for session ${sessionId}`);
-
-          // Save new email IDs to Airtable
-          if (Object.keys(updatedEmailIds).length > 0) {
-            await updateSessionInDb(sessionId, {
-              scheduledEmailIds: stringifyScheduledEmailIds(updatedEmailIds),
-            });
+          const scheduleResult = await scheduleSessionEmailsViaQStash(fullSession);
+          if (scheduleResult) {
+            console.log(`[Sessions API] Scheduled ${scheduleResult.jobCount} new emails for session ${sessionId}`);
           }
         }
       } catch (error) {
@@ -284,7 +254,7 @@ export async function DELETE(
   try {
     const { id: sessionId } = await params;
 
-    // Get session to get scheduled email IDs
+    // Get session to verify it exists
     const sessionResult = await getSessionDetail(sessionId);
     const session = sessionResult.sessions?.[0];
 
@@ -292,16 +262,13 @@ export async function DELETE(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Cancel all scheduled emails
-    const currentEmailIds = parseScheduledEmailIds(session.scheduledEmailIds as string);
-
-    if (Object.keys(currentEmailIds).length > 0) {
-      try {
-        await cancelSessionEmails(currentEmailIds);
-        console.log(`[Sessions API] Cancelled emails for session ${sessionId}`);
-      } catch (error) {
-        console.error(`[Sessions API] Failed to cancel emails:`, error);
-      }
+    // Cancel all scheduled emails via QStash
+    try {
+      const cancelResult = await cancelSessionEmailsViaQStash(sessionId);
+      console.log(`[Sessions API] Cancelled ${cancelResult.cancelled} emails for session ${sessionId}`);
+    } catch (error) {
+      console.error(`[Sessions API] Failed to cancel emails:`, error);
+      // Continue with deletion even if email cancellation fails
     }
 
     // Delete session

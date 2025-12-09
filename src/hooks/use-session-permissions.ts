@@ -41,9 +41,9 @@ const GROUPINGS_BY_ROLE: Record<UserType, string[]> = {
  * Note: "actions" is shown for mentor/staff
  */
 const COLUMNS_BY_ROLE: Record<UserType, string[]> = {
-  student: ["dateTime", "type", "mentor", "status"],
-  mentor: ["dateTime", "type", "team", "status", "feedback", "actions"],
-  staff: ["dateTime", "type", "team", "mentor", "status", "feedback", "actions"],
+  student: ["indicator", "dateTime", "type", "mentor", "status"],
+  mentor: ["indicator", "dateTime", "type", "team", "status", "feedback", "actions"],
+  staff: ["indicator", "dateTime", "type", "team", "mentor", "status", "feedback", "emailStatus", "actions"],
 };
 
 /**
