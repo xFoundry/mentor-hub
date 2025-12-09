@@ -13,6 +13,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import type { JobProgress } from "@/lib/notifications/job-types";
@@ -57,6 +58,9 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track which batches we've already scheduled for cleanup to avoid infinite loops
+  const scheduledForCleanupRef = useRef<Set<string>>(new Set());
+
   const fetchJobStatus = useCallback(async () => {
     try {
       // Build query params
@@ -67,9 +71,6 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
         params.set("active", "true");
       }
 
-      // Also fetch any specifically tracked batches
-      const trackedArray = Array.from(trackedBatches);
-
       const response = await fetch(`/api/jobs/status?${params.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch job status");
@@ -79,32 +80,48 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
       let batches: JobProgress[] = data.batches || [];
 
       // Fetch individually tracked batches that might not be in the user's active list
-      for (const batchId of trackedArray) {
-        const existing = batches.find(b => b.batchId === batchId);
-        if (!existing) {
-          const batchResponse = await fetch(`/api/jobs/status?batchId=${batchId}`);
-          if (batchResponse.ok) {
-            const batchData = await batchResponse.json();
-            if (batchData.progress) {
-              batches.push(batchData.progress);
-            }
+      // Use functional update to get current value without adding to dependencies
+      setTrackedBatches(currentTracked => {
+        const trackedArray = Array.from(currentTracked);
+        // Schedule fetches for tracked batches not in results
+        for (const batchId of trackedArray) {
+          const existing = batches.find(b => b.batchId === batchId);
+          if (!existing) {
+            // Fetch async but don't block
+            fetch(`/api/jobs/status?batchId=${batchId}`)
+              .then(res => res.ok ? res.json() : null)
+              .then(batchData => {
+                if (batchData?.progress) {
+                  setActiveJobs(prev => {
+                    if (prev.find(b => b.batchId === batchId)) return prev;
+                    return [...prev, batchData.progress];
+                  });
+                }
+              })
+              .catch(() => {});
           }
         }
-      }
+        return currentTracked; // Don't modify
+      });
 
       // Remove completed/failed batches from tracking after a delay
+      // Only schedule cleanup once per batch to avoid infinite loops
       const completedBatches = batches.filter(
         b => b.status === "completed" || b.status === "failed" || b.status === "partial_failure"
       );
       for (const batch of completedBatches) {
-        // Keep completed batches visible for 5 seconds before removing from tracking
-        setTimeout(() => {
-          setTrackedBatches(prev => {
-            const next = new Set(prev);
-            next.delete(batch.batchId);
-            return next;
-          });
-        }, 5000);
+        if (!scheduledForCleanupRef.current.has(batch.batchId)) {
+          scheduledForCleanupRef.current.add(batch.batchId);
+          // Keep completed batches visible for 5 seconds before removing from tracking
+          setTimeout(() => {
+            setTrackedBatches(prev => {
+              const next = new Set(prev);
+              next.delete(batch.batchId);
+              return next;
+            });
+            scheduledForCleanupRef.current.delete(batch.batchId);
+          }, 5000);
+        }
       }
 
       setActiveJobs(batches);
@@ -114,7 +131,7 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
     } finally {
       setIsLoaded(true);
     }
-  }, [userId, trackedBatches]);
+  }, [userId]); // Removed trackedBatches from dependencies
 
   // Initial fetch
   useEffect(() => {
