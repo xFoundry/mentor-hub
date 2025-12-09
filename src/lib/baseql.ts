@@ -635,14 +635,18 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
           feedback {
             id
             role
+            submitted
             whatWentWell
             areasForImprovement
             additionalNeeds
             suggestedNextSteps
+            privateNotes
+            requestFollowUp
             rating
             actionabilityOfAdvice
             contentRelevance
             mentorPreparedness
+            menteeEngagement
             respondant {
               id
               fullName
@@ -765,14 +769,18 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
         feedback {
           id
           role
+          submitted
           whatWentWell
           areasForImprovement
           additionalNeeds
           suggestedNextSteps
+          privateNotes
+          requestFollowUp
           rating
           actionabilityOfAdvice
           contentRelevance
           mentorPreparedness
+          menteeEngagement
           respondant {
             id
             fullName
@@ -930,14 +938,18 @@ export async function getStudentSessions(
               feedback {
                 id
                 role
+                submitted
                 whatWentWell
                 areasForImprovement
                 additionalNeeds
                 suggestedNextSteps
+                privateNotes
+                requestFollowUp
                 rating
                 actionabilityOfAdvice
                 contentRelevance
                 mentorPreparedness
+                menteeEngagement
                 respondant {
                   id
                   fullName
@@ -1053,14 +1065,18 @@ export async function getStudentSessions(
             feedback {
               id
               role
+              submitted
               whatWentWell
               areasForImprovement
               additionalNeeds
               suggestedNextSteps
+              privateNotes
+              requestFollowUp
               rating
               actionabilityOfAdvice
               contentRelevance
               mentorPreparedness
+              menteeEngagement
               respondant {
                 id
                 fullName
@@ -1213,14 +1229,18 @@ export async function getSessionDetail(
         feedback {
           id
           role
+          submitted
           whatWentWell
           areasForImprovement
           additionalNeeds
           suggestedNextSteps
+          privateNotes
+          requestFollowUp
           rating
           actionabilityOfAdvice
           contentRelevance
           mentorPreparedness
+          menteeEngagement
           respondant {
             id
             fullName
@@ -2118,13 +2138,18 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
             feedback {
               id
               role
+              submitted
               whatWentWell
               areasForImprovement
               additionalNeeds
               suggestedNextSteps
+              privateNotes
+              requestFollowUp
               rating
+              actionabilityOfAdvice
               contentRelevance
               mentorPreparedness
+              menteeEngagement
               respondant {
                 id
                 fullName
@@ -2202,13 +2227,18 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
           feedback {
             id
             role
+            submitted
             whatWentWell
             areasForImprovement
             additionalNeeds
             suggestedNextSteps
+            privateNotes
+            requestFollowUp
             rating
+            actionabilityOfAdvice
             contentRelevance
             mentorPreparedness
+            menteeEngagement
             respondant {
               id
               fullName

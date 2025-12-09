@@ -186,8 +186,9 @@ export function SessionDetailStudent({
             session={session}
             userType="student"
             phase={phaseInfo.phase}
-            userEmail={userContext.email}
+            userContactId={userContext.contactId}
             onAddFeedback={() => openFeedbackDialog(session)}
+            onEditFeedback={(feedback) => openFeedbackDialog(session, feedback)}
           />
         </TabsContent>
 

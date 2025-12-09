@@ -1,11 +1,24 @@
 "use client";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Star, Calendar, Edit, Users, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Star,
+  Calendar,
+  Edit,
+  Users,
+  User,
+  ThumbsUp,
+  Lightbulb,
+  AlertTriangle,
+  ArrowRight,
+  Lock,
+  EyeOff,
+} from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import {
   parseAsLocalTime,
   getMentorParticipants,
@@ -15,11 +28,16 @@ import type { Session, SessionFeedback, Contact, UserType } from "@/types/schema
 
 interface FeedbackCardProps {
   feedback: SessionFeedback;
-  session: Session;
+  /** Session is optional - only needed when showSessionInfo is true */
+  session?: Session;
   userType: UserType;
   userContactId?: string;
+  /** Show session details (type, date, team, mentor) - useful for chronological view */
   showSessionInfo?: boolean;
+  /** Callback when edit button is clicked */
   onEdit?: () => void;
+  /** Compact mode for embedding in other views */
+  compact?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -31,23 +49,60 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function StarRating({ value, label }: { value?: number; label: string }) {
+/**
+ * Segmented star rating - shows 5 stars with filled/unfilled state
+ * Designed for vertical stacking with consistent alignment
+ */
+function SegmentedStarRating({ value, label }: { value?: number; label: string }) {
   if (!value) return null;
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground min-w-[100px]">{label}:</span>
+    <div className="flex items-center gap-3">
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`h-3.5 w-3.5 ${
-              star <= value ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"
-            }`}
+            className={cn(
+              "h-3.5 w-3.5",
+              star <= value
+                ? "text-amber-500 fill-amber-500"
+                : "text-muted-foreground/25"
+            )}
           />
         ))}
       </div>
-      <span className="text-xs text-muted-foreground">{value}/5</span>
+      <span className="text-xs font-medium tabular-nums w-7">{value}/5</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+/**
+ * Section component for text feedback fields
+ */
+function FeedbackSection({
+  icon: Icon,
+  iconClassName,
+  title,
+  content,
+  badge,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
+  title: string;
+  content: string;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Icon className={cn("h-4 w-4", iconClassName)} />
+        {title}
+        {badge}
+      </div>
+      <p className="text-sm text-muted-foreground pl-6 whitespace-pre-wrap">
+        {content}
+      </p>
     </div>
   );
 }
@@ -59,34 +114,40 @@ export function FeedbackCard({
   userContactId,
   showSessionInfo = false,
   onEdit,
+  compact = false,
 }: FeedbackCardProps) {
   const respondent = feedback.respondant?.[0] as Contact | undefined;
   const respondentName = respondent?.fullName || "Anonymous";
   const isOwnFeedback = userContactId && respondent?.id === userContactId;
-  const canEdit = isOwnFeedback || userType === "staff";
+  const canEdit = (isOwnFeedback || userType === "staff") && onEdit;
   const isStaff = userType === "staff";
   const isMentor = userType === "mentor";
+  const isStudent = userType === "student";
   const isMenteeFeedback = feedback.role === "Mentee";
+  const isMentorFeedback = feedback.role === "Mentor";
 
-  // For mentors viewing student feedback: only show if additionalNeeds is present,
-  // and only show that field (not other fields like ratings, whatWentWell, etc.)
+  // Visibility rules:
+  // 1. Mentors viewing student feedback: only show additionalNeeds
+  // 2. Students viewing mentor feedback: hide ratings and privateNotes
+  // 3. Staff sees everything
   const isMentorViewingStudentFeedback = isMentor && isMenteeFeedback;
   const showLimitedView = isMentorViewingStudentFeedback && feedback.additionalNeeds;
+  const isStudentViewingMentorFeedback = isStudent && isMentorFeedback;
+  const hideRatingsFromStudent = isStudentViewingMentorFeedback;
 
   const formattedDate = feedback.submitted
     ? format(parseAsLocalTime(feedback.submitted), "MMM d, yyyy 'at' h:mm a")
     : "";
 
-  const sessionDate = session.scheduledStart
+  // Session info (only computed if showSessionInfo is true and session is provided)
+  const sessionDate = session?.scheduledStart
     ? format(parseAsLocalTime(session.scheduledStart), "MMM d, yyyy")
     : "";
-
-  const teamName = session.team?.[0]?.teamName;
-
-  // Format mentor name(s) for display
-  const mentorParticipants = getMentorParticipants(session);
-  const leadMentor = getLeadMentor(session);
+  const teamName = session?.team?.[0]?.teamName;
+  const mentorParticipants = session ? getMentorParticipants(session) : [];
+  const leadMentor = session ? getLeadMentor(session) : undefined;
   const mentorName = (() => {
+    if (!session) return undefined;
     if (mentorParticipants.length === 0) return leadMentor?.fullName;
     const lead = leadMentor?.fullName || mentorParticipants[0]?.contact?.fullName;
     const otherCount = mentorParticipants.length - 1;
@@ -96,57 +157,76 @@ export function FeedbackCard({
     return `${lead} +${otherCount}`;
   })();
 
-  // Check if there's any text content (respecting mentor visibility rules)
+  // Determine what content to show
   const hasTextContent = showLimitedView
-    ? true // We know additionalNeeds exists if showLimitedView is true
+    ? true
     : feedback.whatWentWell ||
       feedback.areasForImprovement ||
       feedback.additionalNeeds ||
       feedback.suggestedNextSteps ||
       (isStaff && feedback.privateNotes);
 
-  // Check if there are any ratings to show (mentors don't see student ratings)
-  const hasRatings = showLimitedView
-    ? false
-    : isMenteeFeedback
-    ? feedback.rating || feedback.contentRelevance || feedback.actionabilityOfAdvice || feedback.mentorPreparedness
-    : feedback.menteeEngagement;
+  // Ratings visibility:
+  // - Limited view (mentor viewing student): no ratings
+  // - Student viewing mentor feedback: no ratings (menteeEngagement hidden)
+  // - Otherwise: show ratings if they exist
+  const showRatings = !showLimitedView && !hideRatingsFromStudent;
+  const hasRatings = showRatings && (
+    isMenteeFeedback
+      ? (feedback.rating || feedback.contentRelevance || feedback.actionabilityOfAdvice || feedback.mentorPreparedness)
+      : feedback.menteeEngagement
+  );
+
+  // Staff can see mentor's menteeEngagement rating even though students can't
+  const staffCanSeeHiddenMentorRatings = isStaff && isMentorFeedback && feedback.menteeEngagement;
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className={cn("pb-3", compact && "pb-2")}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
+            <Avatar className={cn("h-10 w-10", compact && "h-9 w-9")}>
+              <AvatarImage
+                src={respondent?.headshot?.[0]?.url}
+                alt={respondentName}
+              />
               <AvatarFallback className="text-xs">
                 {getInitials(respondentName)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">{respondentName}</span>
-                <Badge variant={isMenteeFeedback ? "secondary" : "outline"} className="text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-sm font-medium">{respondentName}</CardTitle>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    isMentorFeedback && "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
+                    isMenteeFeedback && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
+                  )}
+                >
                   {isMenteeFeedback ? "Student" : "Mentor"}
                 </Badge>
                 {isOwnFeedback && (
-                  <Badge variant="outline" className="text-xs">You</Badge>
+                  <Badge variant="secondary" className="text-xs">You</Badge>
                 )}
               </div>
               {formattedDate && (
-                <p className="text-xs text-muted-foreground">{formattedDate}</p>
+                <CardDescription className="text-xs mt-0.5">{formattedDate}</CardDescription>
               )}
             </div>
           </div>
 
-          {canEdit && onEdit && (
-            <Button variant="ghost" size="sm" onClick={onEdit}>
+          {canEdit && (
+            <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 w-8 p-0">
               <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit feedback</span>
             </Button>
           )}
         </div>
 
         {/* Session Info (for chronological view) */}
-        {showSessionInfo && (
+        {showSessionInfo && session && (
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground border-t pt-3">
             <Badge variant="outline">{session.sessionType}</Badge>
             {sessionDate && (
@@ -170,81 +250,109 @@ export function FeedbackCard({
           </div>
         )}
 
-        {/* For staff: show who the feedback is for */}
-        {isStaff && showSessionInfo && (
-          <div className="text-xs text-muted-foreground mt-1">
-            <span className="font-medium">For:</span>{" "}
-            {isMenteeFeedback
-              ? `${mentorName || "Unknown Mentor"}`
-              : `${teamName || "Unknown Team"}`}
+        {/* Indicator for mentors that they're seeing partial view */}
+        {isMentorViewingStudentFeedback && (
+          <div className="mt-2">
+            <Badge variant="outline" className="text-xs">
+              <Lock className="h-3 w-3 mr-1" />
+              Partial View
+            </Badge>
           </div>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Ratings Section */}
-        {hasRatings && (
-          <div className="space-y-1.5 rounded-md bg-muted/50 p-3">
-            {isMenteeFeedback ? (
-              <>
-                <StarRating value={feedback.rating} label="Overall" />
-                <StarRating value={feedback.contentRelevance} label="Relevance" />
-                <StarRating value={feedback.actionabilityOfAdvice} label="Actionability" />
-                <StarRating value={feedback.mentorPreparedness} label="Preparedness" />
-              </>
-            ) : (
-              <StarRating value={feedback.menteeEngagement} label="Engagement" />
-            )}
+      <CardContent className={cn("space-y-4", compact && "space-y-3")}>
+        {/* Ratings Section - Student feedback ratings (visible to staff and students) */}
+        {hasRatings && isMenteeFeedback && (
+          <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+            <SegmentedStarRating value={feedback.rating} label="Overall" />
+            <SegmentedStarRating value={feedback.contentRelevance} label="Relevance" />
+            <SegmentedStarRating value={feedback.actionabilityOfAdvice} label="Actionability" />
+            <SegmentedStarRating value={feedback.mentorPreparedness} label="Preparedness" />
+          </div>
+        )}
+
+        {/* Mentor feedback ratings (staff only - hidden from students) */}
+        {staffCanSeeHiddenMentorRatings && (
+          <div className="p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+              <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Hidden from students</span>
+            </div>
+            <SegmentedStarRating value={feedback.menteeEngagement} label="Student Engagement" />
+          </div>
+        )}
+
+        {/* Non-staff mentor feedback ratings */}
+        {hasRatings && isMentorFeedback && !isStaff && (
+          <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+            <SegmentedStarRating value={feedback.menteeEngagement} label="Student Engagement" />
           </div>
         )}
 
         {/* Text Content */}
         {hasTextContent && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {/* For mentors viewing student feedback, only show additionalNeeds */}
             {showLimitedView ? (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Additional Needs</p>
-                <p className="text-sm">{feedback.additionalNeeds}</p>
-              </div>
+              <FeedbackSection
+                icon={AlertTriangle}
+                iconClassName="text-blue-600 dark:text-blue-400"
+                title="Additional Needs"
+                content={feedback.additionalNeeds!}
+              />
             ) : (
               <>
                 {feedback.whatWentWell && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">What Went Well</p>
-                    <p className="text-sm">{feedback.whatWentWell}</p>
-                  </div>
+                  <FeedbackSection
+                    icon={ThumbsUp}
+                    iconClassName="text-green-600 dark:text-green-400"
+                    title="What Went Well"
+                    content={feedback.whatWentWell}
+                  />
                 )}
 
                 {feedback.areasForImprovement && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Areas for Improvement</p>
-                    <p className="text-sm">{feedback.areasForImprovement}</p>
-                  </div>
+                  <FeedbackSection
+                    icon={Lightbulb}
+                    iconClassName="text-amber-600 dark:text-amber-400"
+                    title="Areas for Improvement"
+                    content={feedback.areasForImprovement}
+                  />
                 )}
 
                 {feedback.additionalNeeds && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Additional Needs</p>
-                    <p className="text-sm">{feedback.additionalNeeds}</p>
-                  </div>
+                  <FeedbackSection
+                    icon={AlertTriangle}
+                    iconClassName="text-blue-600 dark:text-blue-400"
+                    title="Additional Needs"
+                    content={feedback.additionalNeeds}
+                  />
                 )}
 
                 {feedback.suggestedNextSteps && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Suggested Next Steps</p>
-                    <p className="text-sm">{feedback.suggestedNextSteps}</p>
-                  </div>
+                  <FeedbackSection
+                    icon={ArrowRight}
+                    iconClassName="text-indigo-600 dark:text-indigo-400"
+                    title="Suggested Next Steps"
+                    content={feedback.suggestedNextSteps}
+                  />
                 )}
 
                 {/* Private Notes (Staff only) */}
                 {isStaff && feedback.privateNotes && (
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-xs font-medium text-muted-foreground">Private Notes</p>
-                      <Badge variant="secondary" className="text-xs">Staff Only</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground italic">{feedback.privateNotes}</p>
+                  <div className="border-t pt-4 mt-4">
+                    <FeedbackSection
+                      icon={Lock}
+                      iconClassName="text-muted-foreground"
+                      title="Private Notes"
+                      content={feedback.privateNotes}
+                      badge={
+                        <Badge variant="secondary" className="text-xs ml-1">
+                          Staff Only
+                        </Badge>
+                      }
+                    />
                   </div>
                 )}
               </>
@@ -252,17 +360,18 @@ export function FeedbackCard({
           </div>
         )}
 
-        {/* Follow-up Request (not shown to mentors viewing student feedback) */}
+        {/* Follow-up Request */}
         {isMenteeFeedback && feedback.requestFollowUp && !showLimitedView && (
-          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-              Follow-up Requested
-            </Badge>
-          </div>
+          <Badge
+            variant="outline"
+            className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+          >
+            Follow-up Requested
+          </Badge>
         )}
 
         {/* Empty state if no content */}
-        {!hasTextContent && !hasRatings && (
+        {!hasTextContent && !hasRatings && !staffCanSeeHiddenMentorRatings && (
           <p className="text-sm text-muted-foreground italic">No detailed feedback provided</p>
         )}
       </CardContent>

@@ -1,25 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import {
   MessageSquare,
   CheckCircle2,
-  Star,
-  ThumbsUp,
-  ThumbsDown,
-  Lightbulb,
-  AlertTriangle,
   Clock,
   Lock,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
+import { FeedbackCard } from "@/components/feedback/feedback-card";
 import type { Session, SessionFeedback } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
 import type { SessionPhase } from "@/hooks/use-session-phase";
@@ -28,17 +21,20 @@ interface SessionFeedbackTabProps {
   session: Session;
   userType: UserType;
   phase: SessionPhase;
-  userEmail?: string;
+  userContactId?: string;
   /** Callback to open feedback dialog */
   onAddFeedback?: () => void;
+  /** Callback to edit existing feedback */
+  onEditFeedback?: (feedback: SessionFeedback) => void;
 }
 
 export function SessionFeedbackTab({
   session,
   userType,
   phase,
-  userEmail,
+  userContactId,
   onAddFeedback,
+  onEditFeedback,
 }: SessionFeedbackTabProps) {
   const isEligible = isSessionEligibleForFeedback(session);
   const isMentor = userType === "mentor";
@@ -132,7 +128,10 @@ export function SessionFeedbackTab({
             <FeedbackCard
               key={feedback.id}
               feedback={feedback}
-              showPrivateFields={isStaff}
+              userType={userType}
+              userContactId={userContactId}
+              onEdit={onEditFeedback ? () => onEditFeedback(feedback) : undefined}
+              compact
             />
           ))}
         </div>
@@ -155,8 +154,10 @@ export function SessionFeedbackTab({
             <FeedbackCard
               key={feedback.id}
               feedback={feedback}
-              showPrivateFields={isStaff}
-              showRatings={isStaff || isStudent}
+              userType={userType}
+              userContactId={userContactId}
+              onEdit={onEditFeedback ? () => onEditFeedback(feedback) : undefined}
+              compact
             />
           ))}
         </div>
@@ -183,143 +184,5 @@ export function SessionFeedbackTab({
         </Card>
       )}
     </div>
-  );
-}
-
-/**
- * Individual feedback card
- */
-function FeedbackCard({
-  feedback,
-  showPrivateFields = false,
-  showRatings = false,
-}: {
-  feedback: SessionFeedback;
-  showPrivateFields?: boolean;
-  showRatings?: boolean;
-}) {
-  const respondent = feedback.respondant?.[0];
-  const isMentorFeedback = feedback.role === "Mentor";
-
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage
-                src={respondent?.headshot?.[0]?.url}
-                alt={respondent?.fullName || "User"}
-              />
-              <AvatarFallback>{getInitials(respondent?.fullName)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-sm font-medium">
-                {respondent?.fullName || (isMentorFeedback ? "Mentor" : "Student")}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {isMentorFeedback ? "Mentor Feedback" : "Student Feedback"}
-              </CardDescription>
-            </div>
-          </div>
-          <Badge variant="outline" className={cn(
-            "text-xs",
-            isMentorFeedback && "bg-blue-50 text-blue-700 border-blue-200",
-            !isMentorFeedback && "bg-purple-50 text-purple-700 border-purple-200"
-          )}>
-            {feedback.role}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Ratings (student feedback, visible to staff and students) */}
-        {showRatings && !isMentorFeedback && (feedback.rating || feedback.contentRelevance || feedback.mentorPreparedness) && (
-          <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-muted/50">
-            {feedback.rating && (
-              <div className="flex items-center gap-1.5">
-                <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                <span className="text-sm font-medium">{feedback.rating}/5</span>
-                <span className="text-xs text-muted-foreground">Overall</span>
-              </div>
-            )}
-            {feedback.contentRelevance && (
-              <div className="text-sm">
-                <span className="text-muted-foreground">Content: </span>
-                <span className="font-medium">{feedback.contentRelevance}/5</span>
-              </div>
-            )}
-            {feedback.mentorPreparedness && (
-              <div className="text-sm">
-                <span className="text-muted-foreground">Preparedness: </span>
-                <span className="font-medium">{feedback.mentorPreparedness}/5</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* What Went Well */}
-        {feedback.whatWentWell && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400">
-              <ThumbsUp className="h-4 w-4" />
-              What Went Well
-            </div>
-            <p className="text-sm text-muted-foreground pl-6 whitespace-pre-wrap">
-              {feedback.whatWentWell}
-            </p>
-          </div>
-        )}
-
-        {/* Areas for Improvement */}
-        {feedback.areasForImprovement && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
-              <Lightbulb className="h-4 w-4" />
-              Areas for Improvement
-            </div>
-            <p className="text-sm text-muted-foreground pl-6 whitespace-pre-wrap">
-              {feedback.areasForImprovement}
-            </p>
-          </div>
-        )}
-
-        {/* Additional Needs (visible when present) */}
-        {feedback.additionalNeeds && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-400">
-              <AlertTriangle className="h-4 w-4" />
-              Additional Needs
-            </div>
-            <p className="text-sm text-muted-foreground pl-6 whitespace-pre-wrap">
-              {feedback.additionalNeeds}
-            </p>
-          </div>
-        )}
-
-        {/* Suggested Next Steps (mentor feedback, staff only) */}
-        {showPrivateFields && isMentorFeedback && feedback.suggestedNextSteps && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Lock className="h-4 w-4 text-muted-foreground" />
-              Suggested Next Steps
-              <Badge variant="outline" className="text-xs">Staff Only</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground pl-6 whitespace-pre-wrap">
-              {feedback.suggestedNextSteps}
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
