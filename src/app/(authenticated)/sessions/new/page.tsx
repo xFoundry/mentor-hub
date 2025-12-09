@@ -23,10 +23,13 @@ import { useTeams } from "@/hooks/use-teams";
 import { useMentors } from "@/hooks/use-mentors";
 import { useCohortContext } from "@/contexts/cohort-context";
 import { useCreateSession } from "@/hooks/use-create-session";
+import { useCreateRecurringSession } from "@/hooks/use-create-recurring-session";
 import { hasPermission } from "@/lib/permissions";
 import { LocationSelector } from "@/components/sessions";
+import { RecurrenceToggle, RecurrenceConfigComponent } from "@/components/sessions/recurrence-config";
 import { easternToUTC } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
+import type { RecurrenceConfig } from "@/types/recurring";
 
 // Mentor role types
 type MentorRole = "Lead Mentor" | "Supporting Mentor" | "Observer";
@@ -68,6 +71,7 @@ export default function NewSessionPage() {
   const { teams, isLoading: isTeamsLoading } = useTeams(selectedCohortId);
   const { mentors, isLoading: isMentorsLoading } = useMentors(selectedCohortId);
   const { createSession, isCreating } = useCreateSession();
+  const { createRecurringSessions, isCreating: isCreatingRecurring } = useCreateRecurringSession();
 
   // Form state - initialize date/time with defaults
   const getDefaultDate = () => {
@@ -92,6 +96,9 @@ export default function NewSessionPage() {
   const [meetingUrl, setMeetingUrl] = useState<string>("");
   const [locationId, setLocationId] = useState<string>("");
   const [agenda, setAgenda] = useState<string>("");
+  // Recurrence state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceConfig, setRecurrenceConfig] = useState<RecurrenceConfig | null>(null);
 
   // Mentor management helpers
   const addMentor = useCallback((contactId: string) => {
@@ -159,7 +166,8 @@ export default function NewSessionPage() {
 
   // At least one mentor required, and must have a lead
   const hasLeadMentor = selectedMentors.some(m => m.role === "Lead Mentor");
-  const isFormValid = sessionType && teamId && selectedMentors.length > 0 && hasLeadMentor && scheduledDate && scheduledTime;
+  const isRecurrenceValid = !isRecurring || (recurrenceConfig && (recurrenceConfig.occurrences || recurrenceConfig.endDate));
+  const isFormValid = sessionType && teamId && selectedMentors.length > 0 && hasLeadMentor && scheduledDate && scheduledTime && isRecurrenceValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,22 +177,47 @@ export default function NewSessionPage() {
     // Convert Eastern time input to UTC for storage
     const scheduledStart = easternToUTC(scheduledDate, scheduledTime);
 
-    const result = await createSession({
-      sessionType,
-      teamId,
-      mentors: selectedMentors,
-      scheduledStart,
-      duration: parseInt(duration) || 60,
-      meetingPlatform: meetingPlatform || undefined,
-      meetingUrl: meetingUrl || undefined,
-      locationId: meetingPlatform === "In-Person" && locationId ? locationId : undefined,
-      agenda: agenda || undefined,
-      status: "Scheduled",
-      cohortId: selectedCohortId !== "all" ? selectedCohortId : undefined,
-    });
+    // If recurring, use the recurring API
+    if (isRecurring && recurrenceConfig) {
+      const result = await createRecurringSessions({
+        sessionConfig: {
+          sessionType,
+          teamId,
+          mentors: selectedMentors,
+          duration: parseInt(duration) || 60,
+          meetingPlatform: meetingPlatform || undefined,
+          meetingUrl: meetingUrl || undefined,
+          locationId: meetingPlatform === "In-Person" && locationId ? locationId : undefined,
+          agenda: agenda || undefined,
+          cohortId: selectedCohortId !== "all" ? selectedCohortId : undefined,
+        },
+        recurrence: recurrenceConfig,
+        scheduledStart,
+      });
 
-    if (result) {
-      router.push(`/sessions/${result.id}`);
+      if (result && result.sessions.length > 0) {
+        // Navigate to the first session in the series
+        router.push(`/sessions/${result.sessions[0].id}`);
+      }
+    } else {
+      // Single session
+      const result = await createSession({
+        sessionType,
+        teamId,
+        mentors: selectedMentors,
+        scheduledStart,
+        duration: parseInt(duration) || 60,
+        meetingPlatform: meetingPlatform || undefined,
+        meetingUrl: meetingUrl || undefined,
+        locationId: meetingPlatform === "In-Person" && locationId ? locationId : undefined,
+        agenda: agenda || undefined,
+        status: "Scheduled",
+        cohortId: selectedCohortId !== "all" ? selectedCohortId : undefined,
+      });
+
+      if (result) {
+        router.push(`/sessions/${result.id}`);
+      }
     }
   };
 
@@ -485,14 +518,39 @@ export default function NewSessionPage() {
               />
             </div>
 
+            {/* Recurring Session */}
+            <div className="space-y-4">
+              <RecurrenceToggle
+                enabled={isRecurring}
+                onToggle={(enabled) => {
+                  setIsRecurring(enabled);
+                  if (enabled && !recurrenceConfig) {
+                    // Set default recurrence config
+                    setRecurrenceConfig({ frequency: "weekly", occurrences: 12 });
+                  }
+                }}
+              />
+
+              {isRecurring && (
+                <div className="pl-4 border-l-2 border-primary/20">
+                  <RecurrenceConfigComponent
+                    value={recurrenceConfig}
+                    onChange={setRecurrenceConfig}
+                    startDate={scheduledDate}
+                    startTime={scheduledTime}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={!isFormValid || isCreating}
+                disabled={!isFormValid || isCreating || isCreatingRecurring}
               >
-                {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Session
+                {(isCreating || isCreatingRecurring) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isRecurring ? "Create Recurring Sessions" : "Create Session"}
               </Button>
               <Button type="button" variant="outline" asChild>
                 <Link href="/sessions">Cancel</Link>

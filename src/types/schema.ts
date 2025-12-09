@@ -157,6 +157,10 @@ export interface Session {
   sessionFeedback?: SessionFeedback[]; // Alias for feedback (set by useSessions hook)
   preMeetingSubmissions?: PreMeetingSubmission[];
   scheduledEmailIds?: string; // JSON string storing Resend email IDs for scheduled notifications
+  // Recurring session fields
+  seriesId?: string; // UUID linking sessions in a recurring series
+  rrule?: string; // RFC 5545 recurrence rule (stored on parent session only)
+  seriesConfig?: string; // JSON template storing session config for the series (parent only)
   created?: string;
   lastModified?: string;
 }

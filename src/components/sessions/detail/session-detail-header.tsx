@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SessionPhaseIndicator } from "./session-phase-indicator";
+import { SeriesIndicator } from "../series-indicator";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 import type { SessionPhase } from "@/hooks/use-session-phase";
@@ -263,6 +264,7 @@ export function SessionDetailHeader({
               isStartingSoon={phase === "starting-soon"}
               size="md"
             />
+            <SeriesIndicator session={session} size="md" />
             {needsFeedback && (
               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
                 Needs Feedback

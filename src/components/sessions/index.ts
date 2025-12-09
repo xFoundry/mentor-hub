@@ -19,6 +19,11 @@ export {
 export { SessionView } from "./session-view";
 export type { SessionViewProps, SessionViewVariant } from "./session-view";
 
+// Recurring Sessions
+export { RecurrenceToggle, RecurrenceConfigComponent } from "./recurrence-config";
+export { SeriesIndicator, SeriesInfoCompact } from "./series-indicator";
+export { SeriesScopeDialog, useSeriesScopeDialog } from "./series-scope-dialog";
+
 // Session Edit Dialog
 export { EditSessionDialog } from "./edit-session-dialog";
 

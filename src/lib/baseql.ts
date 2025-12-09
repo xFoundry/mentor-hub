@@ -3094,3 +3094,245 @@ export function isContactSessionMentor(
   // Fall back to legacy mentor field
   return session.mentor?.some((m) => m.email === contactEmail) ?? false;
 }
+
+// ====================
+// Recurring Sessions Functions
+// ====================
+
+/**
+ * Create a session with series fields (for recurring sessions)
+ */
+export async function createSessionWithSeries(input: {
+  sessionType: string;
+  scheduledStart: string;
+  duration?: number;
+  mentorId: string;
+  teamId: string;
+  cohortId?: string;
+  meetingPlatform?: string;
+  meetingUrl?: string;
+  agenda?: string;
+  status?: string;
+  locationId?: string;
+  // Series-specific fields
+  seriesId?: string;
+  rrule?: string;
+  seriesConfig?: string;
+}): Promise<{ insert_sessions: Session }> {
+  const mutation = `
+    mutation CreateSessionWithSeries(
+      $sessionType: String!
+      $scheduledStart: String!
+      $duration: Float
+      $mentor: [String!]!
+      $team: [String!]!
+      $cohort: [String!]
+      $meetingPlatform: String
+      $meetingUrl: String
+      $agenda: String
+      $status: String
+      $locations: [String!]
+      $seriesId: String
+      $rrule: String
+      $seriesConfig: String
+    ) {
+      insert_sessions(
+        sessionType: $sessionType
+        scheduledStart: $scheduledStart
+        duration: $duration
+        mentor: $mentor
+        team: $team
+        cohort: $cohort
+        meetingPlatform: $meetingPlatform
+        meetingUrl: $meetingUrl
+        agenda: $agenda
+        status: $status
+        locations: $locations
+        seriesId: $seriesId
+        rrule: $rrule
+        seriesConfig: $seriesConfig
+      ) {
+        id
+        sessionId
+        sessionType
+        scheduledStart
+        duration
+        status
+        meetingUrl
+        seriesId
+        rrule
+        seriesConfig
+        mentor {
+          id
+          fullName
+        }
+        team {
+          id
+          teamName
+        }
+        locations {
+          id
+          name
+          building
+          address
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    sessionType: input.sessionType,
+    scheduledStart: input.scheduledStart,
+    duration: input.duration,
+    mentor: [input.mentorId],
+    team: [input.teamId],
+    cohort: input.cohortId ? [input.cohortId] : undefined,
+    meetingPlatform: input.meetingPlatform,
+    meetingUrl: input.meetingUrl,
+    agenda: input.agenda,
+    status: input.status || "Scheduled",
+    locations: input.locationId ? [input.locationId] : undefined,
+    seriesId: input.seriesId,
+    rrule: input.rrule,
+    seriesConfig: input.seriesConfig,
+  };
+
+  return executeMutation(mutation, variables);
+}
+
+/**
+ * Get all sessions in a series by seriesId
+ */
+export async function getSessionsBySeries(
+  seriesId: string
+): Promise<{ sessions: Session[] }> {
+  const query = `
+    query GetSessionsBySeries($seriesId: String!) {
+      sessions(
+        _filter: {
+          seriesId: {_eq: $seriesId}
+        }
+        _order_by: { scheduledStart: "asc" }
+      ) {
+        id
+        sessionId
+        sessionType
+        scheduledStart
+        duration
+        status
+        meetingPlatform
+        meetingUrl
+        agenda
+        seriesId
+        rrule
+        seriesConfig
+        mentor {
+          id
+          fullName
+          email
+          headshot
+        }
+        sessionParticipants {
+          id
+          participantId
+          participantType
+          role
+          status
+          contact {
+            id
+            fullName
+            email
+            headshot
+          }
+        }
+        team {
+          id
+          teamName
+          cohorts {
+            id
+            shortName
+          }
+        }
+        cohort {
+          id
+          shortName
+        }
+        locations {
+          id
+          name
+          building
+          address
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ sessions: Session[] }>(query, { seriesId });
+  return { sessions: result.sessions || [] };
+}
+
+/**
+ * Update session series fields
+ */
+export async function updateSessionSeriesFields(
+  sessionId: string,
+  updates: {
+    seriesId?: string;
+    rrule?: string;
+    seriesConfig?: string;
+  }
+): Promise<{ update_sessions: Session }> {
+  const mutation = `
+    mutation UpdateSessionSeriesFields(
+      $id: String!
+      $seriesId: String
+      $rrule: String
+      $seriesConfig: String
+    ) {
+      update_sessions(
+        id: $id
+        seriesId: $seriesId
+        rrule: $rrule
+        seriesConfig: $seriesConfig
+      ) {
+        id
+        sessionId
+        seriesId
+        rrule
+        seriesConfig
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    id: sessionId,
+    seriesId: updates.seriesId,
+    rrule: updates.rrule,
+    seriesConfig: updates.seriesConfig,
+  });
+}
+
+/**
+ * Delete multiple sessions by their IDs (for series deletion)
+ */
+export async function deleteSessionsByIds(
+  sessionIds: string[]
+): Promise<{ deletedCount: number }> {
+  // Delete sessions one by one (BaseQL doesn't support bulk delete)
+  const results = await Promise.allSettled(
+    sessionIds.map((id) => deleteSession(id))
+  );
+
+  const successCount = results.filter((r) => r.status === "fulfilled").length;
+  return { deletedCount: successCount };
+}
+
+/**
+ * Get the parent session of a series (the one with rrule set)
+ */
+export async function getSeriesParentSession(
+  seriesId: string
+): Promise<Session | null> {
+  const { sessions } = await getSessionsBySeries(seriesId);
+  return sessions.find((s) => s.rrule) || sessions[0] || null;
+}
