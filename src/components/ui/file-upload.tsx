@@ -68,16 +68,42 @@ export function FileUpload({
     averageProgress,
   } = useUploadFiles({
     route,
-    onUploadComplete: ({ files }) => {
-      // Convert uploaded files to our format and merge with existing
-      // Use proxy URL so Airtable can access files (Railway buckets are private)
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const newFiles: UploadedFile[] = files.map((f) => ({
-        url: `${appUrl}/api/files/${f.objectInfo.key}`,
-        filename: f.raw.name,
-        size: f.raw.size,
-        type: f.raw.type,
-      }));
+    onUploadComplete: async ({ files }) => {
+      // Get presigned URLs for each uploaded file (valid for 90 days)
+      const newFiles: UploadedFile[] = await Promise.all(
+        files.map(async (f) => {
+          try {
+            // Call our API to generate a presigned URL
+            const response = await fetch("/api/upload/presign", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ key: f.objectInfo.key }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to get presigned URL");
+            }
+
+            const { presignedUrl } = await response.json();
+
+            return {
+              url: presignedUrl,
+              filename: f.raw.name,
+              size: f.raw.size,
+              type: f.raw.type,
+            };
+          } catch {
+            // Fallback to direct URL (may not work for Airtable but at least shows the file)
+            return {
+              url: `https://REDACTED_STORAGE_URL/${f.objectInfo.key}`,
+              filename: f.raw.name,
+              size: f.raw.size,
+              type: f.raw.type,
+            };
+          }
+        })
+      );
+
       onChange?.([...value, ...newFiles]);
       reset();
     },

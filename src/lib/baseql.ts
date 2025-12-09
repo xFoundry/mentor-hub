@@ -647,6 +647,7 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
             contentRelevance
             mentorPreparedness
             menteeEngagement
+            attachments
             respondant {
               id
               fullName
@@ -2247,6 +2248,7 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
             contentRelevance
             mentorPreparedness
             menteeEngagement
+            attachments
             respondant {
               id
               fullName

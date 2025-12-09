@@ -5,7 +5,7 @@ import { custom } from "@better-upload/server/clients";
 // Railway S3-compatible storage client
 // Uses virtual-hosted style URLs: https://{bucket}.storage.railway.app
 const railwayS3 = custom({
-  hostname: "storage.railway.app",
+  host: "storage.railway.app",
   accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   region: process.env.AWS_REGION || "us-east-1",
@@ -13,9 +13,11 @@ const railwayS3 = custom({
   forcePathStyle: false, // Railway uses virtual-hosted style
 });
 
+const bucketName = process.env.BUCKET_NAME!;
+
 const router: Router = {
   client: railwayS3,
-  bucketName: process.env.BUCKET_NAME!,
+  bucketName,
   routes: {
     // Feedback attachments - documents, images, PDFs
     feedbackAttachments: route({
@@ -42,6 +44,7 @@ const router: Router = {
           }),
         };
       },
+      // Note: Presigned URLs are generated client-side via /api/upload/presign
     }),
   },
 };
