@@ -49,10 +49,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ presignedUrl });
   } catch (error) {
     console.error("Error generating presigned URL:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({
-      error: "Failed to generate presigned URL",
-      details: errorMessage
-    }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate presigned URL" }, { status: 500 });
   }
 }

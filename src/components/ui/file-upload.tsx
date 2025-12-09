@@ -61,7 +61,6 @@ export function FileUpload({
   const {
     upload,
     reset,
-    uploadedFiles,
     failedFiles,
     progresses,
     isPending,
@@ -69,7 +68,7 @@ export function FileUpload({
   } = useUploadFiles({
     route,
     onUploadComplete: async ({ files }) => {
-      // Get presigned URLs for each uploaded file (valid for 90 days)
+      // Get presigned URLs for each uploaded file (valid for 7 days)
       const newFiles: UploadedFile[] = await Promise.all(
         files.map(async (f) => {
           try {
