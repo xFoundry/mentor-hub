@@ -13,6 +13,7 @@ import {
   getUserActiveBatches,
   getAllActiveBatches,
   getDeadLetterQueue,
+  deleteBatch,
 } from "@/lib/notifications/job-store";
 import { isRedisAvailable } from "@/lib/redis";
 
@@ -123,6 +124,57 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { error: "Failed to retrieve job status" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE handler - Delete a batch and all its jobs
+ *
+ * Query parameters:
+ * - batchId: The batch ID to delete (required)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // Check Redis availability
+    const redisAvailable = await isRedisAvailable();
+    if (!redisAvailable) {
+      return NextResponse.json(
+        { error: "Job status service unavailable" },
+        { status: 503 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const batchId = searchParams.get("batchId");
+
+    if (!batchId) {
+      return NextResponse.json(
+        { error: "Missing batchId parameter" },
+        { status: 400 }
+      );
+    }
+
+    const success = await deleteBatch(batchId);
+
+    if (success) {
+      return NextResponse.json({
+        success: true,
+        message: `Batch ${batchId} deleted`,
+      });
+    } else {
+      return NextResponse.json(
+        { error: "Failed to delete batch" },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Jobs Status API] Delete error:", errorMessage);
+
+    return NextResponse.json(
+      { error: "Failed to delete batch" },
       { status: 500 }
     );
   }

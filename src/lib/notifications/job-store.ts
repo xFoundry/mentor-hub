@@ -463,6 +463,38 @@ export async function findSessionJobsByType(
 }
 
 /**
+ * Delete a batch and all its jobs from Redis
+ * Used for cleaning up stuck or orphaned batches
+ */
+export async function deleteBatch(batchId: string): Promise<boolean> {
+  try {
+    // Get all job IDs in the batch
+    const jobIds = await redis.lrange(REDIS_KEYS.batchJobs(batchId), 0, -1);
+
+    const pipeline = redis.pipeline();
+
+    // Delete all jobs
+    for (const jobId of jobIds) {
+      pipeline.del(REDIS_KEYS.job(jobId as string));
+    }
+
+    // Delete batch job list
+    pipeline.del(REDIS_KEYS.batchJobs(batchId));
+
+    // Delete batch itself
+    pipeline.del(REDIS_KEYS.jobBatch(batchId));
+
+    await pipeline.exec();
+
+    console.log(`[Job Store] Deleted batch ${batchId} with ${jobIds.length} jobs`);
+    return true;
+  } catch (error) {
+    console.error(`[Job Store] Failed to delete batch ${batchId}:`, error);
+    return false;
+  }
+}
+
+/**
  * Retry a failed job by resetting its status to pending
  * Returns the updated job for re-scheduling via QStash
  */

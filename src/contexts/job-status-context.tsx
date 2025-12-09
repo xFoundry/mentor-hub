@@ -40,10 +40,10 @@ interface JobStatusContextValue {
 const JobStatusContext = createContext<JobStatusContextValue | null>(null);
 
 /** Polling interval when jobs are active */
-const ACTIVE_POLL_INTERVAL = 3000; // 3 seconds
+const ACTIVE_POLL_INTERVAL = 5000; // 5 seconds
 
-/** Polling interval when no active jobs */
-const IDLE_POLL_INTERVAL = 30000; // 30 seconds
+/** Polling interval when no active jobs (or only checking globally) */
+const IDLE_POLL_INTERVAL = 60000; // 60 seconds - reduced frequency to avoid Redis overload
 
 interface JobStatusProviderProps {
   children: ReactNode;
