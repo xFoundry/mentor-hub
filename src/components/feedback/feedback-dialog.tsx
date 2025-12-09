@@ -115,6 +115,12 @@ export function FeedbackDialog() {
   const handleSubmit = async (data: FeedbackFormValues) => {
     if (!session || !userContext) return;
 
+    // Convert attachments to Airtable format (just url and filename)
+    const attachments = data.attachments?.map((a) => ({
+      url: a.url,
+      filename: a.filename,
+    }));
+
     let result;
 
     // Update existing feedback or create new
@@ -123,6 +129,7 @@ export function FeedbackDialog() {
         whatWentWell: data.whatWentWell || undefined,
         areasForImprovement: data.areasForImprovement || undefined,
         additionalNeeds: data.additionalNeeds || undefined,
+        attachments,
         // Student fields
         ...(data.role === "Mentee" && {
           rating: data.rating,
@@ -146,6 +153,7 @@ export function FeedbackDialog() {
         whatWentWell: data.whatWentWell || undefined,
         areasForImprovement: data.areasForImprovement || undefined,
         additionalNeeds: data.additionalNeeds || undefined,
+        attachments,
         // Student fields
         ...(data.role === "Mentee" && {
           rating: data.rating,

@@ -16,6 +16,12 @@ import {
   ArrowRight,
   Lock,
   EyeOff,
+  Paperclip,
+  File,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -25,7 +31,7 @@ import {
   getLeadMentor,
 } from "@/components/sessions/session-transformers";
 import { EditorViewer } from "@/components/editor/editor-viewer";
-import type { Session, SessionFeedback, Contact, UserType } from "@/types/schema";
+import type { Session, SessionFeedback, Contact, UserType, AirtableAttachment } from "@/types/schema";
 
 interface FeedbackCardProps {
   feedback: SessionFeedback;
@@ -48,6 +54,21 @@ function getInitials(name: string): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+function getFileIcon(type?: string) {
+  if (!type) return File;
+  if (type.startsWith("image/")) return FileImage;
+  if (type.includes("pdf") || type.includes("document")) return FileText;
+  if (type.includes("sheet") || type.includes("excel") || type.includes("csv")) return FileSpreadsheet;
+  return File;
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**
@@ -369,6 +390,43 @@ export function FeedbackCard({
           >
             Follow-up Requested
           </Badge>
+        )}
+
+        {/* Attachments */}
+        {feedback.attachments && feedback.attachments.length > 0 && !showLimitedView && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
+              Attachments
+              <Badge variant="secondary" className="text-xs">
+                {feedback.attachments.length}
+              </Badge>
+            </div>
+            <div className="space-y-1.5 pl-6">
+              {feedback.attachments.map((attachment, index) => {
+                const Icon = getFileIcon(attachment.type);
+                const filename = attachment.filename || `Attachment ${index + 1}`;
+                return (
+                  <a
+                    key={attachment.url}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"
+                  >
+                    <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm truncate flex-1">{filename}</span>
+                    {attachment.size && (
+                      <span className="text-xs text-muted-foreground">
+                        {formatFileSize(attachment.size)}
+                      </span>
+                    )}
+                    <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Empty state if no content */}

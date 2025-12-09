@@ -1608,6 +1608,7 @@ export async function createSessionFeedback(input: {
   whatWentWell?: string;
   areasForImprovement?: string;
   additionalNeeds?: string;
+  attachments?: { url: string; filename?: string }[];
   // Mentor-specific fields
   menteeEngagement?: number;
   suggestedNextSteps?: string;
@@ -1627,6 +1628,7 @@ export async function createSessionFeedback(input: {
       $whatWentWell: String
       $areasForImprovement: String
       $additionalNeeds: String
+      $attachments: [JSON]
       $menteeEngagement: Float
       $suggestedNextSteps: String
       $privateNotes: String
@@ -1643,6 +1645,7 @@ export async function createSessionFeedback(input: {
         whatWentWell: $whatWentWell
         areasForImprovement: $areasForImprovement
         additionalNeeds: $additionalNeeds
+        attachments: $attachments
         menteeEngagement: $menteeEngagement
         suggestedNextSteps: $suggestedNextSteps
         privateNotes: $privateNotes
@@ -1663,6 +1666,7 @@ export async function createSessionFeedback(input: {
         whatWentWell
         areasForImprovement
         additionalNeeds
+        attachments
         requestFollowUp
         suggestedNextSteps
         privateNotes
@@ -1683,6 +1687,7 @@ export async function updateSessionFeedback(input: {
   whatWentWell?: string;
   areasForImprovement?: string;
   additionalNeeds?: string;
+  attachments?: { url: string; filename?: string }[];
   // Mentor-specific fields
   menteeEngagement?: number;
   suggestedNextSteps?: string;
@@ -1700,6 +1705,7 @@ export async function updateSessionFeedback(input: {
       $whatWentWell: String
       $areasForImprovement: String
       $additionalNeeds: String
+      $attachments: [JSON]
       $menteeEngagement: Float
       $suggestedNextSteps: String
       $privateNotes: String
@@ -1714,6 +1720,7 @@ export async function updateSessionFeedback(input: {
         whatWentWell: $whatWentWell
         areasForImprovement: $areasForImprovement
         additionalNeeds: $additionalNeeds
+        attachments: $attachments
         menteeEngagement: $menteeEngagement
         suggestedNextSteps: $suggestedNextSteps
         privateNotes: $privateNotes
@@ -1734,6 +1741,7 @@ export async function updateSessionFeedback(input: {
         whatWentWell
         areasForImprovement
         additionalNeeds
+        attachments
         requestFollowUp
         suggestedNextSteps
         privateNotes

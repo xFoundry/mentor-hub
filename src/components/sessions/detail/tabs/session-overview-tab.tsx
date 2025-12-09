@@ -267,23 +267,6 @@ export function SessionOverviewTab({
         </Card>
       </div>
 
-      {/* Agenda */}
-      {session.agenda && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4" />
-              Agenda
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-              {session.agenda}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Meeting Notes Preview */}
       {hasNotes && (
         <Card>

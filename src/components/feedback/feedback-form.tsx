@@ -18,7 +18,16 @@ import {
 import { Loader2, Send } from "lucide-react";
 import { RatingInput } from "./rating-input";
 import { RichTextEditor } from "@/components/editor/rich-text-editor";
+import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import type { SessionFeedback } from "@/types/schema";
+
+// Attachment schema
+const attachmentSchema = z.object({
+  url: z.string().min(1),
+  filename: z.string().min(1),
+  size: z.number().optional(),
+  type: z.string().optional(),
+});
 
 // Single unified schema - we'll handle role-specific validation in the component
 const feedbackSchema = z.object({
@@ -27,6 +36,7 @@ const feedbackSchema = z.object({
   whatWentWell: z.string().optional(),
   areasForImprovement: z.string().optional(),
   additionalNeeds: z.string().optional(),
+  attachments: z.array(attachmentSchema).optional(),
   // Student fields
   rating: z.number().min(1).max(5).optional(),
   contentRelevance: z.number().min(1).max(5).optional(),
@@ -71,6 +81,12 @@ export function FeedbackForm({
       whatWentWell: existingFeedback?.whatWentWell || "",
       areasForImprovement: existingFeedback?.areasForImprovement || "",
       additionalNeeds: existingFeedback?.additionalNeeds || "",
+      attachments: existingFeedback?.attachments?.map((a) => ({
+        url: a.url,
+        filename: a.filename || "file",
+        size: a.size,
+        type: a.type,
+      })) || [],
       // Student fields
       rating: existingFeedback?.rating || undefined,
       contentRelevance: existingFeedback?.contentRelevance || undefined,
@@ -289,6 +305,34 @@ export function FeedbackForm({
                       : "What additional support or resources would be helpful for the student?"
                   }
                   disabled={isSubmitting}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Attachments */}
+        <FormField
+          control={form.control}
+          name="attachments"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Attachments
+                <span className="text-muted-foreground ml-1 font-normal">(Optional)</span>
+              </FormLabel>
+              <FormDescription>
+                Upload documents, images, or other files to share with this feedback
+              </FormDescription>
+              <FormControl>
+                <FileUpload
+                  route="feedbackAttachments"
+                  value={field.value as UploadedFile[] | undefined}
+                  onChange={field.onChange}
+                  maxFiles={10}
+                  disabled={isSubmitting}
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                 />
               </FormControl>
               <FormMessage />

@@ -20,10 +20,11 @@ import {
   SessionNotesTab,
 } from "./tabs";
 import { TaskDetailSheet } from "@/components/tasks";
-import { ViewMeetingNotesDialog } from "@/components/sessions";
+import { ViewMeetingNotesDialog, EditAgendaDialog } from "@/components/sessions";
 import { useSessionPhase, getDefaultTabForPhase } from "@/hooks/use-session-phase";
 import { hasMentorFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
+import { useUpdateSession } from "@/hooks/use-update-session";
 import type { Session, Task, UserContext } from "@/types/schema";
 import type { TeamMember } from "@/hooks/use-team-members";
 
@@ -45,10 +46,12 @@ export function SessionDetailMentor({
   onCreateUpdate,
 }: SessionDetailMentorProps) {
   const { openFeedbackDialog } = useFeedbackDialog();
+  const { updateSession } = useUpdateSession();
   const phaseInfo = useSessionPhase(session);
 
   // Dialog states
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
+  const [isAgendaDialogOpen, setIsAgendaDialogOpen] = useState(false);
 
   // Task sheet state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -107,6 +110,7 @@ export function SessionDetailMentor({
         hasNotes={hasNotes}
         onViewNotes={() => setIsViewNotesDialogOpen(true)}
         onAddFeedback={() => openFeedbackDialog(session)}
+        onEditAgenda={() => setIsAgendaDialogOpen(true)}
       />
 
       {/* Tabbed Content */}
@@ -211,6 +215,15 @@ export function SessionDetailMentor({
           session={session}
         />
       )}
+
+      <EditAgendaDialog
+        open={isAgendaDialogOpen}
+        onOpenChange={setIsAgendaDialogOpen}
+        session={session}
+        onSave={async (agenda) => {
+          await updateSession(session.id, { agenda });
+        }}
+      />
 
       {/* Task Detail Sheet */}
       <TaskDetailSheet

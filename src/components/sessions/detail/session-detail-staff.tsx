@@ -25,6 +25,7 @@ import {
 import { TaskDetailSheet } from "@/components/tasks";
 import {
   EditSessionDialog,
+  EditAgendaDialog,
   AddMeetingNotesDialog,
   ViewMeetingNotesDialog,
   DeleteSessionDialog,
@@ -65,6 +66,7 @@ export function SessionDetailStaff({
 
   // Dialog states
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAgendaDialogOpen, setIsAgendaDialogOpen] = useState(false);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -126,6 +128,7 @@ export function SessionDetailStaff({
         onAddNotes={() => setIsNotesDialogOpen(true)}
         onViewNotes={() => setIsViewNotesDialogOpen(true)}
         onAddFeedback={() => openFeedbackDialog(session)}
+        onEditAgenda={() => setIsAgendaDialogOpen(true)}
       />
 
       {/* Tabbed Content */}
@@ -233,6 +236,15 @@ export function SessionDetailStaff({
         availableMentors={availableMentors}
         onSave={async (updates) => {
           await updateSession(session.id, updates);
+        }}
+      />
+
+      <EditAgendaDialog
+        open={isAgendaDialogOpen}
+        onOpenChange={setIsAgendaDialogOpen}
+        session={session}
+        onSave={async (agenda) => {
+          await updateSession(session.id, { agenda });
         }}
       />
 

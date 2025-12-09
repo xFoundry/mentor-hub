@@ -33,10 +33,14 @@ import {
   Clock,
   Users2,
   Lock,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { SessionPhaseIndicator } from "./session-phase-indicator";
 import { SeriesIndicator } from "../series-indicator";
+import { EditorViewer } from "@/components/editor/editor-viewer";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 import type { SessionPhase } from "@/hooks/use-session-phase";
@@ -61,6 +65,7 @@ interface SessionDetailHeaderProps {
   onViewNotes?: () => void;
   onAddFeedback?: () => void;
   onPrepare?: () => void;
+  onEditAgenda?: () => void;
 }
 
 export function SessionDetailHeader({
@@ -81,9 +86,14 @@ export function SessionDetailHeader({
   onViewNotes,
   onAddFeedback,
   onPrepare,
+  onEditAgenda,
 }: SessionDetailHeaderProps) {
   const router = useRouter();
   const [isCopied, setIsCopied] = useState(false);
+  const [isAgendaExpanded, setIsAgendaExpanded] = useState(false);
+
+  // Staff and mentors can edit the agenda
+  const canEditAgenda = (userType === "staff" || userType === "mentor") && onEditAgenda;
 
   // Meeting link is locked for students who haven't submitted prep
   const isMeetingLocked = userType === "student" && !hasSubmittedPrep;
@@ -297,12 +307,74 @@ export function SessionDetailHeader({
             )}
           </div>
 
-          {/* Session ID */}
-          <p className="text-xs text-muted-foreground">
-            ID: {session.sessionId || session.id}
-          </p>
         </div>
       </div>
+
+      {/* Agenda Section */}
+      {session.agenda && (
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Agenda</span>
+                {canEditAgenda && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={onEditAgenda}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    <span className="sr-only">Edit agenda</span>
+                  </Button>
+                )}
+              </div>
+              <div
+                className={cn(
+                  "text-sm text-muted-foreground overflow-hidden transition-all",
+                  !isAgendaExpanded && "max-h-[4.5rem]"
+                )}
+              >
+                <EditorViewer content={session.agenda} />
+              </div>
+              {session.agenda.length > 150 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsAgendaExpanded(!isAgendaExpanded)}
+                >
+                  {isAgendaExpanded ? (
+                    <>
+                      <ChevronUp className="h-3 w-3 mr-1" />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3 w-3 mr-1" />
+                      Show more
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Empty agenda state for staff/mentor who can add it */}
+      {!session.agenda && canEditAgenda && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={onEditAgenda}
+        >
+          <FileText className="h-4 w-4" />
+          Add Agenda
+        </Button>
+      )}
     </div>
   );
 }

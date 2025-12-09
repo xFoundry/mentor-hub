@@ -15,6 +15,7 @@ export interface FeedbackFormData {
   whatWentWell?: string;
   areasForImprovement?: string;
   additionalNeeds?: string;
+  attachments?: { url: string; filename?: string }[];
   // Mentor-specific fields
   menteeEngagement?: number;
   suggestedNextSteps?: string;
@@ -48,6 +49,7 @@ export function useFeedback() {
         whatWentWell: data.whatWentWell,
         areasForImprovement: data.areasForImprovement,
         additionalNeeds: data.additionalNeeds,
+        attachments: data.attachments,
         menteeEngagement: data.menteeEngagement,
         suggestedNextSteps: data.suggestedNextSteps,
         privateNotes: data.privateNotes,
@@ -86,6 +88,7 @@ export function useFeedback() {
         whatWentWell: data.whatWentWell,
         areasForImprovement: data.areasForImprovement,
         additionalNeeds: data.additionalNeeds,
+        attachments: data.attachments,
         menteeEngagement: data.menteeEngagement,
         suggestedNextSteps: data.suggestedNextSteps,
         privateNotes: data.privateNotes,
