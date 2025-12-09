@@ -15,7 +15,7 @@ import { useEffectiveUser } from "@/hooks/use-effective-user";
 export function useSessions(email?: string, cohortId?: string) {
   const { userType } = useEffectiveUser();
 
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     email ? [`/sessions`, email, cohortId, userType] : null,
     async () => {
       if (!email) return [];
@@ -101,6 +101,7 @@ export function useSessions(email?: string, cohortId?: string) {
     sessions: data || [],
     isLoading,
     error,
+    mutate,
   };
 }
 

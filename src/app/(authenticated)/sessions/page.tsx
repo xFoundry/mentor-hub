@@ -1,24 +1,39 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useUserType } from "@/hooks/use-user-type";
 import { useSessions } from "@/hooks/use-sessions";
 import { useCohortContext } from "@/contexts/cohort-context";
 import { useLocalSessionViewState } from "@/hooks/use-session-view-state";
-import { SessionView } from "@/components/sessions";
+import { SessionView, CreateSessionDialog } from "@/components/sessions";
 import { hasPermission } from "@/lib/permissions";
-import Link from "next/link";
+import type { Session } from "@/types/schema";
 
-export default function SessionsPage() {
+function SessionsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { userContext, userType, isLoading: isUserLoading } = useUserType();
   const { selectedCohortId } = useCohortContext();
-  const { sessions, isLoading: isSessionsLoading } = useSessions(
+  const { sessions, isLoading: isSessionsLoading, mutate: mutateSessions } = useSessions(
     userContext?.email,
     selectedCohortId
   );
+
+  // Create session dialog state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  // Check for ?create=true param to auto-open dialog
+  useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      setShowCreateDialog(true);
+      // Remove the query param without navigation
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [searchParams]);
 
   // Local view state (for now, until URL sync is debugged)
   const {
@@ -45,9 +60,15 @@ export default function SessionsPage() {
     router.push(`/feedback?session=${sessionId}`);
   };
 
-  // Handle create session
+  // Handle create session - open dialog
   const handleCreateSession = () => {
-    router.push("/sessions/new");
+    setShowCreateDialog(true);
+  };
+
+  // Handle session created successfully
+  const handleSessionCreated = (session: Session) => {
+    mutateSessions();
+    router.push(`/sessions/${session.id}`);
   };
 
   return (
@@ -65,11 +86,9 @@ export default function SessionsPage() {
           </p>
         </div>
         {canCreateSession && (
-          <Button asChild>
-            <Link href="/sessions/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Session
-            </Link>
+          <Button onClick={handleCreateSession}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Session
           </Button>
         )}
       </div>
@@ -108,6 +127,37 @@ export default function SessionsPage() {
         showMentorName={userType === "student"}
         showFeedbackStatus={true}
       />
+
+      {/* Create Session Dialog */}
+      <CreateSessionDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSuccess={handleSessionCreated}
+      />
     </div>
+  );
+}
+
+function SessionsPageFallback() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Sessions</h1>
+          <p className="text-muted-foreground mt-2">Loading...</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    </div>
+  );
+}
+
+export default function SessionsPage() {
+  return (
+    <Suspense fallback={<SessionsPageFallback />}>
+      <SessionsPageContent />
+    </Suspense>
   );
 }

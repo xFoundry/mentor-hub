@@ -122,8 +122,8 @@ export function useUserType() {
 
   // Find the best participation record:
   // 1. Filter to records with a valid capacity (via capacityLink or legacy capacity field)
-  // 2. Prioritize records where cohort status is "In Progress"
-  // 3. Sort by capacity priority (Staff > Mentor > Participant)
+  // 2. Sort by capacity priority (Staff > Mentor > Participant) - Staff always wins
+  // 3. Prioritize records where cohort status is "In Progress"
   // 4. Prefer Active participation status
   const validParticipations = participations.filter((p) => getCapacityName(p));
 
@@ -138,13 +138,8 @@ export function useUserType() {
   }
 
   const activeParticipation = validParticipations.sort((a, b) => {
-    // First priority: cohort with "In Progress" status
-    const aInProgress = hasInProgressCohort(a);
-    const bInProgress = hasInProgressCohort(b);
-    if (aInProgress && !bInProgress) return -1;
-    if (bInProgress && !aInProgress) return 1;
-
-    // Second priority: capacity type (Staff > Mentor > Participant)
+    // First priority: capacity type (Staff > Mentor > Participant)
+    // Staff always takes precedence regardless of cohort status
     const aCapacity = getCapacityName(a) || "";
     const bCapacity = getCapacityName(b) || "";
     const aPriority = capacityPriority[aCapacity] || 999;
@@ -152,6 +147,12 @@ export function useUserType() {
     if (aPriority !== bPriority) {
       return aPriority - bPriority;
     }
+
+    // Second priority: cohort with "In Progress" status
+    const aInProgress = hasInProgressCohort(a);
+    const bInProgress = hasInProgressCohort(b);
+    if (aInProgress && !bInProgress) return -1;
+    if (bInProgress && !aInProgress) return 1;
 
     // Third priority: Active participation status
     if (a.status === "Active" && b.status !== "Active") return -1;

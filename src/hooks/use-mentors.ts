@@ -2,13 +2,24 @@
 
 import useSWR from "swr";
 import { getMentorsInCohort, getAllMentors } from "@/lib/baseql";
-import type { Contact, Cohort } from "@/types/schema";
+import type { Contact, Cohort, Participation } from "@/types/schema";
+
+/**
+ * Participation info for a specific cohort
+ */
+export interface MentorParticipation {
+  participationId: string;
+  cohortId: string;
+  status?: string;
+}
 
 /**
  * Mentor with cohort info attached
  */
 export interface MentorWithCohort extends Contact {
   cohorts?: Cohort[];
+  /** Participation records for this mentor (for editing) */
+  participations?: MentorParticipation[];
 }
 
 /**
@@ -16,7 +27,7 @@ export interface MentorWithCohort extends Contact {
  * @param cohortId - Cohort ID to filter mentors, or "all" to get all mentors
  */
 export function useMentors(cohortId?: string) {
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     cohortId ? [`/mentors`, cohortId] : null,
     async () => {
       if (!cohortId) return [];
@@ -34,17 +45,25 @@ export function useMentors(cohortId?: string) {
         if (participation.contacts) {
           participation.contacts.forEach((contact) => {
             const existingMentor = mentorMap.get(contact.id);
+            const participationInfo: MentorParticipation = {
+              participationId: participation.id,
+              cohortId: participation.cohorts?.[0]?.id || "",
+              status: participation.status,
+            };
 
             if (existingMentor) {
               // Merge cohorts from this participation into existing mentor
               const existingCohortIds = new Set(existingMentor.cohorts?.map(c => c.id) || []);
               const newCohorts = participation.cohorts?.filter(c => !existingCohortIds.has(c.id)) || [];
               existingMentor.cohorts = [...(existingMentor.cohorts || []), ...newCohorts];
+              // Add participation info
+              existingMentor.participations = [...(existingMentor.participations || []), participationInfo];
             } else {
               // First time seeing this mentor
               mentorMap.set(contact.id, {
                 ...contact,
                 cohorts: participation.cohorts ? [...participation.cohorts] : [],
+                participations: [participationInfo],
               });
             }
           });
@@ -66,5 +85,6 @@ export function useMentors(cohortId?: string) {
     mentors: data || [],
     isLoading,
     error,
+    mutate,
   };
 }

@@ -298,10 +298,14 @@ export async function getAllMentors(): Promise<{ participation: Participation[] 
   const query = `
     query GetAllMentors {
       participation(
-        capacity: "Mentor"
         status: "Active"
       ) {
         id
+        capacity
+        capacityLink {
+          id
+          name
+        }
         contacts {
           id
           fullName
@@ -327,7 +331,19 @@ export async function getAllMentors(): Promise<{ participation: Participation[] 
     }
   `;
 
-  return executeQuery(query);
+  const result = await executeQuery<{ participation: Participation[] }>(query);
+
+  // Filter by capacity: prefer capacityLink, fall back to capacity string
+  const mentorParticipation = (result.participation || []).filter((p) => {
+    // Check capacityLink first (if it exists and has Mentor)
+    if (p.capacityLink && p.capacityLink.length > 0) {
+      return p.capacityLink.some((c) => c.name === "Mentor");
+    }
+    // Fall back to capacity string field
+    return p.capacity === "Mentor";
+  });
+
+  return { participation: mentorParticipation };
 }
 
 /**
@@ -354,11 +370,15 @@ export async function getMentorsInCohort(
         }
         participation(
           _filter: {
-            capacity: {_eq: "Mentor"}
             status: {_eq: "Active"}
           }
         ) {
           id
+          capacity
+          capacityLink {
+            id
+            name
+          }
           contacts {
             id
             fullName
@@ -381,7 +401,17 @@ export async function getMentorsInCohort(
     return { participation: [] };
   }
 
-  const participation = (cohort.participation || []).map((p: any) => ({
+  // Filter by capacity: prefer capacityLink, fall back to capacity string
+  const mentorParticipation = (cohort.participation || []).filter((p: any) => {
+    // Check capacityLink first (if it exists and has Mentor)
+    if (p.capacityLink && p.capacityLink.length > 0) {
+      return p.capacityLink.some((c: any) => c.name === "Mentor");
+    }
+    // Fall back to capacity string field
+    return p.capacity === "Mentor";
+  });
+
+  const participation = mentorParticipation.map((p: any) => ({
     ...p,
     cohorts: [{
       id: cohort.id,
@@ -3336,3 +3366,293 @@ export async function getSeriesParentSession(
   const { sessions } = await getSessionsBySeries(seriesId);
   return sessions.find((s) => s.rrule) || sessions[0] || null;
 }
+
+// ====================
+// Contact & Participation Mutations
+// ====================
+
+/**
+ * Create a new contact record
+ */
+export async function createContact(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  bio?: string;
+  expertise?: string[];
+  linkedIn?: string;
+  websiteUrl?: string;
+  type?: string;
+}): Promise<{ insert_contacts: Contact }> {
+  const mutation = `
+    mutation CreateContact(
+      $firstName: String!
+      $lastName: String!
+      $fullName: String!
+      $email: String!
+      $bio: String
+      $expertise: [String!]
+      $linkedIn: String
+      $websiteUrl: String
+      $type: String
+    ) {
+      insert_contacts(
+        firstName: $firstName
+        lastName: $lastName
+        fullName: $fullName
+        email: $email
+        bio: $bio
+        expertise: $expertise
+        linkedIn: $linkedIn
+        websiteUrl: $websiteUrl
+        type: $type
+      ) {
+        id
+        fullName
+        firstName
+        lastName
+        email
+        bio
+        expertise
+        linkedIn
+        websiteUrl
+        type
+        headshot
+      }
+    }
+  `;
+
+  // Construct fullName from firstName and lastName
+  const fullName = `${input.firstName} ${input.lastName}`.trim();
+
+  return executeMutation(mutation, {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    fullName,
+    email: input.email,
+    bio: input.bio,
+    expertise: input.expertise,
+    linkedIn: input.linkedIn,
+    websiteUrl: input.websiteUrl,
+    type: input.type || "Mentor",
+  });
+}
+
+/**
+ * Create a new participation record (links contact to cohort with capacity)
+ */
+export async function createParticipation(input: {
+  contactId: string;
+  cohortId: string;
+  capacityLinkId: string; // e.g., "recgWs9dUXsMwDQNi" for Mentor
+  capacityName: string; // e.g., "Mentor" - needed for the string field
+  status?: string;
+}): Promise<{ insert_participation: Participation }> {
+  const mutation = `
+    mutation CreateParticipation(
+      $contacts: [String!]!
+      $cohorts: [String!]!
+      $capacityLink: [String!]!
+      $capacity: String!
+      $status: String
+    ) {
+      insert_participation(
+        contacts: $contacts
+        cohorts: $cohorts
+        capacityLink: $capacityLink
+        capacity: $capacity
+        status: $status
+      ) {
+        id
+        participationId
+        status
+        capacity
+        capacityLink {
+          id
+          name
+        }
+        contacts {
+          id
+          fullName
+          email
+          bio
+          expertise
+          linkedIn
+          websiteUrl
+          headshot
+        }
+        cohorts {
+          id
+          shortName
+        }
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    contacts: [input.contactId],
+    cohorts: [input.cohortId],
+    capacityLink: [input.capacityLinkId],
+    capacity: input.capacityName,
+    status: input.status || "Active",
+  });
+}
+
+/**
+ * Update a contact record
+ */
+export async function updateContact(
+  contactId: string,
+  updates: {
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+    email?: string;
+    bio?: string;
+    expertise?: string[];
+    linkedIn?: string;
+    websiteUrl?: string;
+  }
+): Promise<{ update_contacts: Contact }> {
+  const mutation = `
+    mutation UpdateContact(
+      $id: String!
+      $firstName: String
+      $lastName: String
+      $fullName: String
+      $email: String
+      $bio: String
+      $expertise: [String!]
+      $linkedIn: String
+      $websiteUrl: String
+    ) {
+      update_contacts(
+        id: $id
+        firstName: $firstName
+        lastName: $lastName
+        fullName: $fullName
+        email: $email
+        bio: $bio
+        expertise: $expertise
+        linkedIn: $linkedIn
+        websiteUrl: $websiteUrl
+      ) {
+        id
+        fullName
+        firstName
+        lastName
+        email
+        bio
+        expertise
+        linkedIn
+        websiteUrl
+        headshot
+      }
+    }
+  `;
+
+  // Build variables - only include fields that are being updated
+  const variables: Record<string, any> = { id: contactId };
+  if (updates.firstName !== undefined) variables.firstName = updates.firstName;
+  if (updates.lastName !== undefined) variables.lastName = updates.lastName;
+  if (updates.fullName !== undefined) variables.fullName = updates.fullName;
+  if (updates.email !== undefined) variables.email = updates.email;
+  if (updates.bio !== undefined) variables.bio = updates.bio;
+  if (updates.expertise !== undefined) variables.expertise = updates.expertise;
+  if (updates.linkedIn !== undefined) variables.linkedIn = updates.linkedIn;
+  if (updates.websiteUrl !== undefined) variables.websiteUrl = updates.websiteUrl;
+
+  return executeMutation(mutation, variables);
+}
+
+/**
+ * Update a participation record
+ */
+export async function updateParticipation(
+  participationId: string,
+  updates: {
+    status?: string;
+  }
+): Promise<{ update_participation: Participation }> {
+  const mutation = `
+    mutation UpdateParticipation(
+      $id: String!
+      $status: String
+    ) {
+      update_participation(
+        id: $id
+        status: $status
+      ) {
+        id
+        participationId
+        status
+        capacityLink {
+          id
+          name
+        }
+        contacts {
+          id
+          fullName
+          email
+        }
+        cohorts {
+          id
+          shortName
+        }
+      }
+    }
+  `;
+
+  return executeMutation(mutation, {
+    id: participationId,
+    status: updates.status,
+  });
+}
+
+/**
+ * Check if a participation record already exists for a contact in a cohort with a specific capacity
+ */
+export async function checkExistingParticipation(
+  contactId: string,
+  cohortId: string,
+  capacityId: string
+): Promise<{ exists: boolean; participation?: Participation }> {
+  const query = `
+    query CheckExistingParticipation($contactId: String!) {
+      participation(
+        _filter: {
+          contactId: {_eq: $contactId}
+        }
+      ) {
+        id
+        participationId
+        status
+        capacityLink {
+          id
+          name
+        }
+        cohorts {
+          id
+          shortName
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ participation: Participation[] }>(query, {
+    contactId,
+  });
+
+  // Check if any participation records match both the cohort and capacity
+  const matchingParticipation = result.participation?.find(
+    (p) =>
+      p.cohorts?.some((c) => c.id === cohortId) &&
+      p.capacityLink?.some((c) => c.id === capacityId)
+  );
+
+  return {
+    exists: !!matchingParticipation,
+    participation: matchingParticipation,
+  };
+}
+

@@ -27,6 +27,9 @@ export { SeriesScopeDialog, useSeriesScopeDialog } from "./series-scope-dialog";
 // Session Edit Dialog
 export { EditSessionDialog } from "./edit-session-dialog";
 
+// Create Session Dialog
+export { CreateSessionDialog } from "./create-session-dialog";
+
 // Delete Session Dialog
 export { DeleteSessionDialog } from "./delete-session-dialog";
 
