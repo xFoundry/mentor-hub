@@ -2,12 +2,13 @@
  * Session Email Jobs API
  *
  * GET: Retrieve all email jobs for a session
+ * POST: Retry all failed email jobs for a session
  * DELETE: Cancel a specific pending/scheduled email job
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionJobs, getJob, updateJobStatus } from "@/lib/notifications/job-store";
-import { cancelScheduledEmail } from "@/lib/notifications/qstash-scheduler";
+import { cancelScheduledEmail, retryAllFailedJobsForSession } from "@/lib/notifications/qstash-scheduler";
 import { isRedisAvailable } from "@/lib/redis";
 
 export const runtime = "nodejs";
@@ -144,6 +145,54 @@ export async function DELETE(
     console.error("[Session Emails API] Error cancelling job:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to cancel email job" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/sessions/[id]/emails
+ *
+ * Retry all failed email jobs for a session
+ */
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: sessionId } = await params;
+
+    // Check Redis availability
+    const redisAvailable = await isRedisAvailable();
+    if (!redisAvailable) {
+      return NextResponse.json(
+        { error: "Email job tracking service unavailable" },
+        { status: 503 }
+      );
+    }
+
+    // Retry all failed jobs
+    const result = await retryAllFailedJobsForSession(sessionId);
+
+    if (result.total === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No failed jobs to retry",
+        ...result,
+      });
+    }
+
+    console.log(`[Session Emails API] Retried ${result.retried}/${result.total} failed jobs for session ${sessionId}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Retried ${result.retried} of ${result.total} failed jobs`,
+      ...result,
+    });
+  } catch (error) {
+    console.error("[Session Emails API] Error retrying failed jobs:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to retry email jobs" },
       { status: 500 }
     );
   }

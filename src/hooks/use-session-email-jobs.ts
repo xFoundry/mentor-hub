@@ -78,6 +78,58 @@ export function useSessionEmailJobs(sessionId?: string) {
     }
   };
 
+  /**
+   * Retry a failed email job
+   */
+  const retryJob = async (jobId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(
+        `/api/admin/emails/${jobId}/retry`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to retry email");
+      }
+
+      // Revalidate after retry
+      await mutate();
+      return true;
+    } catch (error) {
+      console.error("Failed to retry email job:", error);
+      return false;
+    }
+  };
+
+  /**
+   * Retry all failed email jobs for this session
+   */
+  const retryAllFailed = async (): Promise<{ retried: number; failed: number; total: number }> => {
+    if (!sessionId) return { retried: 0, failed: 0, total: 0 };
+
+    try {
+      const response = await fetch(
+        `/api/sessions/${sessionId}/emails`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to retry emails");
+      }
+
+      const result = await response.json();
+
+      // Revalidate after retry
+      await mutate();
+      return { retried: result.retried, failed: result.failed, total: result.total };
+    } catch (error) {
+      console.error("Failed to retry all failed email jobs:", error);
+      throw error;
+    }
+  };
+
   return {
     jobs: data?.jobs || [],
     summary: data?.summary || {
@@ -93,6 +145,8 @@ export function useSessionEmailJobs(sessionId?: string) {
     error,
     mutate,
     cancelJob,
+    retryJob,
+    retryAllFailed,
   };
 }
 

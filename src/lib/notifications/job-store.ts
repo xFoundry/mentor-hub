@@ -461,3 +461,33 @@ export async function findSessionJobsByType(
     return true;
   });
 }
+
+/**
+ * Retry a failed job by resetting its status to pending
+ * Returns the updated job for re-scheduling via QStash
+ */
+export async function retryJob(jobId: string): Promise<EmailJob> {
+  const job = await getJob(jobId);
+  if (!job) {
+    throw new Error(`Job not found: ${jobId}`);
+  }
+
+  if (job.status !== "failed") {
+    throw new Error(`Can only retry failed jobs. Current status: ${job.status}`);
+  }
+
+  const updatedJob: EmailJob = {
+    ...job,
+    status: "pending",
+    lastError: undefined,
+    qstashMessageId: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await redis.set(REDIS_KEYS.job(jobId), JSON.stringify(updatedJob));
+
+  // Update batch progress
+  await updateBatchProgress(job.batchId);
+
+  return updatedJob;
+}

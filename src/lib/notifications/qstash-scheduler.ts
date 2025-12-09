@@ -6,7 +6,7 @@
  */
 
 import { qstash, getBaseUrl, calculateDelaySeconds, FLOW_CONTROL, RETRY_CONFIG } from "@/lib/qstash";
-import { createJobBatch, updateJobStatus, getSessionJobs, cancelBatchJobs, updateBatchJobStatuses } from "./job-store";
+import { createJobBatch, updateJobStatus, getSessionJobs, cancelBatchJobs, updateBatchJobStatuses, retryJob } from "./job-store";
 import { calculateScheduleTimes, formatDateForEmail, formatTimeForEmail, isValidScheduleTime } from "@/lib/timezone";
 import { getMentorParticipants, getLeadMentor } from "@/components/sessions/session-transformers";
 import type { Session, Contact, Team } from "@/types/schema";
@@ -232,7 +232,7 @@ export async function scheduleSessionEmailsViaQStash(
 
     return {
       destination: `${baseUrl}/api/qstash/worker`,
-      body: JSON.stringify(payload),
+      body: payload, // batchJSON will stringify this automatically
       delay,
       retries: RETRY_CONFIG.retries,
       callback: `${baseUrl}/api/qstash/callback`,
@@ -389,4 +389,174 @@ export async function cancelRecipientEmailsViaQStash(
  */
 export function isQStashSchedulerEnabled(): boolean {
   return process.env.USE_QSTASH_SCHEDULER === "true";
+}
+
+/**
+ * Retry all failed jobs for a session
+ * Groups failed jobs by type and re-schedules them as batches
+ * Returns count of successfully retried jobs
+ */
+export async function retryAllFailedJobsForSession(
+  sessionId: string
+): Promise<{ retried: number; failed: number; total: number }> {
+  const jobs = await getSessionJobs(sessionId);
+  const failedJobs = jobs.filter((job) => job.status === "failed");
+
+  if (failedJobs.length === 0) {
+    return { retried: 0, failed: 0, total: 0 };
+  }
+
+  console.log(`[QStash Scheduler] Retrying ${failedJobs.length} failed jobs for session ${sessionId}`);
+
+  // Group failed jobs by type for efficient batch processing
+  const jobsByType = new Map<EmailJobType, EmailJob[]>();
+  for (const job of failedJobs) {
+    if (!jobsByType.has(job.type)) {
+      jobsByType.set(job.type, []);
+    }
+    jobsByType.get(job.type)!.push(job);
+  }
+
+  const baseUrl = getBaseUrl();
+  let retriedCount = 0;
+  let failedCount = 0;
+
+  // Process each type group as a batch
+  for (const [type, typeJobs] of jobsByType) {
+    // Reset all jobs in this group to pending
+    const resetJobs: EmailJob[] = [];
+    for (const job of typeJobs) {
+      try {
+        const resetJob = await retryJob(job.id);
+        resetJobs.push(resetJob);
+      } catch (error) {
+        console.error(`[QStash Scheduler] Failed to reset job ${job.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    if (resetJobs.length === 0) continue;
+
+    // Build batch payload
+    const recipients: BatchRecipient[] = resetJobs.map((job) => ({
+      jobId: job.id,
+      to: job.recipientEmail,
+      recipientName: job.recipientName,
+      role: "student" as const,
+    }));
+
+    // Use metadata from first job (they should all have same session metadata)
+    const payload: QStashBatchPayload = {
+      isBatch: true,
+      batchId: resetJobs[0].batchId,
+      sessionId,
+      type,
+      scheduledFor: resetJobs[0].scheduledFor,
+      recipients,
+      metadata: resetJobs[0].metadata,
+    };
+
+    // Calculate delay - send immediately if past due
+    const delay = Math.max(0, calculateDelaySeconds(resetJobs[0].scheduledFor));
+
+    try {
+      const result = await qstash.publishJSON({
+        url: `${baseUrl}/api/qstash/worker`,
+        body: payload,
+        delay,
+        retries: RETRY_CONFIG.retries,
+        callback: `${baseUrl}/api/qstash/callback`,
+        failureCallback: `${baseUrl}/api/qstash/failure`,
+        headers: {
+          "Content-Type": "application/json",
+          "Upstash-Flow-Control-Key": FLOW_CONTROL.key,
+          "Upstash-Flow-Control-Value": `rate=${FLOW_CONTROL.rate},parallelism=${FLOW_CONTROL.parallelism},period=${FLOW_CONTROL.period}`,
+        },
+      });
+
+      // Update all jobs in this batch to scheduled
+      await updateBatchJobStatuses(
+        resetJobs.map((job) => ({
+          jobId: job.id,
+          status: "scheduled" as const,
+          metadata: { qstashMessageId: result.messageId },
+        }))
+      );
+
+      retriedCount += resetJobs.length;
+      console.log(`[QStash Scheduler] Batch retry for ${type}: ${resetJobs.length} jobs scheduled (${result.messageId})`);
+    } catch (error) {
+      console.error(`[QStash Scheduler] Failed to schedule retry batch for ${type}:`, error);
+
+      // Mark jobs as failed again
+      await updateBatchJobStatuses(
+        resetJobs.map((job) => ({
+          jobId: job.id,
+          status: "failed" as const,
+          metadata: { lastError: error instanceof Error ? error.message : "Retry scheduling failed" },
+        }))
+      );
+
+      failedCount += resetJobs.length;
+    }
+  }
+
+  console.log(`[QStash Scheduler] Retry complete for session ${sessionId}: ${retriedCount} retried, ${failedCount} failed`);
+
+  return {
+    retried: retriedCount,
+    failed: failedCount,
+    total: failedJobs.length,
+  };
+}
+
+/**
+ * Schedule a single job via QStash (used for retry)
+ * Returns the QStash message ID on success
+ */
+export async function scheduleSingleJobViaQStash(
+  job: EmailJob
+): Promise<{ messageId: string } | null> {
+  const baseUrl = getBaseUrl();
+  const delay = calculateDelaySeconds(job.scheduledFor);
+
+  // Build single-recipient payload matching batch format
+  const payload: QStashBatchPayload = {
+    isBatch: true,
+    batchId: job.batchId,
+    sessionId: job.sessionId,
+    type: job.type,
+    scheduledFor: job.scheduledFor,
+    recipients: [
+      {
+        jobId: job.id,
+        to: job.recipientEmail,
+        recipientName: job.recipientName,
+        role: "student", // Default, will be overridden by metadata if needed
+      },
+    ],
+    metadata: job.metadata,
+  };
+
+  try {
+    const result = await qstash.publishJSON({
+      url: `${baseUrl}/api/qstash/worker`,
+      body: payload,
+      delay: Math.max(0, delay), // Send immediately if delay is negative (past due)
+      retries: RETRY_CONFIG.retries,
+      callback: `${baseUrl}/api/qstash/callback`,
+      failureCallback: `${baseUrl}/api/qstash/failure`,
+      headers: {
+        "Content-Type": "application/json",
+        "Upstash-Flow-Control-Key": FLOW_CONTROL.key,
+        "Upstash-Flow-Control-Value": `rate=${FLOW_CONTROL.rate},parallelism=${FLOW_CONTROL.parallelism},period=${FLOW_CONTROL.period}`,
+      },
+    });
+
+    console.log(`[QStash Scheduler] Retry scheduled for job ${job.id}: ${result.messageId}`);
+    return { messageId: result.messageId };
+  } catch (error) {
+    console.error(`[QStash Scheduler] Failed to schedule retry for job ${job.id}:`, error);
+    throw error;
+  }
 }

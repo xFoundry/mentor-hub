@@ -38,6 +38,7 @@ import {
   Ban,
   Loader2,
   RefreshCw,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -71,10 +72,12 @@ const STATUS_COLORS: Record<EmailJobStatus, string> = {
 };
 
 export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
-  const { jobs, summary, total, isLoading, error, mutate, cancelJob } =
+  const { jobs, summary, total, isLoading, error, mutate, cancelJob, retryJob, retryAllFailed } =
     useSessionEmailJobs(sessionId);
 
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [isRetryingAll, setIsRetryingAll] = useState(false);
   const [confirmCancelJob, setConfirmCancelJob] = useState<EmailJob | null>(null);
 
   const handleCancelJob = async (job: EmailJob) => {
@@ -84,6 +87,24 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
     } finally {
       setCancellingJobId(null);
       setConfirmCancelJob(null);
+    }
+  };
+
+  const handleRetryJob = async (job: EmailJob) => {
+    setRetryingJobId(job.id);
+    try {
+      await retryJob(job.id);
+    } finally {
+      setRetryingJobId(null);
+    }
+  };
+
+  const handleRetryAllFailed = async () => {
+    setIsRetryingAll(true);
+    try {
+      await retryAllFailed();
+    } finally {
+      setIsRetryingAll(false);
     }
   };
 
@@ -137,15 +158,33 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
               <Mail className="h-4 w-4" />
               Email Notifications
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => mutate()}
-              className="h-8 w-8 p-0"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="sr-only">Refresh</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {failedCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetryAllFailed}
+                  disabled={isRetryingAll}
+                  className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  {isRetryingAll ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="mr-1 h-4 w-4" />
+                  )}
+                  Retry All ({failedCount})
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => mutate()}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="sr-only">Refresh</span>
+              </Button>
+            </div>
           </div>
           <CardDescription>
             Scheduled and sent email notifications for this session
@@ -197,7 +236,9 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
                     key={job.id}
                     job={job}
                     isCancelling={cancellingJobId === job.id}
+                    isRetrying={retryingJobId === job.id}
                     onCancel={() => setConfirmCancelJob(job)}
+                    onRetry={() => handleRetryJob(job)}
                   />
                 ))}
               </TableBody>
@@ -251,15 +292,20 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
 function EmailJobRow({
   job,
   isCancelling,
+  isRetrying,
   onCancel,
+  onRetry,
 }: {
   job: EmailJob;
   isCancelling: boolean;
+  isRetrying: boolean;
   onCancel: () => void;
+  onRetry: () => void;
 }) {
   const StatusIcon = STATUS_ICONS[job.status];
   const statusColor = STATUS_COLORS[job.status];
   const canCancel = job.status === "pending" || job.status === "scheduled";
+  const canRetry = job.status === "failed";
 
   const scheduledDate = new Date(job.scheduledFor);
   const isUpcoming = !isPast(scheduledDate);
@@ -312,38 +358,58 @@ function EmailJobRow({
         </div>
       </TableCell>
       <TableCell className="text-right">
-        {canCancel && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            disabled={isCancelling}
-            className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            {isCancelling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <XCircle className="mr-1 h-4 w-4" />
-                Cancel
-              </>
-            )}
-          </Button>
-        )}
-        {job.status === "completed" && job.resendEmailId && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-xs text-muted-foreground">
-                  {job.resendEmailId.slice(0, 8)}...
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Resend ID: {job.resendEmailId}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        <div className="flex items-center justify-end gap-2">
+          {canRetry && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRetry}
+              disabled={isRetrying}
+              className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              {isRetrying ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <RotateCcw className="mr-1 h-4 w-4" />
+                  Retry
+                </>
+              )}
+            </Button>
+          )}
+          {canCancel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+              disabled={isCancelling}
+              className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              {isCancelling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <XCircle className="mr-1 h-4 w-4" />
+                  Cancel
+                </>
+              )}
+            </Button>
+          )}
+          {job.status === "completed" && job.resendEmailId && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs text-muted-foreground">
+                    {job.resendEmailId.slice(0, 8)}...
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Resend ID: {job.resendEmailId}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
