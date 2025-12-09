@@ -76,7 +76,7 @@ export default function ChangelogPage() {
                   {/* Date and badge */}
                   <div className="flex items-center gap-2 mb-3">
                     <time
-                      dateTime={entry.date}
+                      dateTime={entry.date instanceof Date ? entry.date.toISOString() : entry.date}
                       className="text-sm font-medium text-muted-foreground"
                     >
                       {format(parseLocalDate(entry.date), "MMMM d, yyyy")}
