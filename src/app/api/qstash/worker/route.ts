@@ -203,8 +203,17 @@ async function handleBatchPayload(
   });
 
   // Build per-recipient results
-  // Resend batch returns array of results matching input order
-  const batchData = result.data as Array<{ id: string }> | null;
+  // Resend batch.send returns { data: { data: [...] } } - extract the inner array
+  // Handle both possible formats for compatibility
+  const rawData = result.data as any;
+  const batchData: Array<{ id: string }> | null = Array.isArray(rawData)
+    ? rawData
+    : (rawData?.data && Array.isArray(rawData.data) ? rawData.data : null);
+
+  console.log(`[QStash Worker] Extracted batch data:`, {
+    batchDataLength: batchData?.length || 0,
+    batchData: batchData,
+  });
 
   const results: BatchWorkerResult[] = recipients.map((recipient, index) => {
     const emailResult = batchData?.[index];
