@@ -86,6 +86,32 @@ export async function createJobBatch(
 }
 
 /**
+ * Create a single job (e.g., for resending a completed email)
+ */
+export async function createJob(job: EmailJob): Promise<EmailJob> {
+  const pipeline = redis.pipeline();
+
+  // Store job
+  pipeline.set(REDIS_KEYS.job(job.id), JSON.stringify(job));
+  pipeline.expire(REDIS_KEYS.job(job.id), REDIS_TTL.JOB);
+
+  // Add to batch job list
+  pipeline.rpush(REDIS_KEYS.batchJobs(job.batchId), job.id);
+
+  await pipeline.exec();
+
+  // Update batch total count
+  const batch = await getBatch(job.batchId);
+  if (batch) {
+    batch.totalJobs += 1;
+    batch.updatedAt = new Date().toISOString();
+    await redis.set(REDIS_KEYS.jobBatch(job.batchId), JSON.stringify(batch));
+  }
+
+  return job;
+}
+
+/**
  * Get a job by ID
  */
 export async function getJob(jobId: string): Promise<EmailJob | null> {

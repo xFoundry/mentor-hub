@@ -130,6 +130,30 @@ export function useSessionEmailJobs(sessionId?: string) {
     }
   };
 
+  /**
+   * Resend a completed email (creates a new job)
+   */
+  const resendJob = async (jobId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(
+        `/api/admin/emails/${jobId}/resend`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to resend email");
+      }
+
+      // Revalidate after resend
+      await mutate();
+      return true;
+    } catch (error) {
+      console.error("Failed to resend email job:", error);
+      return false;
+    }
+  };
+
   return {
     jobs: data?.jobs || [],
     summary: data?.summary || {
@@ -147,6 +171,7 @@ export function useSessionEmailJobs(sessionId?: string) {
     cancelJob,
     retryJob,
     retryAllFailed,
+    resendJob,
   };
 }
 

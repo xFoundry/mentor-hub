@@ -40,6 +40,7 @@ import {
   RefreshCw,
   RotateCcw,
   CalendarPlus,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -74,11 +75,12 @@ const STATUS_COLORS: Record<EmailJobStatus, string> = {
 };
 
 export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
-  const { jobs, summary, total, isLoading, error, mutate, cancelJob, retryJob, retryAllFailed } =
+  const { jobs, summary, total, isLoading, error, mutate, cancelJob, retryJob, retryAllFailed, resendJob } =
     useSessionEmailJobs(sessionId);
 
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [resendingJobId, setResendingJobId] = useState<string | null>(null);
   const [isRetryingAll, setIsRetryingAll] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [confirmCancelJob, setConfirmCancelJob] = useState<EmailJob | null>(null);
@@ -150,6 +152,20 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
       await retryAllFailed();
     } finally {
       setIsRetryingAll(false);
+    }
+  };
+
+  const handleResendJob = async (job: EmailJob) => {
+    setResendingJobId(job.id);
+    try {
+      const success = await resendJob(job.id);
+      if (success) {
+        toast.success(`Email resent to ${job.recipientEmail}`);
+      } else {
+        toast.error("Failed to resend email");
+      }
+    } finally {
+      setResendingJobId(null);
     }
   };
 
@@ -313,8 +329,10 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
                     job={job}
                     isCancelling={cancellingJobId === job.id}
                     isRetrying={retryingJobId === job.id}
+                    isResending={resendingJobId === job.id}
                     onCancel={() => setConfirmCancelJob(job)}
                     onRetry={() => handleRetryJob(job)}
+                    onResend={() => handleResendJob(job)}
                   />
                 ))}
               </TableBody>
@@ -393,19 +411,24 @@ function EmailJobRow({
   job,
   isCancelling,
   isRetrying,
+  isResending,
   onCancel,
   onRetry,
+  onResend,
 }: {
   job: EmailJob;
   isCancelling: boolean;
   isRetrying: boolean;
+  isResending: boolean;
   onCancel: () => void;
   onRetry: () => void;
+  onResend: () => void;
 }) {
   const StatusIcon = STATUS_ICONS[job.status];
   const statusColor = STATUS_COLORS[job.status];
   const canCancel = job.status === "pending" || job.status === "scheduled";
   const canRetry = job.status === "failed";
+  const canResend = job.status === "completed";
 
   const scheduledDate = new Date(job.scheduledFor);
   const isUpcoming = !isPast(scheduledDate);
@@ -459,6 +482,24 @@ function EmailJobRow({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
+          {canResend && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onResend}
+              disabled={isResending}
+              className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+            >
+              {isResending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="mr-1 h-4 w-4" />
+                  Resend
+                </>
+              )}
+            </Button>
+          )}
           {canRetry && (
             <Button
               variant="ghost"
