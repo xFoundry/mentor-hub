@@ -58,9 +58,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Trigger incremental sync
+    // Trigger incremental sync (full_sync=true means "sync all recent changes")
     const syncResult = await triggerSync({
-      fullSync: false, // Incremental sync only
+      fullSync: true,
     });
 
     const duration = Date.now() - startTime;
