@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { qstash, getBaseUrl, FLOW_CONTROL, RETRY_CONFIG } from "@/lib/qstash";
 import { redis, isRedisAvailable, REDIS_KEYS } from "@/lib/redis";
 import { isQStashSchedulerEnabled } from "@/lib/notifications/qstash-scheduler";
+import { updateBatchProgress } from "@/lib/notifications/job-store";
 
 export const runtime = "nodejs";
 
@@ -64,10 +65,12 @@ interface HealthCheckResult {
  * Run health checks on the email system
  * Query params:
  * - testPublish=true: Actually publish a test message to QStash (will be cancelled)
+ * - recalculate=true: Recalculate all batch statuses (useful after code changes)
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const testPublish = searchParams.get("testPublish") === "true";
+  const recalculate = searchParams.get("recalculate") === "true";
 
   const baseUrl = getBaseUrl();
   const result: HealthCheckResult = {
@@ -132,6 +135,16 @@ export async function GET(request: NextRequest) {
         activeBatchCount: activeBatches.length,
         dlqCount: dlqEntries.length,
       };
+
+      // Recalculate batch statuses if requested
+      if (recalculate) {
+        console.log(`[Health Check] Recalculating ${activeBatches.length} batch statuses...`);
+        for (const batchKey of activeBatches) {
+          const batchId = batchKey.replace("email:batch:", "");
+          await updateBatchProgress(batchId);
+        }
+        console.log(`[Health Check] Batch status recalculation complete`);
+      }
     } catch {
       // Stats are optional, don't fail health check
     }
