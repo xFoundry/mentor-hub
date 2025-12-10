@@ -3,6 +3,11 @@
  *
  * Schedules emails via QStash instead of Resend's scheduledAt API.
  * Provides background processing with progress tracking and retry handling.
+ *
+ * LOGGING LEVELS:
+ * - [QStash Scheduler] - Standard operational logs
+ * - [QStash Scheduler:DEBUG] - Detailed debug information
+ * - [QStash Scheduler:ERROR] - Error conditions
  */
 
 import { qstash, getBaseUrl, calculateDelaySeconds, FLOW_CONTROL, RETRY_CONFIG } from "@/lib/qstash";
@@ -94,13 +99,31 @@ export async function scheduleSessionEmailsViaQStash(
   session: Session,
   createdBy?: string
 ): Promise<{ batchId: string; jobCount: number } | null> {
+  const logPrefix = `[QStash Scheduler] Session ${session.id}:`;
+
   if (!session.scheduledStart) {
-    console.log("[QStash Scheduler] No scheduled start - skipping");
+    console.log(`${logPrefix} No scheduled start - skipping`);
     return null;
   }
 
   const baseUrl = getBaseUrl();
   const times = calculateScheduleTimes(session.scheduledStart, session.duration || 60);
+
+  // Log configuration for debugging
+  console.log(`${logPrefix} Configuration:`, {
+    baseUrl,
+    scheduledStart: session.scheduledStart,
+    duration: session.duration || 60,
+    sessionType: session.sessionType,
+    teamName: session.team?.[0]?.teamName,
+    qstashEnabled: isQStashSchedulerEnabled(),
+  });
+
+  console.log(`${logPrefix} Calculated schedule times:`, {
+    prep48h: times.prep48h?.toISOString(),
+    prep24h: times.prep24h?.toISOString(),
+    feedbackImmediate: times.feedbackImmediate?.toISOString(),
+  });
 
   // Get participants
   const mentors = getSessionMentors(session);
@@ -246,8 +269,32 @@ export async function scheduleSessionEmailsViaQStash(
   });
 
   // Batch publish to QStash
+  console.log(`${logPrefix} Publishing ${messages.length} QStash messages...`);
+
+  // Log each message being sent (for debugging)
+  messages.forEach((msg, idx) => {
+    const payload = msg.body as QStashBatchPayload;
+    console.log(`${logPrefix} Message ${idx + 1}:`, {
+      destination: msg.destination,
+      type: payload.type,
+      recipientCount: payload.recipients.length,
+      scheduledFor: payload.scheduledFor,
+      delay: msg.delay,
+      delayHuman: msg.delay ? `${Math.floor(msg.delay / 3600)}h ${Math.floor((msg.delay % 3600) / 60)}m` : "immediate",
+    });
+  });
+
   try {
     const results = await qstash.batchJSON(messages);
+
+    console.log(`${logPrefix} QStash batchJSON response:`, {
+      resultCount: results.length,
+      results: results.map((r: any, i: number) => ({
+        index: i,
+        messageId: r.messageId || "none",
+        error: r.error || "none",
+      })),
+    });
 
     // Update job statuses with QStash message IDs
     // Each QStash message covers multiple jobs in a group
@@ -264,7 +311,7 @@ export async function scheduleSessionEmailsViaQStash(
             metadata: { qstashMessageId: result.messageId },
           }))
         );
-        console.log(`[QStash Scheduler] Group ${group.type} (${group.jobs.length} jobs) scheduled: ${result.messageId}`);
+        console.log(`${logPrefix} Group ${group.type} (${group.jobs.length} jobs) scheduled with messageId: ${result.messageId}`);
       } else if (result.error) {
         // Mark all jobs in this group as failed
         await updateBatchJobStatuses(
@@ -274,15 +321,15 @@ export async function scheduleSessionEmailsViaQStash(
             metadata: { lastError: result.error || "Unknown error" },
           }))
         );
-        console.error(`[QStash Scheduler] Group ${group.type} failed to schedule:`, result.error);
+        console.error(`${logPrefix} Group ${group.type} FAILED:`, result.error);
       }
     }
 
-    console.log(`[QStash Scheduler] Batch ${batchId} published successfully (${messages.length} QStash messages for ${jobs.length} jobs)`);
+    console.log(`${logPrefix} Batch ${batchId} published successfully (${messages.length} QStash messages for ${jobs.length} jobs)`);
 
     return { batchId, jobCount: jobs.length };
   } catch (error) {
-    console.error("[QStash Scheduler] Batch publish failed:", error);
+    console.error(`${logPrefix} Batch publish FAILED:`, error);
 
     // Mark all jobs as failed
     await updateBatchJobStatuses(

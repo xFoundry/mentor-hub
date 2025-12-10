@@ -3696,3 +3696,106 @@ export async function checkExistingParticipation(
   };
 }
 
+// ====================
+// Email Scheduling Helper Functions
+// ====================
+
+/**
+ * Get upcoming sessions (scheduled in the future)
+ * Used for bulk email scheduling
+ */
+export async function getUpcomingSessions(cohortId?: string): Promise<Session[]> {
+  const now = new Date().toISOString();
+
+  const query = `
+    query GetUpcomingSessions {
+      sessions(
+        _order_by: { scheduledStart: "asc" }
+      ) {
+        id
+        sessionId
+        sessionType
+        scheduledStart
+        duration
+        status
+        meetingPlatform
+        meetingUrl
+        agenda
+        mentor {
+          id
+          fullName
+          email
+          headshot
+        }
+        sessionParticipants {
+          id
+          participantId
+          participantType
+          role
+          status
+          contact {
+            id
+            fullName
+            email
+            headshot
+          }
+        }
+        team {
+          id
+          teamName
+          cohorts {
+            id
+            shortName
+          }
+          members(
+            _filter: {
+              status: {_eq: "Active"}
+            }
+          ) {
+            id
+            contact {
+              id
+              fullName
+              email
+              headshot
+            }
+          }
+        }
+        cohort {
+          id
+          shortName
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ sessions: Session[] }>(query);
+  let sessions = result.sessions || [];
+
+  // Filter to only upcoming sessions
+  sessions = sessions.filter((s) => {
+    if (!s.scheduledStart) return false;
+    return new Date(s.scheduledStart) > new Date(now);
+  });
+
+  // Filter by cohort if provided
+  if (cohortId) {
+    sessions = sessions.filter((s) => s.cohort?.[0]?.id === cohortId);
+  }
+
+  // Filter to only scheduled sessions (not cancelled/completed)
+  sessions = sessions.filter((s) =>
+    !s.status || s.status === "Scheduled" || s.status === "In Progress"
+  );
+
+  return sessions;
+}
+
+/**
+ * Get a single session by ID with full details for email scheduling
+ */
+export async function getSessionById(sessionId: string): Promise<Session | null> {
+  const { sessions } = await getSessionDetail(sessionId);
+  return sessions[0] || null;
+}
+
