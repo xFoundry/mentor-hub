@@ -76,7 +76,14 @@ export function EmailJobStatusCard({
   );
 
   const isComplete = progress.status === "completed" || progress.status === "failed" || progress.status === "partial_failure";
+  const isScheduled = progress.status === "scheduled"; // Queued in QStash, waiting for delivery
   const hasErrors = progress.failed > 0;
+
+  // Don't show the card for scheduled batches - they're just waiting for their delivery time
+  // Only show when actively processing or complete
+  if (isScheduled) {
+    return null;
+  }
 
   return (
     <AnimatePresence>
@@ -222,9 +229,10 @@ function JobStatusBadge({ status }: { status: string }) {
  * Floating notification for all active jobs
  */
 export function ActiveJobsNotification() {
-  const { activeJobs, isPolling } = useJobStatus();
+  const { activeJobs } = useJobStatus();
 
-  // Only show jobs that are actively processing
+  // Only show jobs that are actively processing (not "scheduled" - those are just waiting)
+  // "scheduled" means jobs are queued in QStash waiting for their delivery time
   const activeProcessing = activeJobs.filter(
     job => job.status === "pending" || job.status === "in_progress"
   );

@@ -72,8 +72,9 @@ export interface EmailJob {
  * Batch status derived from individual job statuses
  */
 export type BatchStatus =
-  | "pending" // All jobs pending
-  | "in_progress" // Some jobs scheduled/processing
+  | "pending" // All jobs pending, not yet sent to QStash
+  | "scheduled" // Jobs queued in QStash, waiting for delivery time
+  | "in_progress" // Jobs actively being processed (sending emails)
   | "completed" // All jobs completed successfully
   | "partial_failure" // Some jobs failed, some completed
   | "failed"; // All jobs failed

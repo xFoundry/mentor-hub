@@ -233,7 +233,8 @@ export async function updateBatchProgress(batchId: string): Promise<void> {
   let failed = 0;
   let cancelled = 0;
   let pending = 0;
-  let inProgress = 0;
+  let scheduled = 0;
+  let processing = 0;
 
   for (const job of jobs) {
     if (!job) continue;
@@ -251,13 +252,19 @@ export async function updateBatchProgress(batchId: string): Promise<void> {
         pending++;
         break;
       case "scheduled":
+        scheduled++;
+        break;
       case "processing":
-        inProgress++;
+        processing++;
         break;
     }
   }
 
   // Determine batch status
+  // - "pending": Jobs created but not yet scheduled in QStash
+  // - "scheduled": All jobs are scheduled in QStash, waiting for delivery time
+  // - "in_progress": Jobs are actively being processed
+  // - "completed/failed/partial_failure": All jobs have final status
   let status: BatchStatus;
   const totalProcessed = completed + failed + cancelled;
 
@@ -270,8 +277,13 @@ export async function updateBatchProgress(batchId: string): Promise<void> {
     } else {
       status = "completed";
     }
-  } else if (inProgress > 0 || completed > 0) {
+  } else if (processing > 0) {
+    // Jobs are actively being sent
     status = "in_progress";
+  } else if (scheduled > 0 || completed > 0) {
+    // Jobs are scheduled (waiting in QStash) or some have completed
+    // This is NOT "in_progress" - emails are just waiting for their scheduled time
+    status = "scheduled" as BatchStatus;
   } else {
     status = "pending";
   }
