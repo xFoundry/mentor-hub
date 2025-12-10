@@ -55,7 +55,7 @@ async function renderEmail(
           sessionType: metadata?.sessionType || "Session",
           mentorName: metadata?.mentorNames?.[0] || "your mentor",
           sessionDate: metadata?.sessionDate || "",
-          sessionTime: "",
+          sessionTime: metadata?.sessionTime || "",
           hoursUntilSession: 48,
           sessionUrl: `${appUrl}/sessions/${sessionId}?tab=preparation`,
         })
@@ -70,7 +70,7 @@ async function renderEmail(
           sessionType: metadata?.sessionType || "Session",
           mentorName: metadata?.mentorNames?.[0] || "your mentor",
           sessionDate: metadata?.sessionDate || "",
-          sessionTime: "",
+          sessionTime: metadata?.sessionTime || "",
           hoursUntilSession: 24,
           sessionUrl: `${appUrl}/sessions/${sessionId}?tab=preparation`,
         })
@@ -85,7 +85,7 @@ async function renderEmail(
           sessionType: metadata?.sessionType || "Session",
           mentorName: "your team",
           sessionDate: metadata?.sessionDate || "",
-          sessionTime: "",
+          sessionTime: metadata?.sessionTime || "",
           hoursUntilSession: 24,
           sessionUrl: `${appUrl}/sessions/${sessionId}?tab=preparation`,
         })
@@ -109,7 +109,7 @@ async function renderEmail(
           sessionType: metadata?.sessionType || "Session",
           otherPartyName,
           sessionDate: metadata?.sessionDate || "",
-          sessionTime: "",
+          sessionTime: metadata?.sessionTime || "",
           sessionUrl: `${appUrl}/sessions/${sessionId}?tab=feedback`,
         })
       );

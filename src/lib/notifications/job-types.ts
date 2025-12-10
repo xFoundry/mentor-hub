@@ -61,6 +61,7 @@ export interface EmailJob {
   metadata?: {
     sessionType?: string;
     sessionDate?: string;
+    sessionTime?: string;
     teamName?: string;
     mentorNames?: string[];
     prepFormUrl?: string;

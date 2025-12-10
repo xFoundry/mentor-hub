@@ -158,6 +158,7 @@ export async function scheduleSessionEmailsViaQStash(
         metadata: {
           sessionType: sessionName,
           sessionDate,
+          sessionTime,
           teamName,
           mentorNames,
         },
@@ -175,6 +176,7 @@ export async function scheduleSessionEmailsViaQStash(
         metadata: {
           sessionType: sessionName,
           sessionDate,
+          sessionTime,
           teamName,
           mentorNames,
         },
@@ -201,6 +203,7 @@ export async function scheduleSessionEmailsViaQStash(
         metadata: {
           sessionType: sessionName,
           sessionDate,
+          sessionTime,
           teamName,
           mentorNames,
         },
