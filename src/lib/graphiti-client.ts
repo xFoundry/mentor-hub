@@ -13,18 +13,18 @@ const GRAPHITI_API_SECRET = process.env.GRAPHITI_API_SECRET;
 
 /**
  * Generate HMAC-SHA256 signature for request authentication
+ *
+ * Format: HMAC-SHA256(timestamp + "." + body, secret)
  */
 function generateSignature(
   timestamp: string,
-  method: string,
-  path: string,
   body: string
 ): string {
   if (!GRAPHITI_API_SECRET) {
     throw new Error("GRAPHITI_API_SECRET is not configured");
   }
 
-  const payload = `${timestamp}:${method}:${path}:${body}`;
+  const payload = `${timestamp}.${body}`;
   return crypto
     .createHmac("sha256", GRAPHITI_API_SECRET)
     .update(payload)
@@ -49,7 +49,7 @@ async function graphitiFetch<T>(
   const { method = "GET", body, timeout = 30000 } = options;
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const bodyString = body ? JSON.stringify(body) : "";
-  const signature = generateSignature(timestamp, method, endpoint, bodyString);
+  const signature = generateSignature(timestamp, bodyString);
 
   const url = `${GRAPHITI_API_URL}${endpoint}`;
 
