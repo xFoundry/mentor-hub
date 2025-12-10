@@ -108,11 +108,22 @@ export async function POST(request: NextRequest) {
     // QStash callback format includes the original body and response
     const callbackData = JSON.parse(body);
 
+    // Log the raw callback structure for debugging
+    console.log(`[QStash Callback] Raw callback structure:`, {
+      hasSourceBody: !!callbackData.sourceBody,
+      hasBody: !!callbackData.body,
+      bodyType: typeof callbackData.body,
+      hasSourceHeader: !!callbackData.sourceHeader,
+      status: callbackData.status,
+      keys: Object.keys(callbackData),
+    });
+
     // The original job payload is in sourceBody (base64 encoded)
     let originalPayload: QStashCallbackPayload["body"] | QStashBatchPayload;
     if (callbackData.sourceBody) {
       const decodedBody = Buffer.from(callbackData.sourceBody, "base64").toString("utf-8");
       originalPayload = JSON.parse(decodedBody);
+      console.log(`[QStash Callback] Decoded sourceBody - isBatch: ${(originalPayload as any).isBatch}`);
     } else if (callbackData.body) {
       // Fallback for different callback formats
       originalPayload = typeof callbackData.body === "string"
@@ -123,14 +134,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No payload found" }, { status: 400 });
     }
 
-    // Parse the worker response
+    // Parse the worker response - it's in the 'body' field (the worker's HTTP response body)
     let workerResponse: any = {};
     if (callbackData.body) {
       try {
         workerResponse = typeof callbackData.body === "string"
           ? JSON.parse(callbackData.body)
           : callbackData.body;
-      } catch {
+        console.log(`[QStash Callback] Worker response:`, {
+          success: workerResponse.success,
+          isBatch: workerResponse.isBatch,
+          hasResults: !!workerResponse.results,
+          resultsCount: workerResponse.results?.length || 0,
+        });
+      } catch (parseError) {
+        console.error("[QStash Callback] Failed to parse worker response:", parseError);
         // Response parsing failed, continue with empty response
       }
     }

@@ -179,7 +179,16 @@ async function handleBatchPayload(
   );
 
   // Send batch via Resend
+  console.log(`[QStash Worker] Sending ${emails.length} emails via Resend batch API...`);
   const result = await resend.batch.send(emails);
+
+  // Log the full Resend response for debugging
+  console.log(`[QStash Worker] Resend batch response:`, {
+    hasData: !!result.data,
+    dataLength: Array.isArray(result.data) ? result.data.length : 0,
+    hasError: !!result.error,
+    error: result.error,
+  });
 
   // Build per-recipient results
   // Resend batch returns array of results matching input order
@@ -188,6 +197,14 @@ async function handleBatchPayload(
   const results: BatchWorkerResult[] = recipients.map((recipient, index) => {
     const emailResult = batchData?.[index];
     const hasError = result.error || !emailResult?.id;
+
+    if (hasError) {
+      console.log(`[QStash Worker] Email failed for ${recipient.to}:`, {
+        jobId: recipient.jobId,
+        error: result.error?.message || "No email ID returned",
+        emailResult,
+      });
+    }
 
     return {
       jobId: recipient.jobId,
