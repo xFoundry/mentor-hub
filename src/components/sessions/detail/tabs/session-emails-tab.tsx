@@ -39,8 +39,10 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
+  CalendarPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   useSessionEmailJobs,
   getStatusLabel,
@@ -78,7 +80,50 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [isRetryingAll, setIsRetryingAll] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
   const [confirmCancelJob, setConfirmCancelJob] = useState<EmailJob | null>(null);
+  const [confirmSchedule, setConfirmSchedule] = useState(false);
+
+  const handleScheduleEmails = async (force: boolean = false) => {
+    setIsScheduling(true);
+    setConfirmSchedule(false);
+    try {
+      const response = await fetch("/api/admin/emails/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          force,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to schedule emails");
+      }
+
+      if (data.success) {
+        const result = data.results?.[0];
+        if (result?.success) {
+          toast.success(`Scheduled ${result.jobCount} emails for this session`);
+        } else if (result?.skipped) {
+          toast.info(result.skipReason || "Session was skipped");
+        } else {
+          toast.error(result?.error || "Failed to schedule emails");
+        }
+      } else {
+        toast.error(data.message || "Failed to schedule emails");
+      }
+
+      // Refresh the jobs list
+      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to schedule emails");
+    } finally {
+      setIsScheduling(false);
+    }
+  };
 
   const handleCancelJob = async (job: EmailJob) => {
     setCancellingJobId(job.id);
@@ -110,7 +155,6 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
 
   // Calculate stats for display
   const pendingCount = summary.pending + summary.scheduled;
-  const activeCount = summary.processing;
   const completedCount = summary.completed;
   const failedCount = summary.failed;
   const cancelledCount = summary.cancelled;
@@ -159,6 +203,38 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
               Email Notifications
             </CardTitle>
             <div className="flex items-center gap-2">
+              {/* Schedule/Reschedule Emails Button */}
+              {total === 0 ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => handleScheduleEmails(false)}
+                  disabled={isScheduling}
+                  className="h-8"
+                >
+                  {isScheduling ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CalendarPlus className="mr-1 h-4 w-4" />
+                  )}
+                  Schedule Emails
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmSchedule(true)}
+                  disabled={isScheduling}
+                  className="h-8"
+                >
+                  {isScheduling ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CalendarPlus className="mr-1 h-4 w-4" />
+                  )}
+                  Reschedule
+                </Button>
+              )}
               {failedCount > 0 && (
                 <Button
                   variant="outline"
@@ -278,6 +354,30 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Cancel Email
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reschedule Confirmation Dialog */}
+      <AlertDialog
+        open={confirmSchedule}
+        onOpenChange={setConfirmSchedule}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reschedule Emails?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel all existing scheduled emails for this session and create new ones.
+              Any emails already sent will not be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleScheduleEmails(true)}
+            >
+              Reschedule Emails
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
