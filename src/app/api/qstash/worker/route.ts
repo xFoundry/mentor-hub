@@ -180,14 +180,26 @@ async function handleBatchPayload(
 
   // Send batch via Resend
   console.log(`[QStash Worker] Sending ${emails.length} emails via Resend batch API...`);
+  console.log(`[QStash Worker] Email details:`, emails.map(e => ({
+    to: e.to,
+    subject: e.subject?.substring(0, 50),
+    from: e.from,
+    htmlLength: e.html?.length,
+  })));
+
   const result = await resend.batch.send(emails);
 
   // Log the full Resend response for debugging
   console.log(`[QStash Worker] Resend batch response:`, {
     hasData: !!result.data,
+    dataType: typeof result.data,
     dataLength: Array.isArray(result.data) ? result.data.length : 0,
+    data: result.data, // Log actual data for debugging
     hasError: !!result.error,
-    error: result.error,
+    errorType: typeof result.error,
+    errorMessage: result.error?.message,
+    errorName: result.error?.name,
+    error: JSON.stringify(result.error), // Stringify to see all properties
   });
 
   // Build per-recipient results

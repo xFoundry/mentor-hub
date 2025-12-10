@@ -134,21 +134,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No payload found" }, { status: 400 });
     }
 
-    // Parse the worker response - it's in the 'body' field (the worker's HTTP response body)
+    // Parse the worker response - it's in the 'body' field (base64 encoded)
     let workerResponse: any = {};
     if (callbackData.body) {
       try {
-        workerResponse = typeof callbackData.body === "string"
-          ? JSON.parse(callbackData.body)
-          : callbackData.body;
+        // QStash callback body is base64 encoded
+        const decodedResponse = Buffer.from(callbackData.body, "base64").toString("utf-8");
+        console.log(`[QStash Callback] Decoded worker response body: ${decodedResponse.substring(0, 500)}`);
+        workerResponse = JSON.parse(decodedResponse);
         console.log(`[QStash Callback] Worker response:`, {
           success: workerResponse.success,
           isBatch: workerResponse.isBatch,
           hasResults: !!workerResponse.results,
           resultsCount: workerResponse.results?.length || 0,
+          results: workerResponse.results?.slice(0, 3), // Log first 3 results for debugging
         });
       } catch (parseError) {
         console.error("[QStash Callback] Failed to parse worker response:", parseError);
+        console.error("[QStash Callback] Raw body value:", callbackData.body?.substring?.(0, 200));
         // Response parsing failed, continue with empty response
       }
     }
