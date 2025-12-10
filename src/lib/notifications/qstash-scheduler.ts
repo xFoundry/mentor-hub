@@ -254,7 +254,7 @@ export async function scheduleSessionEmailsViaQStash(
     const delay = calculateDelaySeconds(group.scheduledFor);
 
     return {
-      destination: `${baseUrl}/api/qstash/worker`,
+      url: `${baseUrl}/api/qstash/worker`,
       body: payload, // batchJSON will stringify this automatically
       delay,
       retries: RETRY_CONFIG.retries,
@@ -275,7 +275,7 @@ export async function scheduleSessionEmailsViaQStash(
   messages.forEach((msg, idx) => {
     const payload = msg.body as QStashBatchPayload;
     console.log(`${logPrefix} Message ${idx + 1}:`, {
-      destination: msg.destination,
+      url: msg.url,
       type: payload.type,
       recipientCount: payload.recipients.length,
       scheduledFor: payload.scheduledFor,
