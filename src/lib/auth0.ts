@@ -32,8 +32,8 @@ export const auth0 = new Auth0Client({
   // Session configuration
   session: {
     rolling: true,
-    absoluteDuration: 60 * 60 * 24, // 24 hours
-    inactivityDuration: 60 * 60 * 2, // 2 hours
+    absoluteDuration: 60 * 60 * 24 * 7, // 7 days
+    inactivityDuration: 60 * 60 * 8, // 8 hours of inactivity before logout
     cookie: {
       name: "mentor_hub_session", // Unique name to avoid conflicts with other localhost apps
     },
