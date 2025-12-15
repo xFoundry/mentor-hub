@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -211,14 +211,14 @@ const ENDPOINT_GROUPS: Record<string, { title: string; description: string; endp
         },
       },
       {
-        name: "Get Entity",
-        description: "Get details for a specific entity by name",
-        endpoint: "/query/entity",
+        name: "Search Entities",
+        description: "Search for entities (people, teams, docs, etc.) by name/summary text",
+        endpoint: "/query/entities",
         method: "POST",
         requiresInput: {
-          key: "name",
-          label: "Entity Name",
-          placeholder: "Enter entity name...",
+          key: "search_text",
+          label: "Search Text",
+          placeholder: "Enter name or keywords...",
         },
       },
     ],
@@ -243,7 +243,7 @@ export default function ApiToolsPage() {
   }, [userType, userLoading, router]);
 
   // Fetch collections when switching to outline tab
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     if (collections.length > 0 || collectionsLoading) return;
 
     setCollectionsLoading(true);
@@ -260,14 +260,14 @@ export default function ApiToolsPage() {
     } finally {
       setCollectionsLoading(false);
     }
-  };
+  }, [collections.length, collectionsLoading]);
 
   // Fetch collections when outline tab is active
   useEffect(() => {
     if (activeTab === "outlineSync") {
-      fetchCollections();
+      void fetchCollections();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchCollections]);
 
   const callEndpoint = async (endpoint: EndpointConfig) => {
     const key = `${endpoint.method}:${endpoint.endpoint}`;

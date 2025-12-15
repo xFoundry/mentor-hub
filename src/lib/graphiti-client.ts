@@ -152,20 +152,25 @@ export async function getSyncStatus(): Promise<{
 // ============================================================================
 
 export interface SearchResult {
-  nodes: Array<{
+  entities: Array<{
     uuid: string;
     name: string;
-    labels: string[];
+    entity_type: string;
     summary?: string;
+    attributes?: Record<string, unknown>;
   }>;
-  edges: Array<{
+  facts: Array<{
     uuid: string;
     fact: string;
-    name: string;
     source_entity: string;
     target_entity: string;
+    relationship_type?: string;
+    source_name?: string;
+    target_name?: string;
     created_at?: string;
   }>;
+  query_time_ms?: number;
+  total_results?: number;
 }
 
 export interface SearchOptions {
