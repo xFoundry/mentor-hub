@@ -45,6 +45,35 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "des
 };
 
 /**
+ * Format a date as relative time (e.g., "2 days ago", "3 weeks ago")
+ */
+function formatRelativeDate(dateString: string | undefined): string {
+  if (!dateString) return "-";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+
+  if (diffSecs < 60) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffWeeks < 4) return `${diffWeeks}w ago`;
+  if (diffMonths < 12) return `${diffMonths}mo ago`;
+  return `${diffYears}y ago`;
+}
+
+/**
  * Get display name for a contact
  * Falls back to email username if no name available
  */
@@ -296,6 +325,30 @@ export function createContactTableColumns({
     },
     filterFn: (row, id, value: string[]) => {
       return value.includes(row.getValue(id) as string);
+    },
+  });
+
+  // Last Updated column
+  columns.push({
+    accessorKey: "lastModified",
+    header: ({ column }) => (
+      <TableColumnHeader column={column} title="Updated" />
+    ),
+    size: 100,
+    minSize: 80,
+    maxSize: 140,
+    cell: ({ row }) => {
+      const lastModified = row.original.lastModified;
+      const formatted = formatRelativeDate(lastModified);
+
+      return (
+        <span
+          className="text-sm text-muted-foreground"
+          title={lastModified ? new Date(lastModified).toLocaleString() : undefined}
+        >
+          {formatted}
+        </span>
+      );
     },
   });
 

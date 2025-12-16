@@ -16,23 +16,28 @@ export function ContactTableSkeleton({ rows = 10, className }: ContactTableSkele
           {/* Header */}
           <thead className="sticky top-0 z-10 bg-muted/95">
             <tr className="border-b">
-              <th className="h-12 px-4 text-left" style={{ width: "30%" }}>
+              <th className="h-12 px-4 text-left" style={{ width: "26%" }}>
                 <Skeleton className="h-4 w-20" />
               </th>
-              <th className="h-12 px-4 text-left" style={{ width: "12%" }}>
+              <th className="h-12 px-4 text-left" style={{ width: "10%" }}>
                 <Skeleton className="h-4 w-12" />
               </th>
-              <th className="h-12 px-4 text-left" style={{ width: "15%" }}>
+              <th className="h-12 px-4 text-left" style={{ width: "13%" }}>
                 <Skeleton className="h-4 w-14" />
               </th>
-              <th className="h-12 px-4 text-left" style={{ width: "20%" }}>
+              <th className="h-12 px-4 text-left" style={{ width: "17%" }}>
                 <Skeleton className="h-4 w-16" />
               </th>
-              <th className="h-12 px-4 text-left" style={{ width: "12%" }}>
+              <th className="h-12 px-4 text-left" style={{ width: "10%" }}>
                 <Skeleton className="h-4 w-14" />
               </th>
-              <th className="h-12 px-4 text-left" style={{ width: "11%" }}>
+              <th className="h-12 px-4 text-left" style={{ width: "10%" }}>
+                <Skeleton className="h-4 w-16" />
+              </th>
+              <th className="h-12 px-4 text-left" style={{ width: "9%" }}>
                 <Skeleton className="h-4 w-12" />
+              </th>
+              <th className="h-12 px-4 text-left" style={{ width: "5%" }}>
               </th>
             </tr>
           </thead>
@@ -42,7 +47,7 @@ export function ContactTableSkeleton({ rows = 10, className }: ContactTableSkele
             {Array.from({ length: rows }).map((_, index) => (
               <tr key={index} className="border-b">
                 {/* Contact (Avatar + Name + Email) */}
-                <td className="px-4 py-3" style={{ width: "30%" }}>
+                <td className="px-4 py-3" style={{ width: "26%" }}>
                   <div className="flex items-center gap-3">
                     <Skeleton className="h-9 w-9 rounded-full flex-shrink-0" />
                     <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -53,17 +58,17 @@ export function ContactTableSkeleton({ rows = 10, className }: ContactTableSkele
                 </td>
 
                 {/* Type */}
-                <td className="px-4 py-3" style={{ width: "12%" }}>
+                <td className="px-4 py-3" style={{ width: "10%" }}>
                   <Skeleton className="h-5 w-16 rounded-full" />
                 </td>
 
                 {/* Phone */}
-                <td className="px-4 py-3" style={{ width: "15%" }}>
+                <td className="px-4 py-3" style={{ width: "13%" }}>
                   <Skeleton className="h-4 w-24" />
                 </td>
 
                 {/* Expertise */}
-                <td className="px-4 py-3" style={{ width: "20%" }}>
+                <td className="px-4 py-3" style={{ width: "17%" }}>
                   <div className="flex gap-1">
                     <Skeleton className="h-5 w-16 rounded-full" />
                     <Skeleton className="h-5 w-12 rounded-full" />
@@ -71,16 +76,26 @@ export function ContactTableSkeleton({ rows = 10, className }: ContactTableSkele
                 </td>
 
                 {/* Status */}
-                <td className="px-4 py-3" style={{ width: "12%" }}>
+                <td className="px-4 py-3" style={{ width: "10%" }}>
                   <Skeleton className="h-5 w-14 rounded-full" />
                 </td>
 
+                {/* Updated */}
+                <td className="px-4 py-3" style={{ width: "10%" }}>
+                  <Skeleton className="h-4 w-16" />
+                </td>
+
                 {/* Links */}
-                <td className="px-4 py-3" style={{ width: "11%" }}>
+                <td className="px-4 py-3" style={{ width: "9%" }}>
                   <div className="flex gap-1">
                     <Skeleton className="h-7 w-7 rounded" />
                     <Skeleton className="h-7 w-7 rounded" />
                   </div>
+                </td>
+
+                {/* Actions */}
+                <td className="px-4 py-3" style={{ width: "5%" }}>
+                  <Skeleton className="h-8 w-8 rounded" />
                 </td>
               </tr>
             ))}

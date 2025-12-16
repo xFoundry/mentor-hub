@@ -12,7 +12,8 @@ import { auth0 } from "@/lib/auth0";
  * - Session management for all routes
  *
  * Protected routes: /dashboard, /sessions, /tasks, /teams, /mentors,
- *                   /students, /feedback, /settings, /impersonate
+ *                   /students, /feedback, /settings, /impersonate,
+ *                   /contacts, /changelog, /admin
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -68,6 +69,9 @@ export async function middleware(request: NextRequest) {
     "/feedback",
     "/settings",
     "/impersonate",
+    "/contacts",
+    "/changelog",
+    "/admin",
   ];
   const isProtectedRoute = protectedPaths.some((path) =>
     pathname.startsWith(path)
