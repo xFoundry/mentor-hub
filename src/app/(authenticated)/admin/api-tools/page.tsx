@@ -38,6 +38,9 @@ import {
   Users,
   Trash2,
   Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useUserType } from "@/hooks/use-user-type";
@@ -295,6 +298,12 @@ const COGNEE_ENDPOINT_GROUPS: Record<string, { title: string; description: strin
         body: { mode: "simple", run_cognify: true, run_memify: false },
       },
       {
+        name: "Run Memify Only",
+        description: "Enrich existing graph with derived facts (use after cognify succeeded but memify failed)",
+        endpoint: "/sync/memify",
+        method: "POST",
+      },
+      {
         name: "List Sync Jobs",
         description: "List all sync jobs and their statuses",
         endpoint: "/sync/jobs",
@@ -308,9 +317,10 @@ const COGNEE_ENDPOINT_GROUPS: Record<string, { title: string; description: strin
     endpoints: [
       {
         name: "Graph Search",
-        description: "Search using graph completion (relationships + LLM)",
+        description: "Search using graph completion (saves interaction for feedback)",
         endpoint: "/search",
         method: "POST",
+        body: { save_interaction: true },
         requiresInput: {
           key: "query",
           label: "Search Query",
@@ -319,7 +329,7 @@ const COGNEE_ENDPOINT_GROUPS: Record<string, { title: string; description: strin
       },
       {
         name: "Natural Language Query",
-        description: "Ask a question and get a synthesized answer with sources",
+        description: "Ask a question and get a synthesized answer (auto-saves for feedback)",
         endpoint: "/query",
         method: "POST",
         requiresInput: {
@@ -398,6 +408,47 @@ const COGNEE_ENDPOINT_GROUPS: Record<string, { title: string; description: strin
       },
     ],
   },
+  feedback: {
+    title: "Feedback System",
+    description: "Provide feedback to improve search quality over time",
+    endpoints: [
+      {
+        name: "Submit Feedback",
+        description: "Submit detailed feedback on recent search results (requires save_interaction=true on search)",
+        endpoint: "/feedback/submit",
+        method: "POST",
+        requiresInput: {
+          key: "feedback",
+          label: "Feedback Text",
+          placeholder: "The results were helpful and accurate...",
+        },
+      },
+      {
+        name: "Thumbs Up with Comment",
+        description: "Positive feedback with optional comment",
+        endpoint: "/feedback/thumbs",
+        method: "POST",
+        body: { positive: true },
+        requiresInput: {
+          key: "comment",
+          label: "Comment (optional)",
+          placeholder: "What was helpful about the results?",
+        },
+      },
+      {
+        name: "Thumbs Down with Comment",
+        description: "Negative feedback with optional comment",
+        endpoint: "/feedback/thumbs",
+        method: "POST",
+        body: { positive: false },
+        requiresInput: {
+          key: "comment",
+          label: "Comment (optional)",
+          placeholder: "What was wrong or missing?",
+        },
+      },
+    ],
+  },
 };
 
 // Tab icons mapping
@@ -410,6 +461,7 @@ const TAB_ICONS: Record<string, React.ReactNode> = {
   search: <Search className="h-4 w-4" />,
   recommendations: <Users className="h-4 w-4" />,
   graph: <Sparkles className="h-4 w-4" />,
+  feedback: <RefreshCw className="h-4 w-4" />,
 };
 
 export default function ApiToolsPage() {
@@ -422,6 +474,8 @@ export default function ApiToolsPage() {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [collections, setCollections] = useState<OutlineCollection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(false);
+  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
+  const [feedbackStatus, setFeedbackStatus] = useState<Record<string, "idle" | "submitting" | "success" | "error">>({});
 
   // Get current endpoint groups based on service
   const endpointGroups = activeService === "graphiti" ? GRAPHITI_ENDPOINT_GROUPS : COGNEE_ENDPOINT_GROUPS;
@@ -546,6 +600,42 @@ export default function ApiToolsPage() {
   const getResponseForEndpoint = (endpoint: EndpointConfig): ApiResponse | undefined => {
     const key = `${activeService}:${endpoint.method}:${endpoint.endpoint}`;
     return responses[key];
+  };
+
+  // Submit feedback for a search result
+  const submitFeedback = async (endpointKey: string, positive: boolean, comment?: string) => {
+    setFeedbackStatus((prev) => ({ ...prev, [endpointKey]: "submitting" }));
+
+    try {
+      const response = await fetch("/api/admin/cognee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint: "/feedback/thumbs",
+          method: "POST",
+          body: { positive, comment: comment || undefined },
+        }),
+      });
+
+      if (response.ok) {
+        setFeedbackStatus((prev) => ({ ...prev, [endpointKey]: "success" }));
+        toast.success(positive ? "Positive feedback submitted!" : "Feedback submitted - we'll improve!");
+        // Clear feedback input after success
+        setFeedbackInputs((prev) => ({ ...prev, [endpointKey]: "" }));
+      } else {
+        setFeedbackStatus((prev) => ({ ...prev, [endpointKey]: "error" }));
+        toast.error("Failed to submit feedback");
+      }
+    } catch {
+      setFeedbackStatus((prev) => ({ ...prev, [endpointKey]: "error" }));
+      toast.error("Failed to submit feedback");
+    }
+  };
+
+  // Check if endpoint is a search endpoint that should show feedback
+  const isSearchEndpoint = (endpoint: EndpointConfig) => {
+    return activeService === "cognee" &&
+      (endpoint.endpoint === "/search" || endpoint.endpoint === "/query");
   };
 
   if (userLoading) {
@@ -762,6 +852,55 @@ export default function ApiToolsPage() {
                                   : response.error}
                               </pre>
                             </ScrollArea>
+
+                            {/* Inline feedback for search results */}
+                            {response.success && isSearchEndpoint(endpoint) && (
+                              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">Was this helpful?</span>
+                                  {feedbackStatus[key] === "success" && (
+                                    <Badge variant="outline" className="text-green-600 border-green-600">
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      Feedback sent
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => submitFeedback(key, true, feedbackInputs[key])}
+                                    disabled={feedbackStatus[key] === "submitting"}
+                                    className="gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  >
+                                    <ThumbsUp className="h-4 w-4" />
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => submitFeedback(key, false, feedbackInputs[key])}
+                                    disabled={feedbackStatus[key] === "submitting"}
+                                    className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <ThumbsDown className="h-4 w-4" />
+                                    No
+                                  </Button>
+                                  <Input
+                                    placeholder="Optional: Add details..."
+                                    value={feedbackInputs[key] || ""}
+                                    onChange={(e) =>
+                                      setFeedbackInputs((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                      }))
+                                    }
+                                    className="flex-1 h-8 text-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
