@@ -3456,6 +3456,47 @@ export async function getAllContacts(): Promise<{ contacts: Contact[] }> {
 }
 
 /**
+ * Get a single contact by ID (for polling/refresh)
+ */
+export async function getContactById(contactId: string): Promise<Contact | null> {
+  const query = `
+    query GetContactById($id: String!) {
+      contacts(id: $id) {
+        id
+        fullName
+        firstName
+        lastName
+        email
+        phone
+        bio
+        type
+        webflowStatus
+        linkedIn
+        gitHub
+        websiteUrl
+        expertise
+        headshot
+        profileVisible
+        created
+        lastModified
+        roles {
+          id
+          roleId
+          jobTitle
+          organization {
+            id
+            organizationName
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ contacts: Contact[] }>(query, { id: contactId });
+  return result.contacts?.[0] || null;
+}
+
+/**
  * Create a new contact record
  */
 export async function createContact(input: {

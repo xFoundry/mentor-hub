@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -37,7 +37,8 @@ import {
 import { type UploadedFile } from "@/components/ui/file-upload";
 import { useUploadFiles } from "@better-upload/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Save, UserPlus, Check, X, ChevronDown, Upload, Trash2, User, Building2, Briefcase } from "lucide-react";
+import { Loader2, Save, UserPlus, Check, X, ChevronDown, Upload, Trash2, User, Building2, Briefcase, AlertTriangle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { Contact, Role, Organization } from "@/types/schema";
@@ -46,7 +47,7 @@ import {
   WEBFLOW_STATUS_OPTIONS,
   EXPERTISE_OPTIONS,
 } from "@/hooks/use-contacts";
-import { getAllOrganizations, updateRole } from "@/lib/baseql";
+import { getAllOrganizations, updateRole, getContactById } from "@/lib/baseql";
 import { toast } from "sonner";
 
 interface ContactEditSheetProps {
@@ -430,6 +431,77 @@ export function ContactEditSheet({
   const [organizations, setOrganizations] = useState<Array<{ id: string; organizationName?: string }>>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
 
+  // External change detection
+  const [externalChangeDetected, setExternalChangeDetected] = useState(false);
+  const [latestContact, setLatestContact] = useState<Contact | null>(null);
+  const initialLastModifiedRef = useRef<string | undefined>(undefined);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Poll for changes while editing (every 10 seconds)
+  useEffect(() => {
+    if (!open || !isEditMode || !contact?.id) {
+      // Clear polling when sheet closes
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      setExternalChangeDetected(false);
+      setLatestContact(null);
+      return;
+    }
+
+    // Store the initial lastModified value
+    initialLastModifiedRef.current = contact.lastModified;
+
+    const pollForChanges = async () => {
+      try {
+        const freshContact = await getContactById(contact.id);
+        if (freshContact && freshContact.lastModified !== initialLastModifiedRef.current) {
+          setExternalChangeDetected(true);
+          setLatestContact(freshContact);
+        }
+      } catch (error) {
+        // Silently ignore polling errors
+        console.error("Error polling for contact changes:", error);
+      }
+    };
+
+    // Poll every 10 seconds
+    pollIntervalRef.current = setInterval(pollForChanges, 10000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [open, isEditMode, contact?.id, contact?.lastModified]);
+
+  // Handle refreshing the form with latest data
+  const handleRefreshFromServer = useCallback(() => {
+    if (!latestContact) return;
+
+    setFirstName(latestContact.firstName || "");
+    setLastName(latestContact.lastName || "");
+    setEmail(latestContact.email || "");
+    setPhone(latestContact.phone || "");
+    setBio(latestContact.bio || "");
+    setType(latestContact.type || "");
+    setExpertise(latestContact.expertise || []);
+    setLinkedIn(latestContact.linkedIn || "");
+    setGitHub(latestContact.gitHub || "");
+    setWebsiteUrl(latestContact.websiteUrl || "");
+    setWebflowStatus(latestContact.webflowStatus || "");
+    setHeadshot(headshotToUploadedFile(latestContact.headshot));
+
+    // Update the reference to the new lastModified
+    initialLastModifiedRef.current = latestContact.lastModified;
+    setExternalChangeDetected(false);
+    setLatestContact(null);
+
+    toast.success("Form refreshed with latest data");
+  }, [latestContact]);
+
   // Fetch organizations when sheet opens in edit mode with roles
   useEffect(() => {
     if (open && isEditMode && contact?.roles && contact.roles.length > 0) {
@@ -580,6 +652,28 @@ export function ContactEditSheet({
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 py-4 px-6">
+          {/* External change warning */}
+          {externalChangeDetected && (
+            <Alert variant="destructive" className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="flex items-center justify-between gap-2">
+                <span className="text-amber-800 dark:text-amber-200">
+                  This contact was modified by someone else.
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshFromServer}
+                  className="shrink-0"
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Refresh
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Basic Info Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-muted-foreground">
