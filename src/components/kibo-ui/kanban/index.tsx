@@ -6,9 +6,12 @@ import type {
   DragEndEvent,
   DragOverEvent,
   DragStartEvent,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import {
   closestCenter,
+  pointerWithin,
+  rectIntersection,
   DndContext,
   DragOverlay,
   KeyboardSensor,
@@ -24,6 +27,7 @@ import {
   createContext,
   type HTMLAttributes,
   type ReactNode,
+  useCallback,
   useContext,
   useState,
 } from "react";
@@ -212,6 +216,40 @@ export const KanbanProvider = <
 }: KanbanProviderProps<T, C>) => {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
+  // Custom collision detection for multi-column kanban
+  // Prioritizes columns over cards for better cross-column drag detection
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    // First check for pointer collisions (what's under the pointer)
+    const pointerCollisions = pointerWithin(args);
+
+    // Find if we're over a column (droppable container)
+    const columnIds = new Set(columns.map(c => c.id));
+    const columnCollision = pointerCollisions.find(
+      collision => columnIds.has(collision.id as string)
+    );
+
+    // If over a column directly, prioritize that
+    if (columnCollision) {
+      // But also check if there are cards in that column we might be over
+      const cardCollisions = rectIntersection(args).filter(
+        collision => !columnIds.has(collision.id as string)
+      );
+      if (cardCollisions.length > 0) {
+        return cardCollisions;
+      }
+      return [columnCollision];
+    }
+
+    // Otherwise use rectangle intersection for cards
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) {
+      return rectCollisions;
+    }
+
+    // Fall back to closest center
+    return closestCenter(args);
+  }, [columns]);
+
   // Add activation constraints so clicks don't trigger drags
   // Mouse: must move 8px before drag starts (allows clicks to pass through)
   // Touch: 200ms delay before drag starts (allows taps to pass through)
@@ -253,20 +291,28 @@ export const KanbanProvider = <
     }
 
     const activeColumn = activeItem.column;
+    // Determine target column: either from a card we're over, or from a column droppable
     const overColumn =
       overItem?.column ||
       columns.find((col) => col.id === over.id)?.id ||
       columns[0]?.id;
 
     if (activeColumn !== overColumn) {
-      let newData = [...data];
+      const newData = [...data];
       const activeIndex = newData.findIndex((item) => item.id === active.id);
-      const overIndex = newData.findIndex((item) => item.id === over.id);
 
-      newData[activeIndex].column = overColumn;
-      newData = arrayMove(newData, activeIndex, overIndex);
+      // Update the card's column
+      newData[activeIndex] = { ...newData[activeIndex], column: overColumn };
 
-      onDataChange?.(newData);
+      // If over a card, reorder to that position
+      // If over a column (not a card), just move to that column (end of list)
+      if (overItem) {
+        const overIndex = newData.findIndex((item) => item.id === over.id);
+        const reordered = arrayMove(newData, activeIndex, overIndex);
+        onDataChange?.(reordered as T[]);
+      } else {
+        onDataChange?.(newData as T[]);
+      }
     }
 
     onDragOver?.(event);
@@ -283,14 +329,31 @@ export const KanbanProvider = <
       return;
     }
 
-    let newData = [...data];
+    // Check if dropping on a column vs a card
+    const isOverColumn = columns.some((col) => col.id === over.id);
 
+    if (isOverColumn) {
+      // Dropping on a column - the column change was already handled in handleDragOver
+      // Just ensure the card is in the right column
+      const activeItem = data.find((item) => item.id === active.id);
+      if (activeItem && activeItem.column !== over.id) {
+        const newData = data.map((item) =>
+          item.id === active.id ? { ...item, column: over.id as string } : item
+        );
+        onDataChange?.(newData as T[]);
+      }
+      return;
+    }
+
+    // Dropping on a card - reorder within/across columns
+    const newData = [...data];
     const oldIndex = newData.findIndex((item) => item.id === active.id);
     const newIndex = newData.findIndex((item) => item.id === over.id);
 
-    newData = arrayMove(newData, oldIndex, newIndex);
-
-    onDataChange?.(newData);
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(newData, oldIndex, newIndex);
+      onDataChange?.(reordered as T[]);
+    }
   };
 
   const announcements: Announcements = {
@@ -322,7 +385,7 @@ export const KanbanProvider = <
     <KanbanContext.Provider value={{ columns, data, activeCardId }}>
       <DndContext
         accessibility={{ announcements }}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionDetection}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
         onDragStart={handleDragStart}

@@ -17,6 +17,7 @@ import type {
   Team,
   Location,
   PreMeetingSubmission,
+  Role,
 } from "@/types/schema";
 
 /**
@@ -3408,8 +3409,51 @@ export async function getSeriesParentSession(
 }
 
 // ====================
-// Contact & Participation Mutations
+// Contact Queries & Mutations
 // ====================
+
+/**
+ * Get all contacts (for staff management page)
+ */
+export async function getAllContacts(): Promise<{ contacts: Contact[] }> {
+  const query = `
+    query GetAllContacts {
+      contacts(
+        _order_by: { fullName: "asc" }
+      ) {
+        id
+        fullName
+        firstName
+        lastName
+        email
+        phone
+        bio
+        type
+        webflowStatus
+        linkedIn
+        gitHub
+        websiteUrl
+        expertise
+        headshot
+        profileVisible
+        created
+        lastModified
+        roles {
+          id
+          roleId
+          jobTitle
+          organization {
+            id
+            organizationName
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ contacts: Contact[] }>(query);
+  return { contacts: result.contacts || [] };
+}
 
 /**
  * Create a new contact record
@@ -3418,11 +3462,15 @@ export async function createContact(input: {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   bio?: string;
   expertise?: string[];
   linkedIn?: string;
+  gitHub?: string;
   websiteUrl?: string;
   type?: string;
+  webflowStatus?: string;
+  headshot?: { url: string; filename: string }[];
 }): Promise<{ insert_contacts: Contact }> {
   const mutation = `
     mutation CreateContact(
@@ -3430,33 +3478,44 @@ export async function createContact(input: {
       $lastName: String!
       $fullName: String!
       $email: String!
+      $phone: String
       $bio: String
       $expertise: [String!]
       $linkedIn: String
+      $gitHub: String
       $websiteUrl: String
       $type: String
+      $webflowStatus: String
+      $headshot: [JSON!]
     ) {
       insert_contacts(
         firstName: $firstName
         lastName: $lastName
         fullName: $fullName
         email: $email
+        phone: $phone
         bio: $bio
         expertise: $expertise
         linkedIn: $linkedIn
+        gitHub: $gitHub
         websiteUrl: $websiteUrl
         type: $type
+        webflowStatus: $webflowStatus
+        headshot: $headshot
       ) {
         id
         fullName
         firstName
         lastName
         email
+        phone
         bio
         expertise
         linkedIn
+        gitHub
         websiteUrl
         type
+        webflowStatus
         headshot
       }
     }
@@ -3470,11 +3529,15 @@ export async function createContact(input: {
     lastName: input.lastName,
     fullName,
     email: input.email,
+    phone: input.phone,
     bio: input.bio,
     expertise: input.expertise,
     linkedIn: input.linkedIn,
+    gitHub: input.gitHub,
     websiteUrl: input.websiteUrl,
-    type: input.type || "Mentor",
+    type: input.type || "Student",
+    webflowStatus: input.webflowStatus || "Draft",
+    headshot: input.headshot,
   });
 }
 
@@ -3548,10 +3611,15 @@ export async function updateContact(
     lastName?: string;
     fullName?: string;
     email?: string;
+    phone?: string;
     bio?: string;
     expertise?: string[];
     linkedIn?: string;
+    gitHub?: string;
     websiteUrl?: string;
+    type?: string;
+    webflowStatus?: string;
+    headshot?: { url: string; filename: string }[];
   }
 ): Promise<{ update_contacts: Contact }> {
   const mutation = `
@@ -3561,10 +3629,15 @@ export async function updateContact(
       $lastName: String
       $fullName: String
       $email: String
+      $phone: String
       $bio: String
       $expertise: [String!]
       $linkedIn: String
+      $gitHub: String
       $websiteUrl: String
+      $type: String
+      $webflowStatus: String
+      $headshot: [JSON!]
     ) {
       update_contacts(
         id: $id
@@ -3572,20 +3645,29 @@ export async function updateContact(
         lastName: $lastName
         fullName: $fullName
         email: $email
+        phone: $phone
         bio: $bio
         expertise: $expertise
         linkedIn: $linkedIn
+        gitHub: $gitHub
         websiteUrl: $websiteUrl
+        type: $type
+        webflowStatus: $webflowStatus
+        headshot: $headshot
       ) {
         id
         fullName
         firstName
         lastName
         email
+        phone
         bio
         expertise
         linkedIn
+        gitHub
         websiteUrl
+        type
+        webflowStatus
         headshot
       }
     }
@@ -3597,10 +3679,81 @@ export async function updateContact(
   if (updates.lastName !== undefined) variables.lastName = updates.lastName;
   if (updates.fullName !== undefined) variables.fullName = updates.fullName;
   if (updates.email !== undefined) variables.email = updates.email;
+  if (updates.phone !== undefined) variables.phone = updates.phone;
   if (updates.bio !== undefined) variables.bio = updates.bio;
   if (updates.expertise !== undefined) variables.expertise = updates.expertise;
   if (updates.linkedIn !== undefined) variables.linkedIn = updates.linkedIn;
+  if (updates.gitHub !== undefined) variables.gitHub = updates.gitHub;
   if (updates.websiteUrl !== undefined) variables.websiteUrl = updates.websiteUrl;
+  if (updates.type !== undefined) variables.type = updates.type;
+  if (updates.webflowStatus !== undefined) variables.webflowStatus = updates.webflowStatus;
+  if (updates.headshot !== undefined) variables.headshot = updates.headshot;
+
+  return executeMutation(mutation, variables);
+}
+
+// ====================
+// Role Queries & Mutations
+// ====================
+
+/**
+ * Get all organizations (for role organization dropdown)
+ */
+export async function getAllOrganizations(): Promise<{ organizations: Array<{ id: string; organizationName?: string }> }> {
+  const query = `
+    query GetAllOrganizations {
+      organizations(
+        _order_by: { organizationName: "asc" }
+      ) {
+        id
+        organizationName
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ organizations: Array<{ id: string; organizationName?: string }> }>(query);
+  return { organizations: result.organizations || [] };
+}
+
+/**
+ * Update a role record
+ */
+export async function updateRole(
+  roleId: string,
+  updates: {
+    jobTitle?: string;
+    organization?: string[]; // Array of organization IDs
+  }
+): Promise<{ update_roles: Role }> {
+  const setParts: string[] = ["id: $id"];
+  const paramParts: string[] = ["$id: String!"];
+  const variables: Record<string, unknown> = { id: roleId };
+
+  if (updates.jobTitle !== undefined) {
+    setParts.push("jobTitle: $jobTitle");
+    paramParts.push("$jobTitle: String");
+    variables.jobTitle = updates.jobTitle;
+  }
+
+  if (updates.organization !== undefined) {
+    setParts.push("organization: $organization");
+    paramParts.push("$organization: [String!]");
+    variables.organization = updates.organization;
+  }
+
+  const mutation = `
+    mutation UpdateRole(${paramParts.join(", ")}) {
+      update_roles(${setParts.join(", ")}) {
+        id
+        roleId
+        jobTitle
+        organization {
+          id
+          organizationName
+        }
+      }
+    }
+  `;
 
   return executeMutation(mutation, variables);
 }

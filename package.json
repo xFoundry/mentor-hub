@@ -41,6 +41,7 @@
     "@react-email/components": "^1.0.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.13",
     "@tiptap/extension-character-count": "^3.12.0",
     "@tiptap/extension-link": "^3.13.0",
     "@tiptap/extension-placeholder": "^3.12.0",

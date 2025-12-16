@@ -8,6 +8,7 @@ import {
   UserCircle,
   Mail,
   Terminal,
+  BookUser,
 } from "lucide-react";
 import type { UserType } from "@/types/schema";
 import type { LucideIcon } from "lucide-react";
@@ -126,6 +127,11 @@ export function getNavItems(userType: UserType): NavGroup[] {
               title: "Mentors",
               url: "/mentors",
               icon: Users,
+            },
+            {
+              title: "Contacts",
+              url: "/contacts",
+              icon: BookUser,
             },
             {
               title: "Action Items",

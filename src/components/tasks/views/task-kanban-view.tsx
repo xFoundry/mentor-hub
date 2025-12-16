@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
   KanbanProvider,
@@ -64,8 +64,14 @@ export function TaskKanbanView({
   // Override drag permission if disableDrag is true
   const canDragTask = disableDrag ? () => false : baseCanDragTask;
 
-  // Transform tasks to kanban card data
-  const kanbanData = useMemo(() => transformTasksToKanbanData(tasks), [tasks]);
+  // Transform tasks to kanban card data - use state to allow visual updates during drag
+  const serverKanbanData = useMemo(() => transformTasksToKanbanData(tasks), [tasks]);
+  const [kanbanData, setKanbanData] = useState<KanbanCardData[]>(serverKanbanData);
+
+  // Sync local state with server data when tasks change
+  useEffect(() => {
+    setKanbanData(serverKanbanData);
+  }, [serverKanbanData]);
 
   // Column type with color extension
   type KanbanColumn = KanbanColumnProps & { color: string };
@@ -102,10 +108,12 @@ export function TaskKanbanView({
 
     // Check if user can drag this task
     if (!canDragTask(task)) {
+      // Reset to server state if drag not allowed
+      setKanbanData(serverKanbanData);
       return;
     }
 
-    // Find the target column
+    // Find the target column from the current kanban data state
     // Over could be a card (move to same column as card) or a column itself
     const overCard = kanbanData.find(card => card.id === over.id);
     const targetColumnId = overCard?.column || (over.id as string);
@@ -116,13 +124,15 @@ export function TaskKanbanView({
     // Only update if status actually changed
     if (task.status !== newStatus) {
       await onTaskUpdate(taskId, { status: newStatus });
+    } else {
+      // Reset to server state if no change needed
+      setKanbanData(serverKanbanData);
     }
-  }, [tasks, kanbanData, onTaskUpdate, canDragTask]);
+  }, [tasks, kanbanData, serverKanbanData, onTaskUpdate, canDragTask]);
 
-  // Handle data change from Kibo UI (for reordering within columns)
-  const handleDataChange = useCallback((_newData: KanbanCardData[]) => {
-    // For now, we don't persist order changes
-    // Could be enhanced to save task order if needed
+  // Handle data change from Kibo UI - update local state for visual feedback during drag
+  const handleDataChange = useCallback((newData: KanbanCardData[]) => {
+    setKanbanData(newData);
   }, []);
 
   if (isLoading) {

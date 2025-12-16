@@ -9,6 +9,30 @@
 // Core Entities
 // ====================
 
+export interface Organization {
+  id: string;
+  organizationName?: string;
+  organizationId?: string;
+  webflowStatus?: "Active" | "Draft" | "Archived";
+  lastModified?: string;
+}
+
+export interface Role {
+  id: string;
+  roleId?: string;
+  jobTitle?: string;
+  administrativeDepartment?: string;
+  academicDepartment?: string;
+  crossOfficeRole?: string;
+  webflowStatus?: "Active" | "Draft" | "Archived";
+  lastModified?: string;
+  // Relationships
+  organization?: Organization[];
+  contact?: Contact[];
+  college?: any[];
+  institutions?: any[];
+}
+
 export interface Contact {
   id: string;
   fullName?: string;
@@ -19,6 +43,7 @@ export interface Contact {
   bio?: string;
   headshot?: any[];
   type?: "Student" | "Mentor" | "Staff" | "Faculty" | "External" | "Leadership";
+  webflowStatus?: "Active" | "Draft" | "Archived";
   linkedIn?: string;
   gitHub?: string;
   websiteUrl?: string;
@@ -26,6 +51,7 @@ export interface Contact {
   profileVisible?: boolean;
   auth0Id?: string;
   // Relationships
+  roles?: Role[];
   members?: Member[];
   participation?: Participation[];
   /** @deprecated Use sessionParticipants instead */

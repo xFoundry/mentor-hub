@@ -17,7 +17,9 @@ import {
 import { useUserType } from "@/hooks/use-user-type";
 import { useSessions } from "@/hooks/use-sessions";
 import { useUserTeam, useTeamMembers } from "@/hooks/use-team-members";
-import { ArrowLeft, Save, CheckSquare } from "lucide-react";
+import { useTeams } from "@/hooks/use-teams";
+import { useCohortContext } from "@/contexts/cohort-context";
+import { ArrowLeft, Save, CheckSquare, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { createTask as createTaskApi } from "@/lib/baseql";
@@ -33,8 +35,19 @@ export function CreateTaskForm() {
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext?.email);
 
   // For students: get their team and team members
-  const { teamId, isLoading: isTeamLoading } = useUserTeam(userContext?.email);
-  const { members: teamMembers, isLoading: isMembersLoading } = useTeamMembers(teamId);
+  const { teamId: studentTeamId, isLoading: isTeamLoading } = useUserTeam(userContext?.email);
+
+  // For staff: get teams filtered by selected cohort
+  const isStaff = userType === "staff";
+  const { selectedCohortId } = useCohortContext();
+  const { teams: allTeams, isLoading: isTeamsLoading } = useTeams(isStaff ? selectedCohortId : undefined);
+
+  // Selected team ID - for students it's their team, for staff it's selected from dropdown
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
+
+  // Get team members based on selected team (for staff) or student's team
+  const effectiveTeamId = isStaff ? selectedTeamId : studentTeamId;
+  const { members: teamMembers, isLoading: isMembersLoading } = useTeamMembers(effectiveTeamId);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -48,27 +61,34 @@ export function CreateTaskForm() {
 
   const isStudent = userType === "student";
 
-  const isLoading = isUserLoading || isSessionsLoading || (isStudent && (isTeamLoading || isMembersLoading));
+  const isLoading = isUserLoading || isSessionsLoading ||
+    (isStudent && (isTeamLoading || isMembersLoading)) ||
+    (isStaff && isTeamsLoading);
 
   // Get available assignees based on user type
-  const availableAssignees = isStudent
-    ? teamMembers.map((m) => ({
+  const availableAssignees = (() => {
+    // Students and staff use team members
+    if (isStudent || isStaff) {
+      return teamMembers.map((m) => ({
         id: m.contact?.id || "",
         fullName: m.contact?.fullName || "Unknown",
         email: m.contact?.email,
         isSelf: m.contact?.email === userContext?.email,
-      })).filter((a) => a.id)
-    : sessions
-        .flatMap((s) => s.students || [])
-        .filter((student, index, self) =>
-          index === self.findIndex((s) => s.id === student.id)
-        )
-        .map((s) => ({
-          id: s.id,
-          fullName: s.fullName || "Unknown",
-          email: s.email,
-          isSelf: false,
-        }));
+      })).filter((a) => a.id);
+    }
+    // Mentors use students from their sessions
+    return sessions
+      .flatMap((s) => s.students || [])
+      .filter((student, index, self) =>
+        index === self.findIndex((s) => s.id === student.id)
+      )
+      .map((s) => ({
+        id: s.id,
+        fullName: s.fullName || "Unknown",
+        email: s.email,
+        isSelf: false,
+      }));
+  })();
 
   // Auto-select student if session is preselected (for mentors)
   useEffect(() => {
@@ -79,6 +99,21 @@ export function CreateTaskForm() {
       }
     }
   }, [preselectedSessionId, sessions, isStudent]);
+
+  // Clear team and assignee when cohort changes (for staff)
+  useEffect(() => {
+    if (isStaff) {
+      setSelectedTeamId("");
+      setSelectedAssigneeId("");
+    }
+  }, [selectedCohortId, isStaff]);
+
+  // Clear assignee when team changes (for staff)
+  useEffect(() => {
+    if (isStaff) {
+      setSelectedAssigneeId("");
+    }
+  }, [selectedTeamId, isStaff]);
 
   // Auto-select self for students
   useEffect(() => {
@@ -116,8 +151,13 @@ export function CreateTaskForm() {
       return;
     }
 
+    if (isStaff && !selectedTeamId) {
+      toast.error("Please select a team");
+      return;
+    }
+
     if (!selectedAssigneeId) {
-      toast.error(isStudent ? "Please select who to assign this task to" : "Please assign the task to a student");
+      toast.error(isStudent ? "Please select who to assign this task to" : "Please select a team member to assign the task to");
       return;
     }
 
@@ -132,7 +172,7 @@ export function CreateTaskForm() {
         levelOfEffort: levelOfEffort || undefined,
         due: dueDate || undefined,
         assignedToId: selectedAssigneeId,
-        teamId: teamId || undefined,
+        teamId: effectiveTeamId || undefined,
         sessionId: selectedSessionId || undefined,
       });
 
@@ -216,32 +256,75 @@ export function CreateTaskForm() {
                 />
               </div>
 
+              {/* Team Selection - only for staff */}
+              {isStaff && (
+                <div className="space-y-2">
+                  <Label htmlFor="team">
+                    Team <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={selectedTeamId}
+                    onValueChange={setSelectedTeamId}
+                    required
+                  >
+                    <SelectTrigger id="team">
+                      <SelectValue placeholder="Select a team..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allTeams.map((team) => (
+                        <SelectItem key={team.id} value={team.id}>
+                          {team.teamName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Assign To */}
               <div className="space-y-2">
                 <Label htmlFor="assignee">
                   Assign To <span className="text-destructive">*</span>
                 </Label>
-                <Select
-                  value={selectedAssigneeId}
-                  onValueChange={setSelectedAssigneeId}
-                  required
-                >
-                  <SelectTrigger id="assignee">
-                    <SelectValue placeholder={isStudent ? "Select yourself or a teammate..." : "Select a student..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableAssignees.map((assignee) => (
-                      <SelectItem key={assignee.id} value={assignee.id}>
-                        {assignee.fullName}
-                        {assignee.isSelf && " (me)"}
-                        {assignee.email && !assignee.isSelf && ` (${assignee.email})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isStaff && selectedTeamId && isMembersLoading ? (
+                  <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Loading team members...</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedAssigneeId}
+                    onValueChange={setSelectedAssigneeId}
+                    required
+                    disabled={isStaff && !selectedTeamId}
+                  >
+                    <SelectTrigger id="assignee">
+                      <SelectValue placeholder={
+                        isStaff && !selectedTeamId
+                          ? "Select a team first..."
+                          : isStudent
+                            ? "Select yourself or a teammate..."
+                            : "Select a team member..."
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableAssignees.map((assignee) => (
+                        <SelectItem key={assignee.id} value={assignee.id}>
+                          {assignee.fullName}
+                          {assignee.isSelf && " (me)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 {isStudent && (
                   <p className="text-xs text-muted-foreground">
                     You can assign tasks to yourself or any of your teammates
+                  </p>
+                )}
+                {isStaff && selectedTeamId && teamMembers.length === 0 && !isMembersLoading && (
+                  <p className="text-xs text-muted-foreground">
+                    No members found in this team
                   </p>
                 )}
               </div>
@@ -352,7 +435,7 @@ export function CreateTaskForm() {
               <div className="flex gap-3">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !name.trim() || !selectedAssigneeId}
+                  disabled={isSubmitting || !name.trim() || !selectedAssigneeId || (isStaff && !selectedTeamId)}
                   className="flex-1"
                 >
                   <Save className="mr-2 h-4 w-4" />
