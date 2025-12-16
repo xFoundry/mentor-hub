@@ -130,7 +130,7 @@ export function CreateTaskForm() {
         priority,
         status,
         levelOfEffort: levelOfEffort || undefined,
-        dueDate: dueDate || undefined,
+        due: dueDate || undefined,
         assignedToId: selectedAssigneeId,
         teamId: teamId || undefined,
         sessionId: selectedSessionId || undefined,

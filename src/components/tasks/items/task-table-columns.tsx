@@ -176,9 +176,9 @@ export function createTaskTableColumns({
   }
 
   // Due date column
-  if (visibleColumns.includes("dueDate")) {
+  if (visibleColumns.includes("due")) {
     columns.push({
-      accessorKey: "dueDate",
+      accessorKey: "due",
       header: ({ column }) => (
         <TableColumnHeader column={column} title="Due Date" />
       ),
@@ -186,7 +186,7 @@ export function createTaskTableColumns({
         const task = row.original;
         const isOverdue = isTaskOverdue(task);
 
-        if (!task.dueDate) {
+        if (!task.due) {
           return <span className="text-muted-foreground">-</span>;
         }
 
@@ -196,7 +196,7 @@ export function createTaskTableColumns({
             isOverdue ? "text-destructive" : "text-muted-foreground"
           )}>
             <Calendar className="h-3 w-3" />
-            <span>{formatDueDate(task.dueDate)}</span>
+            <span>{formatDueDate(task.due)}</span>
           </div>
         );
       },

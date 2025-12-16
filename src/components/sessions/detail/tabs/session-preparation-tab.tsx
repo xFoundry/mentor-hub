@@ -210,9 +210,9 @@ export function SessionPreparationTab({
                 >
                   <div className="space-y-1">
                     <p className="text-sm font-medium">{task.name}</p>
-                    {task.dueDate && (
+                    {task.due && (
                       <p className="text-xs text-muted-foreground">
-                        Due: {format(new Date(task.dueDate), "MMM d, yyyy")}
+                        Due: {format(new Date(task.due), "MMM d, yyyy")}
                       </p>
                     )}
                   </div>

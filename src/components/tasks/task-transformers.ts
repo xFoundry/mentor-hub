@@ -36,7 +36,7 @@ export type TaskHealth = "On Track" | "At Risk" | "Off Track" | "Completed";
 
 export interface KanbanCardData extends KanbanItemProps {
   priority?: TaskPriority;
-  dueDate?: string;
+  due?: string;
   isOverdue: boolean;
   assigneeName?: string;
   assigneeEmail?: string;
@@ -57,7 +57,7 @@ export interface ListItemData {
   name: string;
   status: TaskStatus;
   priority?: TaskPriority;
-  dueDate?: string;
+  due?: string;
   isOverdue: boolean;
   assigneeName?: string;
   teamName?: string;
@@ -92,11 +92,11 @@ export function getColumnConfig(columnId: string) {
  * Check if a task is overdue
  */
 export function isTaskOverdue(task: Task): boolean {
-  if (!task.dueDate || task.status === "Completed" || task.status === "Cancelled") {
+  if (!task.due || task.status === "Completed" || task.status === "Cancelled") {
     return false;
   }
   try {
-    return isPast(parseISO(task.dueDate));
+    return isPast(parseISO(task.due));
   } catch {
     return false;
   }
@@ -123,7 +123,7 @@ export function transformTaskToKanbanCard(task: Task): KanbanCardData {
     name: task.name || "Untitled Task",
     column: statusToColumnId(task.status),
     priority: task.priority as TaskPriority | undefined,
-    dueDate: task.dueDate,
+    due: task.due,
     isOverdue: isTaskOverdue(task),
     assigneeName: task.assignedTo?.[0]?.fullName,
     assigneeEmail: task.assignedTo?.[0]?.email,
@@ -153,7 +153,7 @@ export function transformTaskToListItem(task: Task): ListItemData {
     name: task.name || "Untitled Task",
     status: (task.status as TaskStatus) || "Not Started",
     priority: task.priority as TaskPriority | undefined,
-    dueDate: task.dueDate,
+    due: task.due,
     isOverdue: isTaskOverdue(task),
     assigneeName: task.assignedTo?.[0]?.fullName,
     teamName: task.team?.[0]?.teamName,
@@ -202,11 +202,11 @@ export function sortTasks(
         break;
       }
       case "dueDate": {
-        if (!a.dueDate && !b.dueDate) comparison = 0;
-        else if (!a.dueDate) comparison = 1;
-        else if (!b.dueDate) comparison = -1;
+        if (!a.due && !b.due) comparison = 0;
+        else if (!a.due) comparison = 1;
+        else if (!b.due) comparison = -1;
         else {
-          comparison = parseISO(a.dueDate).getTime() - parseISO(b.dueDate).getTime();
+          comparison = parseISO(a.due).getTime() - parseISO(b.due).getTime();
         }
         break;
       }

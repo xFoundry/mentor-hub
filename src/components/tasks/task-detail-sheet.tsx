@@ -153,7 +153,7 @@ export function TaskDetailSheet({
       setStatus(task.status || "Not Started");
       setPriority(task.priority || "Medium");
       setLevelOfEffort(task.levelOfEffort || "");
-      setDueDate(task.dueDate ? parseISO(task.dueDate) : undefined);
+      setDueDate(task.due ? parseISO(task.due) : undefined);
       setSelectedAssigneeId(task.assignedTo?.[0]?.id || "");
       // Reset UI state
       setShowAddUpdate(false);
@@ -180,7 +180,7 @@ export function TaskDetailSheet({
   // Check for changes
   const hasChanges = useMemo(() => {
     if (!task) return false;
-    const taskDueDate = task.dueDate ? parseISO(task.dueDate) : undefined;
+    const taskDueDate = task.due ? parseISO(task.due) : undefined;
     const dueDateChanged = dueDate?.toISOString()?.split("T")[0] !== taskDueDate?.toISOString()?.split("T")[0];
     const assigneeChanged = selectedAssigneeId !== (task.assignedTo?.[0]?.id || "");
 
@@ -230,10 +230,10 @@ export function TaskDetailSheet({
         updates.levelOfEffort = levelOfEffort as Task["levelOfEffort"];
       }
 
-      const taskDueDate = task.dueDate ? parseISO(task.dueDate) : undefined;
+      const taskDueDate = task.due ? parseISO(task.due) : undefined;
       const dueDateChanged = dueDate?.toISOString()?.split("T")[0] !== taskDueDate?.toISOString()?.split("T")[0];
-      if (dueDateChanged && canEditFieldForTask("dueDate")) {
-        updates.dueDate = dueDate ? format(dueDate, "yyyy-MM-dd") : undefined;
+      if (dueDateChanged && canEditFieldForTask("due")) {
+        updates.due = dueDate ? format(dueDate, "yyyy-MM-dd") : undefined;
       }
 
       // Handle assignee changes
@@ -416,10 +416,10 @@ export function TaskDetailSheet({
 
               {/* Due Date */}
               <div className="space-y-2">
-                <Label className={cn(!canEditFieldForTask("dueDate") && "text-muted-foreground")}>
+                <Label className={cn(!canEditFieldForTask("due") && "text-muted-foreground")}>
                   Due Date
                 </Label>
-                {canEditFieldForTask("dueDate") ? (
+                {canEditFieldForTask("due") ? (
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button

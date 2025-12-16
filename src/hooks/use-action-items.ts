@@ -330,8 +330,8 @@ function createOverdueTaskAction(
   if (task.status === "Completed" || task.status === "Cancelled") return null;
 
   // Must have a due date in the past
-  if (!task.dueDate) return null;
-  const dueDate = new Date(task.dueDate);
+  if (!task.due) return null;
+  const dueDate = new Date(task.due);
   if (dueDate > now) return null;
 
   const priority = getActionPriority("overdue-task", dueDate);
@@ -373,8 +373,8 @@ function createPendingTaskAction(
   if (task.priority !== "High" && task.priority !== "Urgent") return null;
 
   // Must have a due date within the next week
-  if (!task.dueDate) return null;
-  const dueDate = new Date(task.dueDate);
+  if (!task.due) return null;
+  const dueDate = new Date(task.due);
   const daysUntilDue = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
   if (daysUntilDue > 7 || daysUntilDue < 0) return null;
 

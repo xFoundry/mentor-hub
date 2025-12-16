@@ -75,8 +75,8 @@ export function AttentionNeededCard({
 
     // Common: Overdue tasks
     const overdueTasks = tasks.filter((t: any) => {
-      if (t.status === "Completed" || t.status === "Cancelled" || !t.dueDate) return false;
-      return new Date(t.dueDate) < new Date();
+      if (t.status === "Completed" || t.status === "Cancelled" || !t.due) return false;
+      return new Date(t.due) < new Date();
     });
     if (overdueTasks.length > 0) {
       items.push({

@@ -30,7 +30,7 @@ export function TaskCard({
   const team = task.team?.[0];
   const latestUpdate = task.updates?.[0];
 
-  const dueDate = task.dueDate ? parseISO(task.dueDate) : null;
+  const dueDate = task.due ? parseISO(task.due) : null;
   const isOverdue = dueDate && isPast(dueDate) && task.status !== "Completed";
 
   const getHealthBadge = () => {

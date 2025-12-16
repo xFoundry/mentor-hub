@@ -625,7 +625,7 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
             status
             priority
             levelOfEffort
-            dueDate
+            due
             assignedTo {
               id
               fullName
@@ -664,7 +664,7 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
           status
           priority
           levelOfEffort
-          dueDate
+          due
           assignedTo {
             id
             fullName
@@ -761,7 +761,7 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
           description
           status
           priority
-          dueDate
+          due
           assignedTo {
             id
             fullName
@@ -930,7 +930,7 @@ export async function getStudentSessions(
                 description
                 status
                 priority
-                dueDate
+                due
                 assignedTo {
                   id
                   fullName
@@ -1057,7 +1057,7 @@ export async function getStudentSessions(
               description
               status
               priority
-              dueDate
+              due
               assignedTo {
                 id
                 fullName
@@ -1221,7 +1221,7 @@ export async function getSessionDetail(
           status
           priority
           levelOfEffort
-          dueDate
+          due
           assignedTo {
             id
             fullName
@@ -1297,7 +1297,7 @@ export async function getSessionDetail(
  * Get all tasks (for staff users)
  */
 export async function getAllTasks(): Promise<{ tasks: Task[] }> {
-  // Note: dueDate cannot be used in _order_by (BaseQL limitation)
+  // Note: due cannot be used in _order_by (BaseQL limitation)
   // Sorting is done client-side in the hook
   const query = `
     query GetAllTasks {
@@ -1309,7 +1309,7 @@ export async function getAllTasks(): Promise<{ tasks: Task[] }> {
         status
         priority
         levelOfEffort
-        dueDate
+        due
         assignedTo {
           id
           fullName
@@ -1361,7 +1361,7 @@ export async function getUserTasks(
           status
           priority
           levelOfEffort
-          dueDate
+          due
           assignedTo {
             id
             fullName
@@ -1423,7 +1423,7 @@ export async function getStudentTeamTasks(
               status
               priority
               levelOfEffort
-              dueDate
+              due
               assignedTo {
                 id
                 fullName
@@ -1498,7 +1498,7 @@ export async function createTask(input: {
   sessionId?: string;
   priority?: string;
   levelOfEffort?: string;
-  dueDate?: string;
+  due?: string;
   status?: string;
 }): Promise<{ insert_tasks: Task }> {
   const mutation = `
@@ -1510,7 +1510,7 @@ export async function createTask(input: {
       $session: [String!]
       $priority: String
       $levelOfEffort: String
-      $dueDate: String
+      $due: String
       $status: String
     ) {
       insert_tasks(
@@ -1521,7 +1521,7 @@ export async function createTask(input: {
         session: $session
         priority: $priority
         levelOfEffort: $levelOfEffort
-        dueDate: $dueDate
+        due: $due
         status: $status
       ) {
         id
@@ -1531,7 +1531,7 @@ export async function createTask(input: {
         status
         priority
         levelOfEffort
-        dueDate
+        due
       }
     }
   `;
@@ -1544,7 +1544,7 @@ export async function createTask(input: {
     session: input.sessionId ? [input.sessionId] : undefined,
     priority: input.priority,
     levelOfEffort: input.levelOfEffort,
-    dueDate: input.dueDate,
+    due: input.due,
     status: input.status,
   });
 }
@@ -1557,13 +1557,13 @@ export async function updateTask(
   updates: Partial<Task>
 ): Promise<{ update_tasks: Task }> {
   const mutation = `
-    mutation UpdateTask($id: String!, $status: String, $priority: String, $levelOfEffort: String, $dueDate: String, $name: String, $description: String, $assignedTo: [String!]) {
+    mutation UpdateTask($id: String!, $status: String, $priority: String, $levelOfEffort: String, $due: String, $name: String, $description: String, $assignedTo: [String!]) {
       update_tasks(
         id: $id
         status: $status
         priority: $priority
         levelOfEffort: $levelOfEffort
-        dueDate: $dueDate
+        due: $due
         name: $name
         description: $description
         assignedTo: $assignedTo
@@ -1575,7 +1575,7 @@ export async function updateTask(
         status
         priority
         levelOfEffort
-        dueDate
+        due
         assignedTo {
           id
           fullName
@@ -1590,7 +1590,7 @@ export async function updateTask(
   if (updates.status !== undefined) variables.status = updates.status;
   if (updates.priority !== undefined) variables.priority = updates.priority;
   if (updates.levelOfEffort !== undefined) variables.levelOfEffort = updates.levelOfEffort;
-  if (updates.dueDate !== undefined) variables.dueDate = updates.dueDate;
+  if (updates.due !== undefined) variables.due = updates.due;
   if (updates.name !== undefined) variables.name = updates.name;
   if (updates.description !== undefined) variables.description = updates.description;
   if (updates.assignedTo !== undefined) variables.assignedTo = updates.assignedTo;

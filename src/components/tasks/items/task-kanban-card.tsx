@@ -82,7 +82,7 @@ export function TaskKanbanCard({
         )}
 
         {/* Due date */}
-        {showDueDate && card.dueDate && (
+        {showDueDate && card.due && (
           <div
             className={cn(
               "flex items-center gap-1 text-xs text-muted-foreground",
@@ -90,7 +90,7 @@ export function TaskKanbanCard({
             )}
           >
             <Calendar className="h-3 w-3" />
-            <span>{formatDueDate(card.dueDate)}</span>
+            <span>{formatDueDate(card.due)}</span>
           </div>
         )}
 

@@ -65,8 +65,8 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
       (t) => t.status !== "Completed" && t.status !== "Cancelled"
     );
     const overdueTasks = tasks.filter((t) => {
-      if (t.status === "Completed" || !t.dueDate) return false;
-      return new Date(t.dueDate) < new Date();
+      if (t.status === "Completed" || !t.due) return false;
+      return new Date(t.due) < new Date();
     });
 
     return {

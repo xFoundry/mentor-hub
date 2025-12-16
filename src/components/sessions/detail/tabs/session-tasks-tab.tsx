@@ -72,8 +72,8 @@ export function SessionTasksTab({
     const inProgress = tasks.filter(t => t.status === "In Progress").length;
     const notStarted = tasks.filter(t => t.status === "Not Started").length;
     const overdue = tasks.filter(t => {
-      if (t.status === "Completed" || t.status === "Cancelled" || !t.dueDate) return false;
-      return isPast(new Date(t.dueDate));
+      if (t.status === "Completed" || t.status === "Cancelled" || !t.due) return false;
+      return isPast(new Date(t.due));
     }).length;
 
     return {
@@ -94,17 +94,17 @@ export function SessionTasksTab({
       if (b.status === "Completed" && a.status !== "Completed") return -1;
 
       // Overdue tasks first
-      const aOverdue = a.dueDate && isPast(new Date(a.dueDate)) && a.status !== "Completed";
-      const bOverdue = b.dueDate && isPast(new Date(b.dueDate)) && b.status !== "Completed";
+      const aOverdue = a.due && isPast(new Date(a.due)) && a.status !== "Completed";
+      const bOverdue = b.due && isPast(new Date(b.due)) && b.status !== "Completed";
       if (aOverdue && !bOverdue) return -1;
       if (bOverdue && !aOverdue) return 1;
 
       // Then by due date
-      if (a.dueDate && b.dueDate) {
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      if (a.due && b.due) {
+        return new Date(a.due).getTime() - new Date(b.due).getTime();
       }
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
+      if (a.due) return -1;
+      if (b.due) return 1;
 
       return 0;
     });
@@ -220,12 +220,12 @@ function TaskCard({
   const config = STATUS_CONFIG[status] || STATUS_CONFIG["Not Started"];
   const StatusIcon = config.icon;
 
-  const isOverdue = task.dueDate &&
+  const isOverdue = task.due &&
     task.status !== "Completed" &&
     task.status !== "Cancelled" &&
-    isPast(new Date(task.dueDate));
+    isPast(new Date(task.due));
 
-  const isDueToday = task.dueDate && isToday(new Date(task.dueDate));
+  const isDueToday = task.due && isToday(new Date(task.due));
 
   const assignee = task.assignedTo?.[0];
 
@@ -267,17 +267,17 @@ function TaskCard({
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {task.dueDate && (
+              {task.due && (
                 <Badge
                   variant={isOverdue ? "destructive" : isDueToday ? "default" : "outline"}
                   className="text-xs"
                 >
                   <Calendar className="mr-1 h-3 w-3" />
                   {isOverdue
-                    ? `Overdue by ${formatDistanceToNow(new Date(task.dueDate))}`
+                    ? `Overdue by ${formatDistanceToNow(new Date(task.due))}`
                     : isDueToday
                     ? "Due today"
-                    : format(new Date(task.dueDate), "MMM d")}
+                    : format(new Date(task.due), "MMM d")}
                 </Badge>
               )}
               {task.priority && task.priority !== "Medium" && (

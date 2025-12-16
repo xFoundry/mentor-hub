@@ -239,7 +239,7 @@ export interface Task {
   status?: "Not Started" | "In Progress" | "Completed" | "Cancelled";
   levelOfEffort?: "XS" | "S" | "M" | "L" | "XL";
   source?: "Session" | "Linear" | "Manual" | "Mission Plan";
-  dueDate?: string;
+  due?: string;
   // Relationships
   assignedTo?: Contact[];
   team?: Team[];

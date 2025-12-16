@@ -58,8 +58,8 @@ export function StaffDashboard({ userContext }: StaffDashboardProps) {
     const activeTasks = tasks.filter((t) => t.status !== "Completed" && t.status !== "Cancelled");
     const completedTasks = tasks.filter((t) => t.status === "Completed");
     const overdueTasks = tasks.filter((t) => {
-      if (t.status === "Completed" || !t.dueDate) return false;
-      return new Date(t.dueDate) < new Date();
+      if (t.status === "Completed" || !t.due) return false;
+      return new Date(t.due) < new Date();
     });
 
     return {

@@ -104,8 +104,8 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
       (t) => t.status !== "Completed" && t.status !== "Cancelled"
     );
     const overdueTasks = tasks.filter((t) => {
-      if (t.status === "Completed" || !t.dueDate) return false;
-      return new Date(t.dueDate) < new Date();
+      if (t.status === "Completed" || !t.due) return false;
+      return new Date(t.due) < new Date();
     });
     const needsFeedback = sessions.filter(
       (s) => isCurrentUserMentor(s, userContext.email) && isSessionEligibleForFeedback(s) && !hasMentorFeedback(s)

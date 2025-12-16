@@ -330,9 +330,9 @@ export function PreMeetingWizard({
                               )}
                               <div className="flex items-center gap-2 mt-2">
                                 {getTaskStatusBadge(task)}
-                                {task.dueDate && (
+                                {task.due && (
                                   <span className="text-xs text-muted-foreground">
-                                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                                    Due: {new Date(task.due).toLocaleDateString()}
                                   </span>
                                 )}
                                 {hasUpdate && (

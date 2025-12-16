@@ -110,7 +110,7 @@ export function TaskListItem({
         )}
 
         {/* Due date */}
-        {showDueDate && task.dueDate && (
+        {showDueDate && task.due && (
           <div
             className={cn(
               "flex items-center gap-1 text-xs",
@@ -118,7 +118,7 @@ export function TaskListItem({
             )}
           >
             <Calendar className="h-3 w-3" />
-            <span className="hidden sm:inline">{formatDueDate(task.dueDate)}</span>
+            <span className="hidden sm:inline">{formatDueDate(task.due)}</span>
           </div>
         )}
 

@@ -42,7 +42,7 @@ const permissionRules: Record<
     task: {
       read: true, // Can read tasks assigned to them
       create: true, // Can create tasks for team members
-      update: ["status", "priority", "levelOfEffort", "dueDate", "name", "description", "assignedTo"], // Can update specific fields including reassigning to team members
+      update: ["status", "priority", "levelOfEffort", "due", "name", "description", "assignedTo"], // Can update specific fields including reassigning to team members
       delete: false,
     },
     update: {

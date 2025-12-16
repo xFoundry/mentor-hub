@@ -8,7 +8,7 @@ import { isCurrentUserMentor } from "@/components/sessions/session-transformers"
 /**
  * Task field names that can be updated
  */
-export type TaskField = "status" | "priority" | "dueDate" | "levelOfEffort" | "name" | "description" | "assignedTo";
+export type TaskField = "status" | "priority" | "due" | "levelOfEffort" | "name" | "description" | "assignedTo";
 
 /**
  * Permissions for task operations
@@ -47,25 +47,25 @@ const GROUPINGS_BY_ROLE: Record<UserType, string[]> = {
  * Default visible columns by role
  */
 const COLUMNS_BY_ROLE: Record<UserType, string[]> = {
-  student: ["name", "status", "priority", "dueDate", "levelOfEffort", "session"],
-  mentor: ["name", "assignee", "team", "status", "priority", "dueDate"],
-  staff: ["name", "assignee", "team", "status", "priority", "dueDate", "levelOfEffort", "created"],
+  student: ["name", "status", "priority", "due", "levelOfEffort", "session"],
+  mentor: ["name", "assignee", "team", "status", "priority", "due"],
+  staff: ["name", "assignee", "team", "status", "priority", "due", "levelOfEffort", "created"],
 };
 
 /**
  * Fields that students can edit on their own tasks
  */
-const STUDENT_EDITABLE_FIELDS: TaskField[] = ["status", "priority", "dueDate", "levelOfEffort", "name", "description", "assignedTo"];
+const STUDENT_EDITABLE_FIELDS: TaskField[] = ["status", "priority", "due", "levelOfEffort", "name", "description", "assignedTo"];
 
 /**
  * Fields that mentors can edit on tasks they created
  */
-const MENTOR_EDITABLE_FIELDS: TaskField[] = ["status", "priority", "dueDate", "levelOfEffort", "name", "description"];
+const MENTOR_EDITABLE_FIELDS: TaskField[] = ["status", "priority", "due", "levelOfEffort", "name", "description"];
 
 /**
  * All fields (for staff)
  */
-const ALL_FIELDS: TaskField[] = ["status", "priority", "dueDate", "levelOfEffort", "name", "description", "assignedTo"];
+const ALL_FIELDS: TaskField[] = ["status", "priority", "due", "levelOfEffort", "name", "description", "assignedTo"];
 
 /**
  * Hook for task-specific permissions

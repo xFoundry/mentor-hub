@@ -242,8 +242,8 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
       (t: any) => t.status !== "Completed" && t.status !== "Cancelled"
     );
     const overdueTasks = tasks.filter((t: any) => {
-      if (t.status === "Completed" || !t.dueDate) return false;
-      return new Date(t.dueDate) < new Date();
+      if (t.status === "Completed" || !t.due) return false;
+      return new Date(t.due) < new Date();
     });
 
     // All feedback

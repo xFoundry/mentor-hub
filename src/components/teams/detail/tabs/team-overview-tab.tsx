@@ -202,9 +202,9 @@ export function TeamOverviewTab({
                         className="block p-2 rounded-lg border hover:bg-accent transition-colors"
                       >
                         <p className="font-medium text-sm truncate">{task.name}</p>
-                        {task.dueDate && (
+                        {task.due && (
                           <p className="text-xs text-muted-foreground">
-                            Due: {new Date(task.dueDate).toLocaleDateString()}
+                            Due: {new Date(task.due).toLocaleDateString()}
                           </p>
                         )}
                       </Link>
