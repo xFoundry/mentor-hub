@@ -311,6 +311,62 @@ const COGNEE_ENDPOINT_GROUPS: Record<string, { title: string; description: strin
       },
     ],
   },
+  outlinePipeline: {
+    title: "Outline Pipeline",
+    description: "Ingest Outline documents with LLM extraction, entity resolution, and knowledge graph enrichment",
+    endpoints: [
+      {
+        name: "Full Outline Pipeline",
+        description: "Fetch all docs, run cognify with custom prompt + ontology, then memify (recommended)",
+        endpoint: "/sync/outline",
+        method: "POST",
+        body: { run_cognify: true, run_memify: true, include_document_content: true },
+      },
+      {
+        name: "Outline + Airtable Pre-populate",
+        description: "Pre-populate Airtable entities first for better entity resolution, then sync Outline",
+        endpoint: "/sync/outline",
+        method: "POST",
+        body: { pre_populate_from_airtable: true, run_cognify: true, run_memify: true, include_document_content: true },
+      },
+      {
+        name: "Sync Specific Collection",
+        description: "Sync documents from a specific Outline collection",
+        endpoint: "/sync/outline",
+        method: "POST",
+        body: { run_cognify: true, run_memify: true },
+        requiresInput: {
+          key: "collection_id",
+          label: "Collection ID",
+          placeholder: "Enter Outline collection ID...",
+        },
+      },
+      {
+        name: "Sync Single Document",
+        description: "Sync a single document by ID (useful for testing or incremental updates)",
+        endpoint: "/sync/outline/document/{document_id}",
+        method: "POST",
+        requiresInput: {
+          key: "document_id",
+          label: "Document ID",
+          placeholder: "Enter Outline document ID...",
+        },
+      },
+      {
+        name: "Outline Pipeline Status",
+        description: "Check if an Outline sync is currently in progress",
+        endpoint: "/sync/outline/status",
+        method: "GET",
+      },
+      {
+        name: "Outline Only (No Cognify)",
+        description: "Add documents without LLM extraction (fast, for testing chunking/embeddings)",
+        endpoint: "/sync/outline",
+        method: "POST",
+        body: { run_cognify: false, run_memify: false, include_document_content: true },
+      },
+    ],
+  },
   search: {
     title: "Knowledge Graph Search",
     description: "Search the Cognee knowledge graph with multiple search types",
@@ -456,6 +512,7 @@ const TAB_ICONS: Record<string, React.ReactNode> = {
   health: <Activity className="h-4 w-4" />,
   airtableSync: <Database className="h-4 w-4" />,
   outlineSync: <FileText className="h-4 w-4" />,
+  outlinePipeline: <FileText className="h-4 w-4" />,
   query: <Search className="h-4 w-4" />,
   sync: <Database className="h-4 w-4" />,
   search: <Search className="h-4 w-4" />,
@@ -939,13 +996,25 @@ export default function ApiToolsPage() {
                   variant="outline"
                   onClick={() => {
                     setActiveTab("sync");
-                    callEndpoint(COGNEE_ENDPOINT_GROUPS.sync.endpoints[4]);
+                    callEndpoint(COGNEE_ENDPOINT_GROUPS.sync.endpoints[5]);
                   }}
                   disabled={loading !== null}
                   className="gap-2"
                 >
                   <Database className="h-4 w-4" />
                   List Sync Jobs
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setActiveTab("outlinePipeline");
+                    callEndpoint(COGNEE_ENDPOINT_GROUPS.outlinePipeline.endpoints[4]);
+                  }}
+                  disabled={loading !== null}
+                  className="gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Outline Status
                 </Button>
                 <Button
                   variant="outline"

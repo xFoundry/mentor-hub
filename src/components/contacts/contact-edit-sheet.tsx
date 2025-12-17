@@ -150,8 +150,10 @@ function HeadshotUpload({
               type: f.raw.type,
             };
           } catch {
+            // Fallback to direct URL using storage base from env
+            const storageBase = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || "";
             return {
-              url: `https://REDACTED_STORAGE_URL/${f.objectInfo.key}`,
+              url: storageBase ? `${storageBase}/${f.objectInfo.key}` : "",
               filename: f.raw.name,
               size: f.raw.size,
               type: f.raw.type,

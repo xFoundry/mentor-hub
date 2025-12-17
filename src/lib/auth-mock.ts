@@ -28,7 +28,7 @@ export function isAuthMockEnabled(): boolean {
  * Get mock user email from environment (configurable for testing different users)
  */
 function getMockUserEmail(): string {
-  return process.env.NEXT_PUBLIC_MOCK_USER_EMAIL || "REDACTED_EMAIL";
+  return process.env.NEXT_PUBLIC_MOCK_USER_EMAIL || "user@example.com";
 }
 
 /**
