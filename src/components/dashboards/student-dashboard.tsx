@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import { NextSessionCard, NoUpcomingSessionCard } from "@/components/dashboard/n
 import { TeamSummary } from "@/components/dashboard/team-summary";
 import { SessionList } from "@/components/shared/session-list";
 import { TaskList } from "@/components/shared/task-list";
-import { TaskDetailSheet } from "@/components/tasks";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import type { UserContext, Task, PreMeetingSubmission } from "@/types/schema";
@@ -34,26 +34,16 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
   const router = useRouter();
   const { selectedCohortId } = useCohortContext();
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext.email, selectedCohortId);
-  const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(userContext.email, selectedCohortId);
+  const { tasks, isLoading: isTasksLoading } = useTasks(userContext.email, selectedCohortId);
   const { team, isLoading: isTeamLoading } = useUserTeam(userContext.email);
+  const { openTaskSheet } = useTaskSheet();
   // Update time every 30 seconds for phase detection
   const now = useNow(30000);
 
-  // Task detail sheet state - store ID only, look up from array for fresh data
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-
   const isLoading = isSessionsLoading || isTasksLoading || isTeamLoading;
 
-  // Look up task from array to get optimistically updated data
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
-
   const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
+    openTaskSheet(task.id);
   };
 
   // Calculate stats
@@ -297,18 +287,6 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Task Detail Sheet */}
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType="student"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
-      />
     </div>
   );
 }

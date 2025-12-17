@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,7 +19,7 @@ import {
   SessionTasksTab,
   SessionNotesTab,
 } from "./tabs";
-import { TaskDetailSheet } from "@/components/tasks";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { ViewMeetingNotesDialog, EditAgendaDialog } from "@/components/sessions";
 import { useSessionPhase, getDefaultTabForPhase } from "@/hooks/use-session-phase";
 import { hasMentorFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
@@ -46,16 +46,13 @@ export function SessionDetailMentor({
   onCreateUpdate,
 }: SessionDetailMentorProps) {
   const { openFeedbackDialog } = useFeedbackDialog();
+  const { openTaskSheet } = useTaskSheet();
   const { updateSession } = useUpdateSession();
   const phaseInfo = useSessionPhase(session);
 
   // Dialog states
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
   const [isAgendaDialogOpen, setIsAgendaDialogOpen] = useState(false);
-
-  // Task sheet state
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
 
   // Calculate tab state
   const defaultTab = getDefaultTabForPhase(phaseInfo.phase, "mentor");
@@ -89,10 +86,14 @@ export function SessionDetailMentor({
   // Feedback count for badge
   const feedbackCount = (session.sessionFeedback || session.feedback || []).length;
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskSheetOpen(true);
-  };
+  const handleTaskClick = useCallback((task: Task) => {
+    openTaskSheet(task.id, {
+      teamId: session.team?.[0]?.id,
+      teamMembers,
+      onTaskUpdate,
+      onCreateUpdate,
+    });
+  }, [openTaskSheet, session.team, teamMembers, onTaskUpdate, onCreateUpdate]);
 
   return (
     <div className="space-y-6">
@@ -223,20 +224,6 @@ export function SessionDetailMentor({
         onSave={async (agenda) => {
           await updateSession(session.id, { agenda });
         }}
-      />
-
-      {/* Task Detail Sheet */}
-      <TaskDetailSheet
-        open={isTaskSheetOpen}
-        onOpenChange={setIsTaskSheetOpen}
-        task={selectedTask}
-        userType="mentor"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={onTaskUpdate}
-        onCreateUpdate={onCreateUpdate}
-        teamId={session.team?.[0]?.id}
-        teamMembers={teamMembers}
       />
     </div>
   );

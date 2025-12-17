@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useCallback } from "react";
 import { useSWRConfig } from "swr";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TaskDetailSheet } from "@/components/tasks";
 import { useTasks } from "@/hooks/use-tasks";
 import { isFuture } from "date-fns";
 import {
@@ -41,7 +39,6 @@ interface TeamDetailMentorProps {
 }
 
 export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
-  const router = useRouter();
   const { mutate } = useSWRConfig();
   const { updateTask: baseUpdateTask, createUpdate: baseCreateUpdate } = useTasks(userContext.email);
 
@@ -84,15 +81,6 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
     });
     return Array.from(mentorMap.values());
   }, [sessions]);
-
-  // Task detail sheet state
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
 
   // Calculate stats
   const stats = useMemo<TeamStats>(() => {
@@ -178,11 +166,6 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
     mutate([`/teams/${team.id}`]);
   }, [baseCreateUpdate, mutate, team.id]);
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
-  };
-
   return (
     <div className="space-y-6">
       <TeamDetailHeader
@@ -257,6 +240,8 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
             userContext={userContext}
             userType="mentor"
             onTaskUpdate={updateTask}
+            onCreateUpdate={createUpdate}
+            teamMembers={teamMembersForSheet}
           />
         </TabsContent>
 
@@ -276,19 +261,6 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
           />
         </TabsContent>
       </Tabs>
-
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType="mentor"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
-        teamId={team.id}
-        teamMembers={teamMembersForSheet}
-      />
     </div>
   );
 }

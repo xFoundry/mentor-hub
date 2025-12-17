@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useMemo } from "react";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -14,16 +15,17 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useTeams } from "@/hooks/use-teams";
 import { useCohortContext } from "@/contexts/cohort-context";
 import { useTaskViewState } from "@/hooks/use-task-view-state";
-import { TaskView, TaskDetailSheet } from "@/components/tasks";
+import { TaskView } from "@/components/tasks";
 import { hasPermission } from "@/lib/permissions";
 import { useCreateTaskDialog } from "@/contexts/create-task-dialog-context";
 import type { Task } from "@/types/schema";
 
 function TasksPageContent() {
   const { openDialog } = useCreateTaskDialog();
+  const { openTaskSheet } = useTaskSheet();
   const { userContext, userType, isLoading: isUserLoading } = useUserType();
   const { selectedCohortId } = useCohortContext();
-  const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(
+  const { tasks, isLoading: isTasksLoading, updateTask } = useTasks(
     userContext?.email,
     selectedCohortId
   );
@@ -45,17 +47,7 @@ function TasksPageContent() {
     setGroupBy,
   } = useTaskViewState();
 
-  // Task detail sheet state - store ID only, look up from array for fresh data
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-
   const isLoading = isUserLoading || isTasksLoading || (userType === "staff" && isTeamsLoading);
-
-  // Look up task from array to get optimistically updated data
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
 
   // Filter tasks by team (staff only)
   const filteredTasks = useMemo(() => {
@@ -75,8 +67,7 @@ function TasksPageContent() {
 
   // Handle task click - open detail sheet
   const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
+    openTaskSheet(task.id);
   };
 
   // Get description based on user type
@@ -154,16 +145,6 @@ function TasksPageContent() {
         // Text
         title="Action Items"
         description={getDescription()}
-      />
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType={userType}
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
       />
     </>
   );

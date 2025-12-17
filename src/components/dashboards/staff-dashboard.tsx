@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { SessionList } from "@/components/shared/session-list";
 import { TaskList } from "@/components/shared/task-list";
-import { TaskDetailSheet } from "@/components/tasks";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { DataViewControls } from "@/components/staff/data-view-controls";
 import type { UserContext, Task } from "@/types/schema";
 import { hasMentorFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
@@ -31,24 +31,14 @@ export function StaffDashboard({ userContext }: StaffDashboardProps) {
   const [groupBy, setGroupBy] = useState<GroupByOption>("none");
 
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext.email, selectedCohortId);
-  const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(userContext.email, selectedCohortId);
+  const { tasks, isLoading: isTasksLoading } = useTasks(userContext.email, selectedCohortId);
   const { teams, isLoading: isTeamsLoading } = useTeams(selectedCohortId);
-
-  // Task detail sheet state - store ID only, look up from array for fresh data
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { openTaskSheet } = useTaskSheet();
 
   const isLoading = isSessionsLoading || isTasksLoading || isTeamsLoading;
 
-  // Look up task from array to get optimistically updated data
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
-
   const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
+    openTaskSheet(task.id);
   };
 
   // Calculate stats
@@ -255,18 +245,6 @@ export function StaffDashboard({ userContext }: StaffDashboardProps) {
           onTaskClick={handleTaskClick}
         />
       </div>
-
-      {/* Task Detail Sheet */}
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType="staff"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
-      />
     </div>
   );
 }

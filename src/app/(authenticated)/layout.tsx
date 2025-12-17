@@ -20,10 +20,12 @@ import { CohortProvider } from "@/contexts/cohort-context";
 import { BreadcrumbProvider, useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { JobStatusProvider } from "@/contexts/job-status-context";
 import { CreateTaskDialogProvider } from "@/contexts/create-task-dialog-context";
+import { TaskSheetProvider } from "@/contexts/task-sheet-context";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { ActionNotificationButton } from "@/components/actions";
 import { ActiveJobsNotification } from "@/components/notifications";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
+import { CentralizedTaskSheet } from "@/components/tasks/centralized-task-sheet";
 import { CreateTaskKeyboardProvider } from "@/components/tasks/create-task-keyboard-provider";
 
 /**
@@ -111,10 +113,13 @@ export default function AuthenticatedLayout({
       <CohortProvider>
         <BreadcrumbProvider>
           <CreateTaskDialogProvider>
-            <CreateTaskKeyboardProvider>
-              <LayoutContent>{children}</LayoutContent>
-              <CreateTaskDialog />
-            </CreateTaskKeyboardProvider>
+            <TaskSheetProvider>
+              <CreateTaskKeyboardProvider>
+                <LayoutContent>{children}</LayoutContent>
+                <CreateTaskDialog />
+                <CentralizedTaskSheet />
+              </CreateTaskKeyboardProvider>
+            </TaskSheetProvider>
           </CreateTaskDialogProvider>
         </BreadcrumbProvider>
       </CohortProvider>

@@ -4,14 +4,25 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { TaskView } from "@/components/tasks";
 import { useLocalTaskViewState } from "@/hooks/use-task-view-state";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import type { Task } from "@/types/schema";
 import type { TeamTabBaseProps } from "./types";
+import type { TeamMember } from "@/hooks/use-team-members";
 
 interface TeamTasksTabProps extends TeamTabBaseProps {
   /** Handler for task updates (with optimistic updates) */
   onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  /** Handler for creating progress updates */
+  onCreateUpdate?: (input: {
+    taskId: string;
+    authorId: string;
+    health: string;
+    message: string;
+  }) => Promise<void>;
   /** Handler for creating a new task */
   onCreateTask?: () => void;
+  /** Pre-loaded team members for the sheet */
+  teamMembers?: TeamMember[];
 }
 
 export function TeamTasksTab({
@@ -19,9 +30,12 @@ export function TeamTasksTab({
   userContext,
   userType,
   onTaskUpdate,
+  onCreateUpdate,
   onCreateTask,
+  teamMembers,
 }: TeamTasksTabProps) {
   const router = useRouter();
+  const { openTaskSheet } = useTaskSheet();
   const tasks = team.actionItems || [];
 
   const isStaff = userType === "staff";
@@ -35,10 +49,15 @@ export function TeamTasksTab({
     setGroupBy,
   } = useLocalTaskViewState({ view: "kanban", filter: "open" });
 
-  // Navigation handler
+  // Open task sheet handler (passing custom callbacks and team context)
   const handleTaskClick = useCallback((task: Task) => {
-    router.push(`/tasks/${task.id}`);
-  }, [router]);
+    openTaskSheet(task.id, {
+      teamId: team.id,
+      teamMembers,
+      onTaskUpdate,
+      onCreateUpdate,
+    });
+  }, [openTaskSheet, team.id, teamMembers, onTaskUpdate, onCreateUpdate]);
 
   // Default create handler if not provided
   const handleCreateTask = useCallback(() => {

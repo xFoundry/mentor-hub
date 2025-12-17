@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { NextSessionCard, NoUpcomingSessionCard } from "@/components/dashboard/n
 import { TeamsSummary } from "@/components/dashboard/teams-summary";
 import { SessionList } from "@/components/shared/session-list";
 import { TaskList } from "@/components/shared/task-list";
-import { TaskDetailSheet } from "@/components/tasks";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserContext, Task } from "@/types/schema";
 import { hasMentorFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
@@ -32,26 +32,16 @@ export function MentorDashboard({ userContext }: MentorDashboardProps) {
   const router = useRouter();
   const { selectedCohortId } = useCohortContext();
   const { sessions, isLoading: isSessionsLoading } = useSessions(userContext.email, selectedCohortId);
-  const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(userContext.email, selectedCohortId);
+  const { tasks, isLoading: isTasksLoading } = useTasks(userContext.email, selectedCohortId);
   const { teams, isLoading: isTeamsLoading } = useMentorTeams();
+  const { openTaskSheet } = useTaskSheet();
   // Update time every 30 seconds for phase detection
   const now = useNow(30000);
 
-  // Task detail sheet state - store ID only, look up from array for fresh data
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-
   const isLoading = isSessionsLoading || isTasksLoading || isTeamsLoading;
 
-  // Look up task from array to get optimistically updated data
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
-
   const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
+    openTaskSheet(task.id);
   };
 
   // Calculate stats
@@ -253,18 +243,6 @@ export function MentorDashboard({ userContext }: MentorDashboardProps) {
           onTaskClick={handleTaskClick}
         />
       </div>
-
-      {/* Task Detail Sheet */}
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType="mentor"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
-      />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TaskDetailSheet } from "@/components/tasks";
 import { useTeamMutations } from "@/hooks/use-team-mutations";
 import { useTasks } from "@/hooks/use-tasks";
 import { isFuture } from "date-fns";
@@ -60,16 +59,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
     name: string;
   } | null>(null);
 
-  // Task detail sheet state
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
-
-  // Transform team members for TaskDetailSheet
+  // Transform team members for task sheet
   const teamMembersForSheet = useMemo<TeamMember[]>(() => {
     return members.map((member) => ({
       memberId: member.id,
@@ -229,11 +219,6 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
     router.push(`/tasks/new?team=${team.id}`);
   };
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
-  };
-
   return (
     <div className="space-y-6">
       <TeamDetailHeader
@@ -313,7 +298,9 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
             userContext={userContext}
             userType="staff"
             onTaskUpdate={updateTask}
+            onCreateUpdate={createUpdate}
             onCreateTask={handleCreateTask}
+            teamMembers={teamMembersForSheet}
           />
         </TabsContent>
 
@@ -373,19 +360,6 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
         sessionCount={stats.sessionCount}
         taskCount={tasks.length}
         onConfirm={handleConfirmDeleteTeam}
-      />
-
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType="staff"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
-        teamId={team.id}
-        teamMembers={teamMembersForSheet}
       />
     </div>
   );

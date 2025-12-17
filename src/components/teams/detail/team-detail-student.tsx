@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TaskDetailSheet } from "@/components/tasks";
 import { useTasks } from "@/hooks/use-tasks";
 import { isFuture } from "date-fns";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
@@ -36,7 +35,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
   const sessions = team.mentorshipSessions || [];
   const tasks = team.actionItems || [];
 
-  // Transform team members for TaskDetailSheet
+  // Transform team members for task sheet
   const teamMembersForSheet = useMemo<TeamMember[]>(() => {
     return members.map((member) => ({
       memberId: member.id,
@@ -45,15 +44,6 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
       status: member.status || "",
     }));
   }, [members]);
-
-  // Task detail sheet state
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null;
-    return tasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, tasks]);
 
   // Calculate stats
   const stats = useMemo<TeamStats>(() => {
@@ -132,11 +122,6 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
     await baseCreateUpdate(input);
     mutate([`/teams/${team.id}`]);
   }, [baseCreateUpdate, mutate, team.id]);
-
-  const handleTaskClick = (task: Task) => {
-    setSelectedTaskId(task.id);
-    setIsSheetOpen(true);
-  };
 
   const handleCreateTask = () => {
     router.push(`/tasks/new?team=${team.id}`);
@@ -219,7 +204,9 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
             userContext={userContext}
             userType="student"
             onTaskUpdate={updateTask}
+            onCreateUpdate={createUpdate}
             onCreateTask={handleCreateTask}
+            teamMembers={teamMembersForSheet}
           />
         </TabsContent>
 
@@ -231,19 +218,6 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
           />
         </TabsContent>
       </Tabs>
-
-      <TaskDetailSheet
-        open={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        task={selectedTask}
-        userType="student"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={updateTask}
-        onCreateUpdate={createUpdate}
-        teamId={team.id}
-        teamMembers={teamMembersForSheet}
-      />
     </div>
   );
 }

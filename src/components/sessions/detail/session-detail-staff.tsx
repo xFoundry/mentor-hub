@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ import {
   SessionNotesTab,
   SessionEmailsTab,
 } from "./tabs";
-import { TaskDetailSheet } from "@/components/tasks";
+import { useTaskSheet } from "@/contexts/task-sheet-context";
 import {
   EditSessionDialog,
   EditAgendaDialog,
@@ -57,6 +57,7 @@ export function SessionDetailStaff({
 }: SessionDetailStaffProps) {
   const router = useRouter();
   const { openFeedbackDialog } = useFeedbackDialog();
+  const { openTaskSheet } = useTaskSheet();
   const { updateSession } = useUpdateSession();
   const phaseInfo = useSessionPhase(session);
 
@@ -70,10 +71,6 @@ export function SessionDetailStaff({
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
   const [isViewNotesDialogOpen, setIsViewNotesDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // Task sheet state
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
 
   // Calculate tab state - Staff always start with overview
   const defaultTab = getDefaultTabForPhase(phaseInfo.phase, "staff");
@@ -104,10 +101,14 @@ export function SessionDetailStaff({
   // Feedback count for badge
   const feedbackCount = (session.sessionFeedback || session.feedback || []).length;
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskSheetOpen(true);
-  };
+  const handleTaskClick = useCallback((task: Task) => {
+    openTaskSheet(task.id, {
+      teamId: session.team?.[0]?.id,
+      teamMembers,
+      onTaskUpdate,
+      onCreateUpdate,
+    });
+  }, [openTaskSheet, session.team, teamMembers, onTaskUpdate, onCreateUpdate]);
 
   return (
     <div className="space-y-6">
@@ -270,20 +271,6 @@ export function SessionDetailStaff({
         onOpenChange={setIsDeleteDialogOpen}
         session={session}
         onDeleted={() => router.push("/sessions")}
-      />
-
-      {/* Task Detail Sheet */}
-      <TaskDetailSheet
-        open={isTaskSheetOpen}
-        onOpenChange={setIsTaskSheetOpen}
-        task={selectedTask}
-        userType="staff"
-        userEmail={userContext.email}
-        userContactId={userContext.contactId}
-        onTaskUpdate={onTaskUpdate}
-        onCreateUpdate={onCreateUpdate}
-        teamId={session.team?.[0]?.id}
-        teamMembers={teamMembers}
       />
     </div>
   );

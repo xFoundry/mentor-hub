@@ -3,6 +3,7 @@ export { TaskView, type TaskViewProps, type TaskViewVariant } from "./task-view"
 
 // Detail sheet
 export { TaskDetailSheet, type TaskDetailSheetProps } from "./task-detail-sheet";
+export { CentralizedTaskSheet } from "./centralized-task-sheet";
 
 // Controls
 export { TaskViewControls, type TaskViewControlsProps } from "./task-view-controls";
