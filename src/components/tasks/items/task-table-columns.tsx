@@ -2,13 +2,6 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Calendar, Flag, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Task, UserType } from "@/types/schema";
@@ -21,10 +14,9 @@ import {
 } from "../task-transformers";
 import { TableColumnHeader } from "@/components/kibo-ui/table";
 import { TaskActions } from "./task-actions";
-
-const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Completed", "Cancelled"];
-const PRIORITY_OPTIONS: TaskPriority[] = ["Urgent", "High", "Medium", "Low"];
-const EFFORT_OPTIONS = ["XS", "S", "M", "L", "XL"];
+import { PrioritySelector, type Priority } from "../create-task-dialog/priority-selector";
+import { StatusSelector, type TaskStatus as StatusType } from "../create-task-dialog/status-selector";
+import { EffortSelector, type LevelOfEffort } from "../create-task-dialog/effort-selector";
 
 interface CreateColumnsOptions {
   userType: UserType;
@@ -87,24 +79,14 @@ export function createTaskTableColumns({
       cell: ({ row }) => {
         const task = row.original;
         const canEdit = canEditTask?.(task) ?? false;
+        const status = (task.status || "Not Started") as StatusType;
 
         if (canEdit && onTaskUpdate) {
           return (
-            <Select
-              value={task.status || "Not Started"}
-              onValueChange={(value) => onTaskUpdate(task.id, { status: value as TaskStatus })}
-            >
-              <SelectTrigger className="w-32 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <StatusSelector
+              value={status}
+              onChange={(value) => onTaskUpdate(task.id, { status: value as TaskStatus })}
+            />
           );
         }
 
@@ -126,44 +108,27 @@ export function createTaskTableColumns({
       ),
       cell: ({ row }) => {
         const task = row.original;
-        const priority = task.priority as TaskPriority | undefined;
+        const priority = (task.priority || "Medium") as Priority;
         const canEdit = canEditTask?.(task) ?? false;
 
         if (canEdit && onTaskUpdate) {
           return (
-            <Select
-              value={task.priority || "Medium"}
-              onValueChange={(value) => onTaskUpdate(task.id, { priority: value as TaskPriority })}
-            >
-              <SelectTrigger className="w-24 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITY_OPTIONS.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    <div className="flex items-center gap-2">
-                      <Flag
-                        className="h-3 w-3"
-                        style={{ color: PRIORITY_CONFIG[p].color }}
-                      />
-                      {p}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PrioritySelector
+              value={priority}
+              onChange={(value) => onTaskUpdate(task.id, { priority: value as TaskPriority })}
+            />
           );
         }
 
-        if (!priority) return <span className="text-muted-foreground">-</span>;
+        if (!task.priority) return <span className="text-muted-foreground">-</span>;
 
         return (
           <div
             className="flex items-center gap-1 text-sm"
-            style={{ color: PRIORITY_CONFIG[priority].color }}
+            style={{ color: PRIORITY_CONFIG[task.priority as TaskPriority].color }}
           >
             <Flag className="h-3 w-3" />
-            <span>{priority}</span>
+            <span>{task.priority}</span>
           </div>
         );
       },
@@ -264,21 +229,10 @@ export function createTaskTableColumns({
 
         if (canEdit && onTaskUpdate) {
           return (
-            <Select
-              value={task.levelOfEffort || "M"}
-              onValueChange={(value) => onTaskUpdate(task.id, { levelOfEffort: value as Task["levelOfEffort"] })}
-            >
-              <SelectTrigger className="w-16 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EFFORT_OPTIONS.map((effort) => (
-                  <SelectItem key={effort} value={effort}>
-                    {effort}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <EffortSelector
+              value={task.levelOfEffort as LevelOfEffort | undefined}
+              onChange={(value) => onTaskUpdate(task.id, { levelOfEffort: value as Task["levelOfEffort"] })}
+            />
           );
         }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -17,10 +16,11 @@ import { useCohortContext } from "@/contexts/cohort-context";
 import { useTaskViewState } from "@/hooks/use-task-view-state";
 import { TaskView, TaskDetailSheet } from "@/components/tasks";
 import { hasPermission } from "@/lib/permissions";
+import { useCreateTaskDialog } from "@/contexts/create-task-dialog-context";
 import type { Task } from "@/types/schema";
 
 function TasksPageContent() {
-  const router = useRouter();
+  const { openDialog } = useCreateTaskDialog();
   const { userContext, userType, isLoading: isUserLoading } = useUserType();
   const { selectedCohortId } = useCohortContext();
   const { tasks, isLoading: isTasksLoading, updateTask, createUpdate } = useTasks(
@@ -68,9 +68,9 @@ function TasksPageContent() {
   // Determine if user can create tasks
   const canCreate = userType ? hasPermission(userType, "task", "create") : false;
 
-  // Navigate to create task page
+  // Open create task dialog
   const handleCreateTask = () => {
-    router.push("/tasks/new");
+    openDialog();
   };
 
   // Handle task click - open detail sheet

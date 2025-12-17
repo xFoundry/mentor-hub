@@ -19,9 +19,12 @@ import { usePathname } from "next/navigation";
 import { CohortProvider } from "@/contexts/cohort-context";
 import { BreadcrumbProvider, useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { JobStatusProvider } from "@/contexts/job-status-context";
+import { CreateTaskDialogProvider } from "@/contexts/create-task-dialog-context";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { ActionNotificationButton } from "@/components/actions";
 import { ActiveJobsNotification } from "@/components/notifications";
+import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
+import { CreateTaskKeyboardProvider } from "@/components/tasks/create-task-keyboard-provider";
 
 /**
  * Layout Content (uses breadcrumb context)
@@ -107,7 +110,12 @@ export default function AuthenticatedLayout({
     <JobStatusProvider>
       <CohortProvider>
         <BreadcrumbProvider>
-          <LayoutContent>{children}</LayoutContent>
+          <CreateTaskDialogProvider>
+            <CreateTaskKeyboardProvider>
+              <LayoutContent>{children}</LayoutContent>
+              <CreateTaskDialog />
+            </CreateTaskKeyboardProvider>
+          </CreateTaskDialogProvider>
         </BreadcrumbProvider>
       </CohortProvider>
     </JobStatusProvider>

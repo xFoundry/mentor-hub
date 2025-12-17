@@ -35,16 +35,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
   Loader2,
   Save,
   Trash2,
-  Calendar as CalendarIcon,
   Lock,
   CheckCircle2,
   AlertTriangle,
@@ -54,7 +47,12 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Calendar as CalendarIcon,
 } from "lucide-react";
+import { PrioritySelector, type Priority } from "./create-task-dialog/priority-selector";
+import { StatusSelector, type TaskStatus as StatusType } from "./create-task-dialog/status-selector";
+import { EffortSelector, type LevelOfEffort } from "./create-task-dialog/effort-selector";
+import { DueDatePicker } from "./create-task-dialog/due-date-picker";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -328,33 +326,22 @@ export function TaskDetailSheet({
                 <div className="flex flex-wrap gap-2">
                   {/* Status */}
                   {canEditFieldForTask("status") ? (
-                    <Select value={status} onValueChange={setStatus} disabled={isSubmitting}>
-                      <SelectTrigger className="w-[140px] h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Not Started">Not Started</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <StatusSelector
+                      value={status as StatusType}
+                      onChange={setStatus}
+                      disabled={isSubmitting}
+                    />
                   ) : (
                     <Badge variant="outline">{status}</Badge>
                   )}
 
                   {/* Priority */}
                   {canEditFieldForTask("priority") ? (
-                    <Select value={priority} onValueChange={setPriority} disabled={isSubmitting}>
-                      <SelectTrigger className="w-[120px] h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(PRIORITY_CONFIG).map((p) => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <PrioritySelector
+                      value={priority as Priority}
+                      onChange={setPriority}
+                      disabled={isSubmitting}
+                    />
                   ) : (
                     <Badge
                       variant="outline"
@@ -369,20 +356,27 @@ export function TaskDetailSheet({
 
                   {/* Level of Effort */}
                   {canEditFieldForTask("levelOfEffort") ? (
-                    <Select value={levelOfEffort} onValueChange={setLevelOfEffort} disabled={isSubmitting}>
-                      <SelectTrigger className="w-[80px] h-8">
-                        <SelectValue placeholder="Effort" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="XS">XS</SelectItem>
-                        <SelectItem value="S">S</SelectItem>
-                        <SelectItem value="M">M</SelectItem>
-                        <SelectItem value="L">L</SelectItem>
-                        <SelectItem value="XL">XL</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <EffortSelector
+                      value={levelOfEffort as LevelOfEffort | undefined}
+                      onChange={(value) => setLevelOfEffort(value || "")}
+                      disabled={isSubmitting}
+                    />
                   ) : levelOfEffort ? (
                     <Badge variant="secondary">{levelOfEffort}</Badge>
+                  ) : null}
+
+                  {/* Due Date - inline in the badges row */}
+                  {canEditFieldForTask("due") ? (
+                    <DueDatePicker
+                      value={dueDate ? format(dueDate, "yyyy-MM-dd") : undefined}
+                      onChange={(value) => setDueDate(value ? parseISO(value) : undefined)}
+                      disabled={isSubmitting}
+                    />
+                  ) : dueDate ? (
+                    <Badge variant="outline" className="gap-1">
+                      <CalendarIcon className="h-3 w-3" />
+                      {format(dueDate, "MMM d")}
+                    </Badge>
                   ) : null}
                 </div>
               </SheetHeader>
@@ -410,42 +404,6 @@ export function TaskDetailSheet({
                 ) : (
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {description || "No description"}
-                  </p>
-                )}
-              </div>
-
-              {/* Due Date */}
-              <div className="space-y-2">
-                <Label className={cn(!canEditFieldForTask("due") && "text-muted-foreground")}>
-                  Due Date
-                </Label>
-                {canEditFieldForTask("due") ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !dueDate && "text-muted-foreground"
-                        )}
-                        disabled={isSubmitting}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dueDate ? format(dueDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dueDate}
-                        onSelect={setDueDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <p className="text-sm">
-                    {dueDate ? format(dueDate, "PPP") : "No due date"}
                   </p>
                 )}
               </div>
