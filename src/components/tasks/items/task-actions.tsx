@@ -58,7 +58,7 @@ export function TaskActions({
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-8 w-8", className)}
+            className={cn("h-8 w-8 cursor-pointer", className)}
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -66,12 +66,12 @@ export function TaskActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuItem onClick={handleClick(onEditClick)}>
+          <DropdownMenuItem onClick={handleClick(onEditClick)} className="cursor-pointer">
             <EditIcon className="h-4 w-4 mr-2" />
             {editLabel}
           </DropdownMenuItem>
           {showPostUpdate && (
-            <DropdownMenuItem onClick={handleClick(onPostUpdateClick)}>
+            <DropdownMenuItem onClick={handleClick(onPostUpdateClick)} className="cursor-pointer">
               <MessageSquarePlus className="h-4 w-4 mr-2" />
               Post Update
             </DropdownMenuItem>
@@ -87,7 +87,7 @@ export function TaskActions({
       <Button
         variant="ghost"
         size={compact ? "icon" : "sm"}
-        className={cn(compact ? "h-7 w-7" : "h-7")}
+        className={cn(compact ? "h-7 w-7" : "h-7", "cursor-pointer")}
         onClick={handleClick(onEditClick)}
       >
         <EditIcon className={cn("h-3.5 w-3.5", !compact && "mr-1.5")} />
@@ -99,7 +99,7 @@ export function TaskActions({
         <Button
           variant="ghost"
           size={compact ? "icon" : "sm"}
-          className={cn(compact ? "h-7 w-7" : "h-7")}
+          className={cn(compact ? "h-7 w-7" : "h-7", "cursor-pointer")}
           onClick={handleClick(onPostUpdateClick)}
         >
           <MessageSquarePlus className={cn("h-3.5 w-3.5", !compact && "mr-1.5")} />

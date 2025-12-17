@@ -96,7 +96,7 @@ export function TaskView({
   onFilterChange,
   onSortChange,
   onGroupByChange,
-  availableViews = ["kanban", "list", "table"],
+  availableViews = ["table", "kanban", "list"],
   variant = "full",
   showHeader = true,
   showStats = false,

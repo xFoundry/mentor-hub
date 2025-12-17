@@ -132,7 +132,7 @@ function TasksPageContent() {
         onSortChange={setSort}
         onGroupByChange={setGroupBy}
         // Configuration
-        availableViews={["kanban", "list", "table"]}
+        availableViews={["table", "kanban", "list"]}
         variant="full"
         showHeader={true}
         showStats={true}

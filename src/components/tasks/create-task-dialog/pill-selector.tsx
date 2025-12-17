@@ -48,7 +48,7 @@ export function PillSelector<T extends string>({
           size="sm"
           disabled={disabled}
           className={cn(
-            "h-7 gap-1.5 px-2 text-xs font-normal",
+            "h-7 gap-1.5 px-2 text-xs font-normal cursor-pointer",
             selectedOption?.color,
             className
           )}
@@ -67,7 +67,7 @@ export function PillSelector<T extends string>({
                 setOpen(false);
               }}
               className={cn(
-                "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent",
+                "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer",
                 value === option.value && "bg-accent"
               )}
             >

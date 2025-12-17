@@ -244,7 +244,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
         onSortChange={setSort}
         onGroupByChange={setGroupBy}
         // Configuration
-        availableViews={["kanban", "list", "table"]}
+        availableViews={["table", "kanban", "list"]}
         variant="embedded"
         showHeader={true}
         showControls={true}

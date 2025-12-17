@@ -66,7 +66,7 @@ export function TeamTasksTab({
       onSortChange={setSort}
       onGroupByChange={setGroupBy}
       // Configuration
-      availableViews={["kanban", "list", "table"]}
+      availableViews={["table", "kanban", "list"]}
       variant="embedded"
       showHeader={true}
       showControls={true}

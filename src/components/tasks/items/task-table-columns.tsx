@@ -17,6 +17,8 @@ import { TaskActions } from "./task-actions";
 import { PrioritySelector, type Priority } from "../create-task-dialog/priority-selector";
 import { StatusSelector, type TaskStatus as StatusType } from "../create-task-dialog/status-selector";
 import { EffortSelector, type LevelOfEffort } from "../create-task-dialog/effort-selector";
+import { DueDatePicker } from "../create-task-dialog/due-date-picker";
+import { AssigneePillSelector } from "../create-task-dialog/assignee-pill-selector";
 
 interface CreateColumnsOptions {
   userType: UserType;
@@ -26,6 +28,7 @@ interface CreateColumnsOptions {
   showActions?: boolean;
   onEditClick?: (task: Task) => void;
   onPostUpdateClick?: (task: Task) => void;
+  onTaskClick?: (task: Task) => void;
 }
 
 export function createTaskTableColumns({
@@ -36,6 +39,7 @@ export function createTaskTableColumns({
   showActions = false,
   onEditClick,
   onPostUpdateClick,
+  onTaskClick,
 }: CreateColumnsOptions): ColumnDef<Task>[] {
   const columns: ColumnDef<Task>[] = [];
 
@@ -52,12 +56,19 @@ export function createTaskTableColumns({
 
         return (
           <div className="flex items-center gap-2">
-            <span className={cn(
-              "font-medium",
-              task.status === "Completed" && "line-through text-muted-foreground"
-            )}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTaskClick?.(task);
+              }}
+              className={cn(
+                "font-semibold text-left hover:underline focus:outline-none focus:underline cursor-pointer",
+                task.status === "Completed" && "line-through text-muted-foreground"
+              )}
+            >
               {task.name || "Untitled Task"}
-            </span>
+            </button>
             {isOverdue && (
               <Badge variant="destructive" className="text-xs">
                 Overdue
@@ -149,7 +160,17 @@ export function createTaskTableColumns({
       ),
       cell: ({ row }) => {
         const task = row.original;
+        const canEdit = canEditTask?.(task) ?? false;
         const isOverdue = isTaskOverdue(task);
+
+        if (canEdit && onTaskUpdate) {
+          return (
+            <DueDatePicker
+              value={task.due}
+              onChange={(value) => onTaskUpdate(task.id, { due: value })}
+            />
+          );
+        }
 
         if (!task.due) {
           return <span className="text-muted-foreground">-</span>;
@@ -176,7 +197,29 @@ export function createTaskTableColumns({
         <TableColumnHeader column={column} title="Assignee" />
       ),
       cell: ({ row }) => {
-        const assignee = row.original.assignedTo?.[0];
+        const task = row.original;
+        const assignee = task.assignedTo?.[0];
+        const teamId = task.team?.[0]?.id;
+        const canEdit = canEditTask?.(task) ?? false;
+
+        if (canEdit && onTaskUpdate && teamId) {
+          return (
+            <AssigneePillSelector
+              value={assignee?.id}
+              onChange={(value) => {
+                // BaseQL expects an array of IDs for linked records
+                const updates = { assignedTo: value ? [value] : [] } as unknown as Partial<Task>;
+                onTaskUpdate(task.id, updates);
+              }}
+              teamId={teamId}
+              currentAssignee={assignee ? {
+                id: assignee.id,
+                fullName: assignee.fullName,
+                headshot: assignee.headshot?.[0]?.url,
+              } : undefined}
+            />
+          );
+        }
 
         if (!assignee) {
           return <span className="text-muted-foreground">Unassigned</span>;

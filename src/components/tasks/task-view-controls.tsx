@@ -107,7 +107,7 @@ export function TaskViewControls({
   sort,
   sortDirection,
   groupBy,
-  availableViews = ["kanban", "list", "table"],
+  availableViews = ["table", "kanban", "list"],
   allowedGroupings = ["none", "status", "priority"],
   onViewChange,
   onFilterChange,

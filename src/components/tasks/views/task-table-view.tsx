@@ -55,8 +55,9 @@ export function TaskTableView({
       showActions,
       onEditClick,
       onPostUpdateClick,
+      onTaskClick,
     });
-  }, [userType, visibleColumns, onTaskUpdate, canEditTask, showActions, onEditClick, onPostUpdateClick]);
+  }, [userType, visibleColumns, onTaskUpdate, canEditTask, showActions, onEditClick, onPostUpdateClick, onTaskClick]);
 
   if (isLoading) {
     return <TaskTableViewSkeleton />;
@@ -82,10 +83,8 @@ export function TaskTableView({
               key={row.id}
               row={row}
               className={cn(
-                onTaskClick && "cursor-pointer hover:bg-muted/50",
                 isTaskOverdue(row.original as Task) && "bg-destructive/5"
               )}
-              onClick={() => onTaskClick?.(row.original as Task)}
             >
               {({ cell }) => <TableCell key={cell.id} cell={cell} />}
             </TableRow>

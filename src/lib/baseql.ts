@@ -631,6 +631,7 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
               id
               fullName
               email
+              headshot
             }
           }
           feedback {
@@ -670,6 +671,7 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
             id
             fullName
             email
+            headshot
           }
           session {
             id
@@ -766,6 +768,7 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
           assignedTo {
             id
             fullName
+            headshot
           }
         }
         feedback {
@@ -935,6 +938,7 @@ export async function getStudentSessions(
                 assignedTo {
                   id
                   fullName
+                  headshot
                 }
               }
               feedback {
@@ -1062,6 +1066,7 @@ export async function getStudentSessions(
               assignedTo {
                 id
                 fullName
+                headshot
               }
             }
             feedback {
@@ -1226,6 +1231,7 @@ export async function getSessionDetail(
           assignedTo {
             id
             fullName
+            headshot
           }
         }
         feedback {
@@ -1315,6 +1321,7 @@ export async function getAllTasks(): Promise<{ tasks: Task[] }> {
           id
           fullName
           email
+          headshot
         }
         session {
           id
@@ -1367,6 +1374,7 @@ export async function getUserTasks(
             id
             fullName
             email
+            headshot
           }
           session {
             id
@@ -1429,6 +1437,7 @@ export async function getStudentTeamTasks(
                 id
                 fullName
                 email
+                headshot
               }
               session {
                 id
@@ -1581,6 +1590,7 @@ export async function updateTask(
           id
           fullName
           email
+          headshot
         }
       }
     }

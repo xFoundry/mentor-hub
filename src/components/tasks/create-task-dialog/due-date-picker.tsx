@@ -49,7 +49,7 @@ export function DueDatePicker({
           size="sm"
           disabled={disabled}
           className={cn(
-            "h-7 gap-1.5 px-2 text-xs font-normal",
+            "h-7 gap-1.5 px-2 text-xs font-normal cursor-pointer",
             !value && "text-muted-foreground"
           )}
         >
@@ -59,7 +59,7 @@ export function DueDatePicker({
             <span
               role="button"
               onClick={handleClear}
-              className="ml-0.5 rounded-sm hover:bg-accent"
+              className="ml-0.5 rounded-sm hover:bg-accent cursor-pointer"
             >
               <X className="h-3 w-3" />
             </span>

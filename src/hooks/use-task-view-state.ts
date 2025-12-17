@@ -29,7 +29,7 @@ export interface UseTaskViewStateReturn {
 }
 
 const DEFAULTS: TaskViewState = {
-  view: "list",
+  view: "table",
   filter: "open",
   sort: "priority",
   sortDirection: "asc",
