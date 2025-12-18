@@ -180,6 +180,24 @@ export function getLeadMentor(session: Session): Contact | null {
 }
 
 /**
+ * Check if meeting preparation is required for a session
+ * In Airtable: checked = true, unchecked = null
+ * Returns true only when explicitly checked (true)
+ */
+export function isSessionPrepRequired(session: Session): boolean {
+  return session.requirePrep === true;
+}
+
+/**
+ * Check if feedback is required for a session
+ * In Airtable: checked = true, unchecked = null
+ * Returns true only when explicitly checked (true)
+ */
+export function isSessionFeedbackRequired(session: Session): boolean {
+  return session.requireFeedback === true;
+}
+
+/**
  * Check if mentor has submitted feedback for a session
  * Uses the role field on feedback records instead of boolean flag
  */
@@ -197,11 +215,18 @@ export function hasMenteeFeedback(session: Session): boolean {
 
 /**
  * Check if a session is eligible for feedback (completed or past scheduled time)
+ * - If requireFeedback is false, it's NOT eligible for required feedback
  * - If status is "Completed", it's eligible
  * - If status is "Cancelled" or "No-Show", it's NOT eligible
  * - If the scheduled time is in the past, it's eligible (regardless of status)
  */
 export function isSessionEligibleForFeedback(session: Session): boolean {
+  // If feedback is not required, return false
+  // Note: This checks for REQUIRED feedback - optional feedback is still allowed
+  if (!isSessionFeedbackRequired(session)) {
+    return false;
+  }
+
   // Explicitly completed sessions are eligible
   if (session.status === "Completed") {
     return true;

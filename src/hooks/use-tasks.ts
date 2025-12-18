@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { getUserTasks, getAllTasks, getStudentTeamTasks, updateTask as updateTaskApi, createUpdate as createUpdateApi } from "@/lib/baseql";
+import { getAllTasks, getStudentTeamTasks, getMentorTeamTasks, updateTask as updateTaskApi, createUpdate as createUpdateApi } from "@/lib/baseql";
 import type { Task } from "@/types/schema";
 import { toast } from "sonner";
 import { useEffectiveUser } from "@/hooks/use-effective-user";
@@ -36,8 +36,8 @@ export function useTasks(email?: string, cohortId?: string) {
         // Students see all tasks from their team
         result = await getStudentTeamTasks(email);
       } else {
-        // Mentors see tasks assigned to them or from their sessions
-        result = await getUserTasks(email);
+        // Mentors see all tasks from teams they mentor
+        result = await getMentorTeamTasks(email);
       }
 
       let tasks = result.tasks || [];

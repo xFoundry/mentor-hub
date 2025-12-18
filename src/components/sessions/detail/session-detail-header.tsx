@@ -45,6 +45,7 @@ import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 import type { SessionPhase } from "@/hooks/use-session-phase";
 import type { UserType } from "@/lib/permissions";
+import { isSessionPrepRequired, isSessionFeedbackRequired } from "@/components/sessions/session-transformers";
 
 interface SessionDetailHeaderProps {
   session: Session;
@@ -95,8 +96,8 @@ export function SessionDetailHeader({
   // Staff and mentors can edit the agenda
   const canEditAgenda = (userType === "staff" || userType === "mentor") && onEditAgenda;
 
-  // Meeting link is locked for students who haven't submitted prep
-  const isMeetingLocked = userType === "student" && !hasSubmittedPrep;
+  // Meeting link is locked for students who haven't submitted prep (only when prep is required)
+  const isMeetingLocked = userType === "student" && !hasSubmittedPrep && isSessionPrepRequired(session);
 
   const handleCopyLink = async () => {
     const url = `${window.location.origin}/sessions/${session.id}`;
@@ -278,6 +279,17 @@ export function SessionDetailHeader({
             {needsFeedback && (
               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
                 Needs Feedback
+              </Badge>
+            )}
+            {/* Staff badges for optional prep/feedback */}
+            {userType === "staff" && !isSessionPrepRequired(session) && (
+              <Badge variant="outline" className="text-slate-500 border-slate-300 dark:text-slate-400 dark:border-slate-600">
+                Prep Optional
+              </Badge>
+            )}
+            {userType === "staff" && !isSessionFeedbackRequired(session) && (
+              <Badge variant="outline" className="text-slate-500 border-slate-300 dark:text-slate-400 dark:border-slate-600">
+                Feedback Optional
               </Badge>
             )}
           </div>

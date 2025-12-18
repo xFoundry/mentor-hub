@@ -237,14 +237,15 @@ function createFeedbackAction(
 
   if (hasFeedback) return null;
 
-  // Calculate when feedback should be due (48 hours after session)
-  const sessionEnd = session.scheduledStart
-    ? new Date(
-        parseAsLocalTime(session.scheduledStart).getTime() +
-          (session.duration || 60) * 60 * 1000
-      )
+  // Get session time for display and priority calculation
+  const sessionStart = session.scheduledStart
+    ? parseAsLocalTime(session.scheduledStart)
     : now;
 
+  // Calculate when feedback should be due (48 hours after session) for priority
+  const sessionEnd = new Date(
+    sessionStart.getTime() + (session.duration || 60) * 60 * 1000
+  );
   const feedbackDue = new Date(sessionEnd.getTime() + 48 * 60 * 60 * 1000);
   const priority = getActionPriority("post-session-feedback", feedbackDue);
 
@@ -255,7 +256,8 @@ function createFeedbackAction(
     title: "Submit Feedback",
     description: `Provide feedback for your ${session.sessionType || "session"}`,
     createdAt: sessionEnd,
-    dueAt: feedbackDue,
+    // Use session start time for display (when the session was), not when feedback is due
+    dueAt: sessionStart,
     href: `/sessions/${session.id}?tab=feedback`,
     actionLabel: "Add Feedback",
     entityType: "session",

@@ -30,12 +30,28 @@ function TasksPageContent() {
     selectedCohortId
   );
 
-  // Teams for filtering (staff only)
-  const { teams, isLoading: isTeamsLoading } = useTeams(
+  // Teams for filtering (staff and mentors)
+  const { teams: staffTeams, isLoading: isTeamsLoading } = useTeams(
     userType === "staff" ? selectedCohortId || "all" : undefined
   );
 
-  // Team filter state (staff only)
+  // Extract unique teams from tasks for mentors
+  const mentorTeams = useMemo(() => {
+    if (userType !== "mentor") return [];
+    const teamMap = new Map<string, { id: string; teamName: string }>();
+    tasks.forEach(task => {
+      const team = task.team?.[0];
+      if (team && !teamMap.has(team.id)) {
+        teamMap.set(team.id, { id: team.id, teamName: team.teamName || "Unknown Team" });
+      }
+    });
+    return Array.from(teamMap.values()).sort((a, b) => a.teamName.localeCompare(b.teamName));
+  }, [tasks, userType]);
+
+  // Use staff teams or mentor teams depending on user type
+  const teams = userType === "staff" ? staffTeams : mentorTeams;
+
+  // Team filter state (staff and mentors)
   const [selectedTeamId, setSelectedTeamId] = useState<string>("all");
 
   // URL-synced view state
@@ -49,9 +65,9 @@ function TasksPageContent() {
 
   const isLoading = isUserLoading || isTasksLoading || (userType === "staff" && isTeamsLoading);
 
-  // Filter tasks by team (staff only)
+  // Filter tasks by team (staff and mentors)
   const filteredTasks = useMemo(() => {
-    if (userType !== "staff" || selectedTeamId === "all") {
+    if ((userType !== "staff" && userType !== "mentor") || selectedTeamId === "all") {
       return tasks;
     }
     return tasks.filter(task => task.team?.[0]?.id === selectedTeamId);
@@ -74,7 +90,7 @@ function TasksPageContent() {
   const getDescription = () => {
     switch (userType) {
       case "mentor":
-        return "Tasks you've assigned to mentees";
+        return "Tasks from teams you mentor";
       case "staff":
         return "All tasks across teams";
       default:
@@ -88,8 +104,8 @@ function TasksPageContent() {
 
   return (
     <>
-      {/* Team filter for staff */}
-      {userType === "staff" && teams && teams.length > 0 && (
+      {/* Team filter for staff and mentors */}
+      {(userType === "staff" || userType === "mentor") && teams && teams.length > 0 && (
         <div className="mb-4">
           <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
             <SelectTrigger className="w-[250px]">
@@ -134,7 +150,7 @@ function TasksPageContent() {
         showGroupBy={true}
         showCreateButton={canCreate}
         showAssignee={true}
-        showTeam={userType === "staff"}
+        showTeam={userType === "staff" || userType === "mentor"}
         showActions={true}
         // Callbacks
         onTaskUpdate={updateTask}

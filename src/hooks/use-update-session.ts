@@ -30,6 +30,10 @@ interface UpdateSessionInput {
   notificationRecipients?: string[] | null;
   /** Updated mentor list with roles */
   mentors?: MentorInput[];
+  /** Whether meeting preparation is required (defaults to true) */
+  requirePrep?: boolean;
+  /** Whether post-session feedback is required (defaults to true) */
+  requireFeedback?: boolean;
 }
 
 /**

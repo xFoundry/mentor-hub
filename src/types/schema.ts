@@ -168,6 +168,9 @@ export interface Session {
   agenda?: string;
   keyTopics?: string[];
   status?: "Scheduled" | "In Progress" | "Completed" | "Cancelled" | "No-Show";
+  // Requirement flags (default to true when undefined for backwards compatibility)
+  requirePrep?: boolean;
+  requireFeedback?: boolean;
   // Relationships
   /** @deprecated Use sessionParticipants instead for mentor data */
   mentor?: Contact[];

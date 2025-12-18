@@ -15,7 +15,7 @@ import {
 import { Calendar, Clock, MessageSquare, Video, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
-import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isCurrentUserMentor, parseAsLocalTime, getMentorParticipants } from "@/components/sessions/session-transformers";
+import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isCurrentUserMentor, parseAsLocalTime, getMentorParticipants, isSessionPrepRequired, isSessionFeedbackRequired } from "@/components/sessions/session-transformers";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
 import { MentorAvatarStack, MentorTextDisplay } from "@/components/shared/mentor-avatar-stack";
 
@@ -99,12 +99,23 @@ export function SessionCard({
     const content = (
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium">{session.sessionType}</span>
             {getStatusBadge()}
             {showFeedbackStatus && needsFeedback && isInteractive && (
               <Badge variant="outline" className="border-yellow-400 bg-yellow-50 text-yellow-800">
                 Needs Feedback
+              </Badge>
+            )}
+            {/* Staff badges for optional prep/feedback */}
+            {userType === "staff" && !isSessionPrepRequired(session) && (
+              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
+                Prep Optional
+              </Badge>
+            )}
+            {userType === "staff" && !isSessionFeedbackRequired(session) && (
+              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
+                Feedback Optional
               </Badge>
             )}
           </div>
@@ -199,9 +210,20 @@ export function SessionCard({
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-lg font-medium">{session.sessionType}</span>
             {getStatusBadge()}
+            {/* Staff badges for optional prep/feedback */}
+            {userType === "staff" && !isSessionPrepRequired(session) && (
+              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
+                Prep Optional
+              </Badge>
+            )}
+            {userType === "staff" && !isSessionFeedbackRequired(session) && (
+              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
+                Feedback Optional
+              </Badge>
+            )}
           </div>
           {showTeamName && team && (
             <p className="text-sm text-muted-foreground">{team.teamName}</p>

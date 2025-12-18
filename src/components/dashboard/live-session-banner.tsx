@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { differenceInMinutes, addMinutes } from "date-fns";
-import { parseAsLocalTime, getMentorParticipants, getLeadMentor } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getMentorParticipants, getLeadMentor, isSessionPrepRequired } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { useNow } from "@/hooks/use-now";
 import type { Session } from "@/types/schema";
@@ -157,8 +157,8 @@ export function LiveSessionBanner({
                 See Location
               </Link>
             </Button>
-          ) : !isMentor && !hasSubmittedPrep ? (
-            // Students without pre-meeting submission see "Submit Meeting Prep" button
+          ) : !isMentor && !hasSubmittedPrep && isSessionPrepRequired(session) ? (
+            // Students without pre-meeting submission see "Submit Meeting Prep" button (only if prep is required)
             <Button
               variant={isLive ? "default" : "outline"}
               size="sm"

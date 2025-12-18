@@ -25,6 +25,10 @@ interface CreateSessionInput {
   locationId?: string;
   agenda?: string;
   status?: string;
+  /** Whether meeting preparation is required (defaults to true) */
+  requirePrep?: boolean;
+  /** Whether post-session feedback is required (defaults to true) */
+  requireFeedback?: boolean;
 }
 
 /**

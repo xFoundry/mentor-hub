@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
       agenda: body.agenda,
       status: body.status,
       locationId: body.locationId,
+      requirePrep: body.requirePrep,
+      requireFeedback: body.requireFeedback,
     });
 
     const createdSession = Array.isArray(result.insert_sessions)

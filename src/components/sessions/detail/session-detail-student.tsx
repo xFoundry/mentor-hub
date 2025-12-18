@@ -26,7 +26,7 @@ import {
   PreMeetingWizard,
 } from "@/components/sessions";
 import { useSessionPhase, getDefaultTabForPhase } from "@/hooks/use-session-phase";
-import { hasMenteeFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
+import { hasMenteeFeedback, isSessionEligibleForFeedback, isSessionPrepRequired } from "@/components/sessions/session-transformers";
 import { hasUserSubmitted } from "@/hooks/use-pre-meeting-submission";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
 import type { Session, Task, UserContext } from "@/types/schema";
@@ -65,7 +65,9 @@ export function SessionDetailStudent({
   const preMeetingSubmissions = session.preMeetingSubmissions || [];
   const userSubmission = hasUserSubmitted(preMeetingSubmissions, userContext.contactId);
   const userHasSubmitted = !!userSubmission;
-  const canSubmitPrep = phaseInfo.isEligibleForPrep && !userHasSubmitted;
+  const prepRequired = isSessionPrepRequired(session);
+  // Show urgent prompt only when prep is required AND user hasn't submitted
+  const canSubmitPrep = phaseInfo.isEligibleForPrep && !userHasSubmitted && prepRequired;
 
   // Feedback state
   const needsFeedback = isSessionEligibleForFeedback(session) && !hasMenteeFeedback(session);

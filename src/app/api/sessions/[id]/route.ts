@@ -33,7 +33,7 @@ export async function PUT(
     const body = await request.json();
 
     // Extract notification recipients and mentors from body (separate from update fields)
-    const { notificationRecipients, mentors, ...updateFields } = body;
+    const { notificationRecipients, mentors, requirePrep, requireFeedback, ...updateFields } = body;
     const mentorUpdates: MentorInput[] | undefined = mentors;
 
     // Get current session to compare changes
@@ -84,6 +84,13 @@ export async function PUT(
     const statusChangedToCancelled =
       updateFields.status === "Cancelled" && currentSession.status !== "Cancelled";
 
+    // Check if prep/feedback requirements changed to false (need to cancel related emails)
+    // For backwards compatibility, undefined means true
+    const prepChangedToNotRequired =
+      requirePrep === false && currentSession.requirePrep !== false;
+    const feedbackChangedToNotRequired =
+      requireFeedback === false && currentSession.requireFeedback !== false;
+
     // Update session in BaseQL
     const result = await updateSessionInDb(sessionId, {
       sessionType: updateFields.sessionType,
@@ -97,6 +104,8 @@ export async function PUT(
       summary: updateFields.summary,
       fullTranscript: updateFields.fullTranscript,
       locationId: updateFields.locationId,
+      requirePrep,
+      requireFeedback,
     });
 
     const updatedSession = result.update_sessions;
@@ -195,6 +204,27 @@ export async function PUT(
         }
       } catch (error) {
         console.error(`[Sessions API] Failed to schedule emails:`, error);
+      }
+    }
+
+    // Handle cancelling specific email types when requirements change
+    if (prepChangedToNotRequired || feedbackChangedToNotRequired) {
+      try {
+        // Cancel all scheduled emails for this session and reschedule (the scheduler will respect the new flags)
+        const cancelResult = await cancelSessionEmailsViaQStash(sessionId);
+        console.log(`[Sessions API] Cancelled ${cancelResult.cancelled} emails due to requirement change`);
+
+        // Reschedule with the new requirement flags in effect
+        const fullSessionResult = await getSessionDetail(sessionId);
+        const fullSession = fullSessionResult.sessions?.[0];
+        if (fullSession) {
+          const scheduleResult = await scheduleSessionEmailsViaQStash(fullSession);
+          if (scheduleResult) {
+            console.log(`[Sessions API] Rescheduled ${scheduleResult.jobCount} emails (respecting new requirements)`);
+          }
+        }
+      } catch (error) {
+        console.error(`[Sessions API] Failed to handle requirement change emails:`, error);
       }
     }
 

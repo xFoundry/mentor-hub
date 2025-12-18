@@ -105,6 +105,8 @@ async function fetchAllSessions(): Promise<Session[]> {
         scheduledStart
         duration
         status
+        requirePrep
+        requireFeedback
         feedback {
           id
           role

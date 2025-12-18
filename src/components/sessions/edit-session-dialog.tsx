@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -96,6 +97,8 @@ interface EditSessionDialogProps {
     agenda?: string;
     notificationRecipients?: string[] | null;
     mentors?: SelectedMentor[];
+    requirePrep?: boolean;
+    requireFeedback?: boolean;
   }) => Promise<void>;
 }
 
@@ -137,6 +140,9 @@ export function EditSessionDialog({
   const [meetingUrl, setMeetingUrl] = useState(session.meetingUrl || "");
   const [locationId, setLocationId] = useState(session.locations?.[0]?.id || "");
   const [agenda, setAgenda] = useState(session.agenda || "");
+  // Requirement flags - default to true if undefined (backwards compatibility)
+  const [requirePrep, setRequirePrep] = useState(session.requirePrep !== false);
+  const [requireFeedback, setRequireFeedback] = useState(session.requireFeedback !== false);
 
   // Initialize selected mentors from session's sessionParticipants
   const getInitialMentors = useCallback((): SelectedMentor[] => {
@@ -219,6 +225,8 @@ export function EditSessionDialog({
       setLocationId(session.locations?.[0]?.id || "");
       setAgenda(session.agenda || "");
       setSelectedMentors(getInitialMentors());
+      setRequirePrep(session.requirePrep !== false);
+      setRequireFeedback(session.requireFeedback !== false);
       setErrors({});
     }
   }, [open, session, getInitialMentors]);
@@ -363,6 +371,17 @@ export function EditSessionDialog({
 
     if (mentorsChanged) {
       updates.mentors = selectedMentors;
+    }
+
+    // Check if requirement flags changed
+    // For backwards compatibility, undefined means true
+    const originalRequirePrep = session.requirePrep !== false;
+    const originalRequireFeedback = session.requireFeedback !== false;
+    if (requirePrep !== originalRequirePrep) {
+      updates.requirePrep = requirePrep;
+    }
+    if (requireFeedback !== originalRequireFeedback) {
+      updates.requireFeedback = requireFeedback;
     }
 
     // If no changes, just close the dialog
@@ -735,6 +754,51 @@ export function EditSessionDialog({
               rows={3}
               disabled={isSubmitting}
             />
+          </div>
+
+          {/* Requirements Section */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Requirements</Label>
+            <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="requirePrep"
+                  checked={requirePrep}
+                  onCheckedChange={(checked) => setRequirePrep(checked === true)}
+                  disabled={isSubmitting}
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <label
+                    htmlFor="requirePrep"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Require meeting preparation
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Students will receive prep reminders and prompts to submit before the meeting
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="requireFeedback"
+                  checked={requireFeedback}
+                  onCheckedChange={(checked) => setRequireFeedback(checked === true)}
+                  disabled={isSubmitting}
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <label
+                    htmlFor="requireFeedback"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Require post-session feedback
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Participants will receive feedback reminders after the session
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>

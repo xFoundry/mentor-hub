@@ -143,72 +143,86 @@ export async function scheduleSessionEmailsViaQStash(
   // Build list of jobs to create
   const jobsToCreate: Omit<EmailJob, "id" | "batchId" | "status" | "attempts" | "createdAt" | "updatedAt">[] = [];
 
-  // Student prep reminders (48h and 24h)
-  for (const student of students) {
-    if (!student.email) continue;
+  // Check requirement flags (undefined means required for backwards compatibility)
+  const prepRequired = session.requirePrep !== false;
+  const feedbackRequired = session.requireFeedback !== false;
 
-    // 48h prep reminder
-    if (isValidScheduleTime(times.prep48h)) {
-      jobsToCreate.push({
-        sessionId: session.id,
-        type: "prep48h",
-        recipientEmail: student.email,
-        recipientName: student.fullName || "there",
-        scheduledFor: times.prep48h.toISOString(),
-        metadata: {
-          sessionType: sessionName,
-          sessionDate,
-          sessionTime,
-          teamName,
-          mentorNames,
-        },
-      });
-    }
+  console.log(`${logPrefix} Requirement flags:`, { prepRequired, feedbackRequired });
 
-    // 24h prep reminder
-    if (isValidScheduleTime(times.prep24h)) {
-      jobsToCreate.push({
-        sessionId: session.id,
-        type: "prep24h",
-        recipientEmail: student.email,
-        recipientName: student.fullName || "there",
-        scheduledFor: times.prep24h.toISOString(),
-        metadata: {
-          sessionType: sessionName,
-          sessionDate,
-          sessionTime,
-          teamName,
-          mentorNames,
-        },
-      });
+  // Student prep reminders (48h and 24h) - only if prep is required
+  if (prepRequired) {
+    for (const student of students) {
+      if (!student.email) continue;
+
+      // 48h prep reminder
+      if (isValidScheduleTime(times.prep48h)) {
+        jobsToCreate.push({
+          sessionId: session.id,
+          type: "prep48h",
+          recipientEmail: student.email,
+          recipientName: student.fullName || "there",
+          scheduledFor: times.prep48h.toISOString(),
+          metadata: {
+            sessionType: sessionName,
+            sessionDate,
+            sessionTime,
+            teamName,
+            mentorNames,
+          },
+        });
+      }
+
+      // 24h prep reminder
+      if (isValidScheduleTime(times.prep24h)) {
+        jobsToCreate.push({
+          sessionId: session.id,
+          type: "prep24h",
+          recipientEmail: student.email,
+          recipientName: student.fullName || "there",
+          scheduledFor: times.prep24h.toISOString(),
+          metadata: {
+            sessionType: sessionName,
+            sessionDate,
+            sessionTime,
+            teamName,
+            mentorNames,
+          },
+        });
+      }
     }
+  } else {
+    console.log(`${logPrefix} Skipping prep reminders (prep not required)`);
   }
 
-  // Feedback emails for all participants (at session end)
-  const allParticipants = [
-    ...students.map(s => ({ contact: s, role: "student" as const })),
-    ...mentors.map(m => ({ contact: m, role: "mentor" as const })),
-  ];
+  // Feedback emails for all participants (at session end) - only if feedback is required
+  if (feedbackRequired) {
+    const allParticipants = [
+      ...students.map(s => ({ contact: s, role: "student" as const })),
+      ...mentors.map(m => ({ contact: m, role: "mentor" as const })),
+    ];
 
-  for (const { contact, role } of allParticipants) {
-    if (!contact.email) continue;
+    for (const { contact, role } of allParticipants) {
+      if (!contact.email) continue;
 
-    if (isValidScheduleTime(times.feedbackImmediate)) {
-      jobsToCreate.push({
-        sessionId: session.id,
-        type: "feedbackImmediate",
-        recipientEmail: contact.email,
-        recipientName: contact.fullName || "there",
-        scheduledFor: times.feedbackImmediate.toISOString(),
-        metadata: {
-          sessionType: sessionName,
-          sessionDate,
-          sessionTime,
-          teamName,
-          mentorNames,
-        },
-      });
+      if (isValidScheduleTime(times.feedbackImmediate)) {
+        jobsToCreate.push({
+          sessionId: session.id,
+          type: "feedbackImmediate",
+          recipientEmail: contact.email,
+          recipientName: contact.fullName || "there",
+          scheduledFor: times.feedbackImmediate.toISOString(),
+          metadata: {
+            sessionType: sessionName,
+            sessionDate,
+            sessionTime,
+            teamName,
+            mentorNames,
+          },
+        });
+      }
     }
+  } else {
+    console.log(`${logPrefix} Skipping feedback reminders (feedback not required)`);
   }
 
   if (jobsToCreate.length === 0) {

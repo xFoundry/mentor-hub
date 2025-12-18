@@ -585,6 +585,8 @@ export async function getTeamDetail(teamId: string): Promise<{ teams: any[] }> {
           scheduledStart
           duration
           status
+          requirePrep
+          requireFeedback
           meetingPlatform
           meetingUrl
           recordingUrl
@@ -711,6 +713,8 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
         fullTranscript
         agenda
         keyTopics
+        requirePrep
+        requireFeedback
         mentor {
           id
           fullName
@@ -873,6 +877,8 @@ export async function getStudentSessions(
               scheduledStart
               duration
               status
+              requirePrep
+              requireFeedback
               meetingPlatform
               meetingUrl
               recordingUrl
@@ -1001,6 +1007,8 @@ export async function getStudentSessions(
             scheduledStart
             duration
             status
+            requirePrep
+            requireFeedback
             meetingPlatform
             meetingUrl
             recordingUrl
@@ -1174,6 +1182,8 @@ export async function getSessionDetail(
         fullTranscript
         agenda
         keyTopics
+        requirePrep
+        requireFeedback
         scheduledEmailIds
         mentor {
           id
@@ -1498,6 +1508,125 @@ export async function getStudentTeamTasks(
 }
 
 /**
+ * Get all tasks from teams a mentor is mentoring
+ * Uses sessionParticipants to find mentor's sessions and their associated teams
+ */
+export async function getMentorTeamTasks(
+  email: string
+): Promise<{ tasks: Task[] }> {
+  const query = `
+    query GetMentorTeamTasks($email: String!) {
+      contacts(
+        _filter: {
+          email: {_eq: $email}
+        }
+      ) {
+        id
+        sessionParticipants(
+          _filter: {
+            participantType: {_eq: "Mentor"}
+          }
+        ) {
+          id
+          status
+          session {
+            id
+            team {
+              id
+              teamName
+              actionItems {
+                id
+                taskId
+                name
+                description
+                status
+                priority
+                levelOfEffort
+                due
+                assignedTo {
+                  id
+                  fullName
+                  email
+                  headshot
+                }
+                session {
+                  id
+                  sessionId
+                  sessionType
+                  scheduledStart
+                  mentor {
+                    id
+                    fullName
+                    email
+                  }
+                  sessionParticipants {
+                    id
+                    participantType
+                    role
+                    status
+                    contact {
+                      id
+                      fullName
+                      email
+                    }
+                  }
+                }
+                team {
+                  id
+                  teamName
+                  cohorts {
+                    id
+                    shortName
+                  }
+                }
+                updates(
+                  _order_by: { created: "desc" }
+                ) {
+                  id
+                  health
+                  message
+                  created
+                  author {
+                    id
+                    fullName
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await executeQuery<{ contacts: any[] }>(query, { email });
+
+  // Filter out cancelled/declined participants (keep Active, null, undefined, or empty status)
+  const participantRecords = (result.contacts?.[0]?.sessionParticipants || [])
+    .filter((p: any) => !p.status || p.status === "Active" || p.status === "Invited");
+
+  // Extract unique teams and their tasks (deduplicate by task ID)
+  const taskMap = new Map<string, Task>();
+
+  participantRecords.forEach((participant: any) => {
+    const sessions = participant.session || [];
+    sessions.forEach((session: any) => {
+      const team = session.team?.[0];
+      if (team) {
+        const tasks = team.actionItems || [];
+        tasks.forEach((task: Task) => {
+          if (!taskMap.has(task.id)) {
+            taskMap.set(task.id, task);
+          }
+        });
+      }
+    });
+  });
+
+  return { tasks: Array.from(taskMap.values()) };
+}
+
+/**
  * Create a new task (action item)
  */
 export async function createTask(input: {
@@ -1819,6 +1948,8 @@ export async function createSession(input: {
   agenda?: string;
   status?: string;
   locationId?: string;
+  requirePrep?: boolean;
+  requireFeedback?: boolean;
 }): Promise<{ insert_sessions: Session }> {
   const mutation = `
     mutation CreateSession(
@@ -1833,6 +1964,8 @@ export async function createSession(input: {
       $agenda: String
       $status: String
       $locations: [String!]
+      $requirePrep: Boolean
+      $requireFeedback: Boolean
     ) {
       insert_sessions(
         sessionType: $sessionType
@@ -1846,6 +1979,8 @@ export async function createSession(input: {
         agenda: $agenda
         status: $status
         locations: $locations
+        requirePrep: $requirePrep
+        requireFeedback: $requireFeedback
       ) {
         id
         sessionId
@@ -1885,6 +2020,8 @@ export async function createSession(input: {
     agenda: input.agenda,
     status: input.status || "Scheduled",
     locations: input.locationId ? [input.locationId] : undefined,
+    requirePrep: input.requirePrep,
+    requireFeedback: input.requireFeedback,
   };
 
   return executeMutation(mutation, variables);
@@ -1910,6 +2047,8 @@ export async function updateSession(
     scheduledEmailIds?: string;
     /** Update legacy mentor field (for backwards compatibility) */
     mentorId?: string;
+    requirePrep?: boolean;
+    requireFeedback?: boolean;
   }
 ): Promise<{ update_sessions: Session }> {
   const mutation = `
@@ -1928,6 +2067,8 @@ export async function updateSession(
       $locations: [String!]
       $scheduledEmailIds: String
       $mentor: [String!]
+      $requirePrep: Boolean
+      $requireFeedback: Boolean
     ) {
       update_sessions(
         id: $id
@@ -1944,6 +2085,8 @@ export async function updateSession(
         locations: $locations
         scheduledEmailIds: $scheduledEmailIds
         mentor: $mentor
+        requirePrep: $requirePrep
+        requireFeedback: $requireFeedback
       ) {
         id
         sessionId
@@ -1990,6 +2133,8 @@ export async function updateSession(
   if (updates.fullTranscript !== undefined) variables.fullTranscript = updates.fullTranscript;
   if (updates.scheduledEmailIds !== undefined) variables.scheduledEmailIds = updates.scheduledEmailIds;
   if (updates.mentorId !== undefined) variables.mentor = [updates.mentorId];
+  if (updates.requirePrep !== undefined) variables.requirePrep = updates.requirePrep;
+  if (updates.requireFeedback !== undefined) variables.requireFeedback = updates.requireFeedback;
 
   return executeMutation(mutation, variables);
 }
@@ -2125,6 +2270,8 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
             scheduledStart
             duration
             status
+            requirePrep
+            requireFeedback
             granolaNotesUrl
             summary
             fullTranscript
@@ -2214,6 +2361,8 @@ export async function getSessionsGroupedByTeam(cohortId?: string): Promise<{ tea
           scheduledStart
           duration
           status
+          requirePrep
+          requireFeedback
           granolaNotesUrl
           summary
           fullTranscript
@@ -3199,6 +3348,9 @@ export async function createSessionWithSeries(input: {
   seriesId?: string;
   rrule?: string;
   seriesConfig?: string;
+  // Requirement flags
+  requirePrep?: boolean;
+  requireFeedback?: boolean;
 }): Promise<{ insert_sessions: Session }> {
   const mutation = `
     mutation CreateSessionWithSeries(
@@ -3216,6 +3368,8 @@ export async function createSessionWithSeries(input: {
       $seriesId: String
       $rrule: String
       $seriesConfig: String
+      $requirePrep: Boolean
+      $requireFeedback: Boolean
     ) {
       insert_sessions(
         sessionType: $sessionType
@@ -3232,6 +3386,8 @@ export async function createSessionWithSeries(input: {
         seriesId: $seriesId
         rrule: $rrule
         seriesConfig: $seriesConfig
+        requirePrep: $requirePrep
+        requireFeedback: $requireFeedback
       ) {
         id
         sessionId
@@ -3243,6 +3399,8 @@ export async function createSessionWithSeries(input: {
         seriesId
         rrule
         seriesConfig
+        requirePrep
+        requireFeedback
         mentor {
           id
           fullName
@@ -3276,6 +3434,8 @@ export async function createSessionWithSeries(input: {
     seriesId: input.seriesId,
     rrule: input.rrule,
     seriesConfig: input.seriesConfig,
+    requirePrep: input.requirePrep,
+    requireFeedback: input.requireFeedback,
   };
 
   return executeMutation(mutation, variables);
@@ -3307,6 +3467,8 @@ export async function getSessionsBySeries(
         seriesId
         rrule
         seriesConfig
+        requirePrep
+        requireFeedback
         mentor {
           id
           fullName
@@ -3925,6 +4087,8 @@ export async function getUpcomingSessions(cohortId?: string): Promise<Session[]>
         meetingPlatform
         meetingUrl
         agenda
+        requirePrep
+        requireFeedback
         mentor {
           id
           fullName

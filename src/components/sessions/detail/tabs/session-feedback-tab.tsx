@@ -10,8 +10,9 @@ import {
   CheckCircle2,
   Clock,
   Lock,
+  AlertCircle,
 } from "lucide-react";
-import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
+import { hasMentorFeedback, hasMenteeFeedback, isSessionEligibleForFeedback, isSessionFeedbackRequired } from "@/components/sessions/session-transformers";
 import { FeedbackCard } from "@/components/feedback/feedback-card";
 import type { Session, SessionFeedback } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
@@ -37,6 +38,7 @@ export function SessionFeedbackTab({
   onEditFeedback,
 }: SessionFeedbackTabProps) {
   const isEligible = isSessionEligibleForFeedback(session);
+  const feedbackRequired = isSessionFeedbackRequired(session);
   const isMentor = userType === "mentor";
   const isStudent = userType === "student";
   const isStaff = userType === "staff";
@@ -66,8 +68,22 @@ export function SessionFeedbackTab({
 
   return (
     <div className="space-y-6">
+      {/* Info banner when feedback is optional */}
+      {!feedbackRequired && (
+        <Alert className="border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
+          <AlertCircle className="h-4 w-4 text-slate-500" />
+          <AlertTitle className="text-slate-700 dark:text-slate-300">
+            Feedback is optional
+          </AlertTitle>
+          <AlertDescription className="text-slate-600 dark:text-slate-400">
+            Feedback has been marked as optional for this session.
+            You can still submit feedback if you'd like to share your thoughts.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Not eligible notice */}
-      {!isEligible && phase !== "completed" && (
+      {!isEligible && phase !== "completed" && feedbackRequired && (
         <Alert>
           <Clock className="h-4 w-4" />
           <AlertTitle>Feedback available after the session</AlertTitle>

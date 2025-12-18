@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -125,6 +126,9 @@ export function CreateSessionDialog({
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceConfig, setRecurrenceConfig] = useState<RecurrenceConfig | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Requirement flags (staff-only settings)
+  const [requirePrep, setRequirePrep] = useState(true);
+  const [requireFeedback, setRequireFeedback] = useState(true);
 
   const isSubmitting = isCreating || isCreatingRecurring;
   const isLoading = isTeamsLoading || isMentorsLoading;
@@ -145,6 +149,8 @@ export function CreateSessionDialog({
       setIsRecurring(false);
       setRecurrenceConfig(null);
       setErrors({});
+      setRequirePrep(true);
+      setRequireFeedback(true);
     }
   }, [open, defaultTeamId]);
 
@@ -219,6 +225,8 @@ export function CreateSessionDialog({
           locationId: meetingPlatform === "In-Person" && locationId ? locationId : undefined,
           agenda: agenda || undefined,
           cohortId: selectedCohortId !== "all" ? selectedCohortId : undefined,
+          requirePrep,
+          requireFeedback,
         },
         recurrence: recurrenceConfig,
         scheduledStart,
@@ -241,6 +249,8 @@ export function CreateSessionDialog({
         agenda: agenda || undefined,
         status: "Scheduled",
         cohortId: selectedCohortId !== "all" ? selectedCohortId : undefined,
+        requirePrep,
+        requireFeedback,
       });
 
       if (result) {
@@ -576,6 +586,56 @@ export function CreateSessionDialog({
                   rows={3}
                   disabled={isSubmitting}
                 />
+              </div>
+
+              {/* Requirements Section */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Requirements</Label>
+                <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="requirePrep"
+                      checked={requirePrep}
+                      onCheckedChange={(checked) => setRequirePrep(checked === true)}
+                      disabled={isSubmitting}
+                    />
+                    <div className="grid gap-0.5 leading-none">
+                      <label
+                        htmlFor="requirePrep"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Require meeting preparation
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Students will receive prep reminders and prompts to submit before the meeting
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="requireFeedback"
+                      checked={requireFeedback}
+                      onCheckedChange={(checked) => setRequireFeedback(checked === true)}
+                      disabled={isSubmitting}
+                    />
+                    <div className="grid gap-0.5 leading-none">
+                      <label
+                        htmlFor="requireFeedback"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Require post-session feedback
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Participants will receive feedback reminders after the session
+                      </p>
+                    </div>
+                  </div>
+                  {isRecurring && (
+                    <p className="text-xs text-muted-foreground border-t pt-2 mt-2">
+                      These settings will apply to all sessions in this series.
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Recurring Session */}

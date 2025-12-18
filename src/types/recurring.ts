@@ -42,6 +42,10 @@ export interface SeriesConfig {
   locationId?: string;
   agenda?: string;
   cohortId?: string;
+  /** Whether meeting preparation is required (defaults to true) */
+  requirePrep?: boolean;
+  /** Whether post-session feedback is required (defaults to true) */
+  requireFeedback?: boolean;
 }
 
 /**

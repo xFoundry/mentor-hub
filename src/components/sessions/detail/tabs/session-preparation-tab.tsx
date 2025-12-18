@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import type { Session, PreMeetingSubmission, Task } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
 import type { SessionPhase } from "@/hooks/use-session-phase";
+import { isSessionPrepRequired } from "@/components/sessions/session-transformers";
 
 interface SessionPreparationTabProps {
   session: Session;
@@ -58,6 +59,9 @@ export function SessionPreparationTab({
   const isMentor = userType === "mentor";
   const submissions = session.preMeetingSubmissions || [];
 
+  // Check if prep is required for this session
+  const prepRequired = isSessionPrepRequired(session);
+
   // Team has one submission per session - get the latest one
   const teamSubmission = submissions[0] || null;
   const hasTeamSubmitted = teamSubmission !== null;
@@ -77,14 +81,32 @@ export function SessionPreparationTab({
 
   return (
     <div className="space-y-6">
+      {/* Info banner when prep is optional */}
+      {!prepRequired && (
+        <Alert className="border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
+          <AlertCircle className="h-4 w-4 text-slate-500" />
+          <AlertTitle className="text-slate-700 dark:text-slate-300">
+            Preparation is optional
+          </AlertTitle>
+          <AlertDescription className="text-slate-600 dark:text-slate-400">
+            Meeting preparation has been marked as optional for this session.
+            You can still submit preparation if you'd like.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Student: Prompt to submit prep */}
       {isStudent && canSubmitPrep && (
-        <Alert className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30">
-          <Sparkles className="h-4 w-4 text-blue-600" />
-          <AlertTitle className="text-blue-800 dark:text-blue-200">
-            Prepare for your meeting
+        <Alert className={cn(
+          prepRequired
+            ? "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30"
+            : "border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30"
+        )}>
+          <Sparkles className={cn("h-4 w-4", prepRequired ? "text-blue-600" : "text-slate-500")} />
+          <AlertTitle className={cn(prepRequired ? "text-blue-800 dark:text-blue-200" : "text-slate-700 dark:text-slate-300")}>
+            {prepRequired ? "Prepare for your meeting" : "Optional: Prepare for your meeting"}
           </AlertTitle>
-          <AlertDescription className="text-blue-700 dark:text-blue-300">
+          <AlertDescription className={cn(prepRequired ? "text-blue-700 dark:text-blue-300" : "text-slate-600 dark:text-slate-400")}>
             <p>
               Share your agenda, questions, and topics to make the most of your session.
               Your mentor will review these before the meeting.
@@ -92,9 +114,10 @@ export function SessionPreparationTab({
             <Button
               onClick={onOpenPrepWizard}
               className="mt-3"
+              variant={prepRequired ? "default" : "outline"}
             >
               <ClipboardList className="mr-2 h-4 w-4" />
-              Start Preparation
+              {prepRequired ? "Start Preparation" : "Add Preparation (Optional)"}
             </Button>
           </AlertDescription>
         </Alert>

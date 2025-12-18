@@ -92,6 +92,9 @@ export async function createRecurringSessions(
         agenda: sessionConfig.agenda,
         status: "Scheduled",
         locationId: sessionConfig.locationId,
+        // Requirement flags (inherited from series template)
+        requirePrep: sessionConfig.requirePrep,
+        requireFeedback: sessionConfig.requireFeedback,
         seriesId,
         // Only store rrule and seriesConfig on the first (parent) session
         rrule: isFirstSession ? rruleString : undefined,

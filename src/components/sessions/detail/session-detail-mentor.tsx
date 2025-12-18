@@ -22,7 +22,7 @@ import {
 import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { ViewMeetingNotesDialog, EditAgendaDialog } from "@/components/sessions";
 import { useSessionPhase, getDefaultTabForPhase } from "@/hooks/use-session-phase";
-import { hasMentorFeedback, isSessionEligibleForFeedback } from "@/components/sessions/session-transformers";
+import { hasMentorFeedback, isSessionEligibleForFeedback, isSessionPrepRequired } from "@/components/sessions/session-transformers";
 import { useFeedbackDialog } from "@/contexts/feedback-dialog-context";
 import { useUpdateSession } from "@/hooks/use-update-session";
 import type { Session, Task, UserContext } from "@/types/schema";
@@ -61,9 +61,10 @@ export function SessionDetailMentor({
   // Pre-meeting submission state
   const preMeetingSubmissions = session.preMeetingSubmissions || [];
   const submissionCount = preMeetingSubmissions.length;
+  const prepRequired = isSessionPrepRequired(session);
 
-  // Auto-expand prep submissions when starting soon
-  const autoExpandPrep = phaseInfo.phase === "starting-soon";
+  // Auto-expand prep submissions when starting soon (only if prep is required)
+  const autoExpandPrep = phaseInfo.phase === "starting-soon" && prepRequired;
 
   // Feedback state
   const needsFeedback = isSessionEligibleForFeedback(session) && !hasMentorFeedback(session);

@@ -162,7 +162,7 @@ export function ActionNotificationButton() {
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">Actions</h3>
             {hasActions && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs text-foreground">
                 {summary.total}
               </Badge>
             )}
@@ -347,11 +347,18 @@ function formatDueTime(date: Date): string {
   const diffMs = date.getTime() - now.getTime();
   const diffMins = Math.round(diffMs / (1000 * 60));
 
-  if (diffMins <= 0) {
-    return "Now";
+  // Future times
+  if (diffMins > 0) {
+    if (diffMins <= 60) {
+      return `In ${diffMins} min`;
+    }
+    return formatDistanceToNow(date, { addSuffix: true });
   }
-  if (diffMins <= 60) {
-    return `In ${diffMins} min`;
+
+  // Past times (for feedback actions showing when session was)
+  const absDiffMins = Math.abs(diffMins);
+  if (absDiffMins <= 60) {
+    return "Just now";
   }
 
   return formatDistanceToNow(date, { addSuffix: true });
