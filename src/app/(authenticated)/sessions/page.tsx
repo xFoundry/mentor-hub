@@ -10,6 +10,7 @@ import { useCohortContext } from "@/contexts/cohort-context";
 import { useLocalSessionViewState } from "@/hooks/use-session-view-state";
 import { SessionView, CreateSessionDialog } from "@/components/sessions";
 import { hasPermission } from "@/lib/permissions";
+import { PageTourWrapper } from "@/components/onboarding";
 import type { Session } from "@/types/schema";
 
 function SessionsPageContent() {
@@ -71,10 +72,11 @@ function SessionsPageContent() {
     router.push(`/sessions/${session.id}`);
   };
 
-  return (
+  // Wrap content with PageTourWrapper for students
+  const content = (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between" data-tour="sessions-header">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Sessions</h1>
           <p className="text-muted-foreground mt-2">
@@ -94,39 +96,43 @@ function SessionsPageContent() {
       </div>
 
       {/* Session View */}
-      <SessionView
-        sessions={sessions}
-        isLoading={isLoading}
-        userType={userType ?? "student"}
-        userEmail={userContext?.email ?? ""}
-        view={viewState.view}
-        filter={viewState.filter}
-        sort={viewState.sort}
-        sortDirection={viewState.sortDirection}
-        groupBy={viewState.groupBy}
-        search={viewState.search}
-        onViewChange={setView}
-        onFilterChange={setFilter}
-        onSortChange={setSort}
-        onGroupByChange={setGroupBy}
-        onSearchChange={setSearch}
-        onSessionClick={handleSessionClick}
-        onFeedbackClick={handleFeedbackClick}
-        onCreateSession={handleCreateSession}
-        showHeader={false}
-        showStats={isStaff || isMentor}
-        showFeedbackBanner={true}
-        showControls={true}
-        showSearch={true}
-        showViewSwitcher={true}
-        showFilter={true}
-        showSort={true}
-        showGroupBy={true}
-        showCreateButton={false} // Already in page header
-        showTeamName={isMentor || isStaff}
-        showMentorName={userType === "student"}
-        showFeedbackStatus={true}
-      />
+      <div data-tour="sessions-list">
+        <div data-tour="sessions-view-controls">
+          <SessionView
+            sessions={sessions}
+            isLoading={isLoading}
+            userType={userType ?? "student"}
+            userEmail={userContext?.email ?? ""}
+            view={viewState.view}
+            filter={viewState.filter}
+            sort={viewState.sort}
+            sortDirection={viewState.sortDirection}
+            groupBy={viewState.groupBy}
+            search={viewState.search}
+            onViewChange={setView}
+            onFilterChange={setFilter}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onSearchChange={setSearch}
+            onSessionClick={handleSessionClick}
+            onFeedbackClick={handleFeedbackClick}
+            onCreateSession={handleCreateSession}
+            showHeader={false}
+            showStats={isStaff || isMentor}
+            showFeedbackBanner={true}
+            showControls={true}
+            showSearch={true}
+            showViewSwitcher={true}
+            showFilter={true}
+            showSort={true}
+            showGroupBy={true}
+            showCreateButton={false} // Already in page header
+            showTeamName={isMentor || isStaff}
+            showMentorName={userType === "student"}
+            showFeedbackStatus={true}
+          />
+        </div>
+      </div>
 
       {/* Create Session Dialog */}
       <CreateSessionDialog
@@ -136,6 +142,17 @@ function SessionsPageContent() {
       />
     </div>
   );
+
+  // Wrap with tour for students
+  if (userType === "student") {
+    return (
+      <PageTourWrapper userType="student" userName={userContext?.firstName}>
+        {content}
+      </PageTourWrapper>
+    );
+  }
+
+  return content;
 }
 
 function SessionsPageFallback() {

@@ -225,7 +225,7 @@ export function SessionDetailStudent({
         open={isPreMeetingWizardOpen}
         onOpenChange={setIsPreMeetingWizardOpen}
         session={session}
-        tasks={sessionTasks}
+        tasks={tasks}
         contactId={userContext.contactId}
         onTasksUpdate={handleTasksUpdate}
         onCreateUpdate={onCreateUpdate}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,13 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,16 +34,15 @@ import {
   XCircle,
   ChevronDown,
   MessageSquare,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StatusSelector, type TaskStatus } from "@/components/tasks/create-task-dialog";
 import type { Session, Task } from "@/types/schema";
 import { useCreatePreMeetingSubmission } from "@/hooks/use-pre-meeting-submission";
 
-const TASK_STATUSES = [
-  { value: "Not Started", label: "Not Started", color: "bg-gray-100 text-gray-800" },
-  { value: "In Progress", label: "In Progress", color: "bg-blue-100 text-blue-800" },
-  { value: "Completed", label: "Completed", color: "bg-green-100 text-green-800" },
-];
+// Number of tasks to show at a time
+const TASKS_PER_PAGE = 3;
 
 // Health status configuration (matching TaskDetailSheet)
 const HEALTH_CONFIG = {
@@ -95,8 +87,11 @@ export function PreMeetingWizard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createSubmission } = useCreatePreMeetingSubmission();
 
+  // Pagination state for tasks
+  const [visibleTaskCount, setVisibleTaskCount] = useState(TASKS_PER_PAGE);
+
   // Task status updates state (for changing task status)
-  const [taskStatusUpdates, setTaskStatusUpdates] = useState<Record<string, string>>({});
+  const [taskStatusUpdates, setTaskStatusUpdates] = useState<Record<string, TaskStatus>>({});
 
   // Task progress updates state (for adding progress update messages)
   const [taskProgressUpdates, setTaskProgressUpdates] = useState<Record<string, { health: HealthStatus; message: string }>>({});
@@ -110,10 +105,27 @@ export function PreMeetingWizard({
   const [topicsToDiscuss, setTopicsToDiscuss] = useState("");
   const [materialsLinks, setMaterialsLinks] = useState("");
 
-  // Filter tasks: show incomplete tasks from the team
-  const relevantTasks = tasks.filter(
-    (task) => task.status !== "Completed" && task.status !== "Cancelled"
-  );
+  // Filter and sort tasks: show incomplete tasks sorted by due date
+  const relevantTasks = useMemo(() => {
+    return tasks
+      .filter((task) => task.status !== "Completed" && task.status !== "Cancelled")
+      .sort((a, b) => {
+        // Tasks with due dates come first, sorted chronologically
+        if (a.due && b.due) {
+          return new Date(a.due).getTime() - new Date(b.due).getTime();
+        }
+        // Tasks with due dates before tasks without
+        if (a.due && !b.due) return -1;
+        if (!a.due && b.due) return 1;
+        // Both without due dates - sort by name
+        return (a.name || "").localeCompare(b.name || "");
+      });
+  }, [tasks]);
+
+  // Get visible tasks based on pagination
+  const visibleTasks = relevantTasks.slice(0, visibleTaskCount);
+  const remainingTaskCount = relevantTasks.length - visibleTaskCount;
+  const hasMoreTasks = remainingTaskCount > 0;
 
   const totalSteps = 2;
   const progress = (currentStep / totalSteps) * 100;
@@ -122,6 +134,7 @@ export function PreMeetingWizard({
   useEffect(() => {
     if (open) {
       setCurrentStep(1);
+      setVisibleTaskCount(TASKS_PER_PAGE);
       setTaskStatusUpdates({});
       setTaskProgressUpdates({});
       setExpandedTasks(new Set());
@@ -132,7 +145,11 @@ export function PreMeetingWizard({
     }
   }, [open]);
 
-  const handleTaskStatusChange = (taskId: string, status: string) => {
+  const handleShowMoreTasks = () => {
+    setVisibleTaskCount((prev) => prev + TASKS_PER_PAGE);
+  };
+
+  const handleTaskStatusChange = (taskId: string, status: TaskStatus) => {
     setTaskStatusUpdates((prev) => ({
       ...prev,
       [taskId]: status,
@@ -159,17 +176,6 @@ export function PreMeetingWizard({
       }
       return next;
     });
-  };
-
-  const getTaskStatusBadge = (task: Task) => {
-    const updatedStatus = taskStatusUpdates[task.id];
-    const status = updatedStatus || task.status || "Not Started";
-    const config = TASK_STATUSES.find((s) => s.value === status) || TASK_STATUSES[0];
-    return (
-      <Badge variant="outline" className={config.color}>
-        {config.label}
-      </Badge>
-    );
   };
 
   const handleNext = () => {
@@ -239,6 +245,25 @@ export function PreMeetingWizard({
   // Count tasks with progress updates
   const tasksWithUpdates = Object.values(taskProgressUpdates).filter((u) => u.message.trim()).length;
 
+  // Format due date for display
+  const formatDueDate = (due: string) => {
+    const date = new Date(due);
+    const now = new Date();
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { text: `${Math.abs(diffDays)}d overdue`, className: "text-red-600" };
+    } else if (diffDays === 0) {
+      return { text: "Due today", className: "text-amber-600" };
+    } else if (diffDays === 1) {
+      return { text: "Due tomorrow", className: "text-amber-600" };
+    } else if (diffDays <= 7) {
+      return { text: `Due in ${diffDays}d`, className: "text-muted-foreground" };
+    } else {
+      return { text: date.toLocaleDateString(), className: "text-muted-foreground" };
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
@@ -296,10 +321,16 @@ export function PreMeetingWizard({
         {/* Step 1: Task Updates */}
         {currentStep === 1 && (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Review and update the status of your current tasks. You can also add progress updates
-              to share what you&apos;ve been working on.
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Review and update the status of your team&apos;s tasks.
+              </p>
+              {relevantTasks.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {relevantTasks.length} task{relevantTasks.length !== 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
 
             {relevantTasks.length === 0 ? (
               <Card>
@@ -312,15 +343,17 @@ export function PreMeetingWizard({
               </Card>
             ) : (
               <div className="space-y-3">
-                {relevantTasks.map((task) => {
+                {visibleTasks.map((task) => {
                   const isExpanded = expandedTasks.has(task.id);
                   const hasUpdate = taskProgressUpdates[task.id]?.message?.trim();
+                  const currentStatus = (taskStatusUpdates[task.id] || task.status || "Not Started") as TaskStatus;
+                  const dueInfo = task.due ? formatDueDate(task.due) : null;
 
                   return (
                     <Card key={task.id} className={cn(hasUpdate && "ring-1 ring-primary/50")}>
                       <Collapsible open={isExpanded} onOpenChange={() => toggleTaskExpanded(task.id)}>
                         <CardContent className="py-3">
-                          <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{task.name}</p>
                               {task.description && (
@@ -328,11 +361,11 @@ export function PreMeetingWizard({
                                   {task.description}
                                 </p>
                               )}
-                              <div className="flex items-center gap-2 mt-2">
-                                {getTaskStatusBadge(task)}
-                                {task.due && (
-                                  <span className="text-xs text-muted-foreground">
-                                    Due: {new Date(task.due).toLocaleDateString()}
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                {dueInfo && (
+                                  <span className={cn("flex items-center gap-1 text-xs", dueInfo.className)}>
+                                    <Calendar className="h-3 w-3" />
+                                    {dueInfo.text}
                                   </span>
                                 )}
                                 {hasUpdate && (
@@ -343,22 +376,11 @@ export function PreMeetingWizard({
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <Select
-                                value={taskStatusUpdates[task.id] || task.status || "Not Started"}
-                                onValueChange={(value) => handleTaskStatusChange(task.id, value)}
-                              >
-                                <SelectTrigger className="h-8 text-xs w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {TASK_STATUSES.map((status) => (
-                                    <SelectItem key={status.value} value={status.value}>
-                                      {status.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            <div className="flex-shrink-0">
+                              <StatusSelector
+                                value={currentStatus}
+                                onChange={(value) => handleTaskStatusChange(task.id, value)}
+                              />
                             </div>
                           </div>
 
@@ -424,6 +446,21 @@ export function PreMeetingWizard({
                     </Card>
                   );
                 })}
+
+                {/* Show More button */}
+                {hasMoreTasks && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleShowMoreTasks}
+                  >
+                    Show {Math.min(TASKS_PER_PAGE, remainingTaskCount)} more
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {remainingTaskCount} remaining
+                    </Badge>
+                  </Button>
+                )}
 
                 {tasksWithUpdates > 0 && (
                   <p className="text-xs text-muted-foreground text-center">

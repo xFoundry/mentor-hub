@@ -18,6 +18,7 @@ import { useTaskViewState } from "@/hooks/use-task-view-state";
 import { TaskView } from "@/components/tasks";
 import { hasPermission } from "@/lib/permissions";
 import { useCreateTaskDialog } from "@/contexts/create-task-dialog-context";
+import { PageTourWrapper } from "@/components/onboarding";
 import type { Task } from "@/types/schema";
 
 function TasksPageContent() {
@@ -102,8 +103,8 @@ function TasksPageContent() {
     return <TasksPageSkeleton />;
   }
 
-  return (
-    <>
+  const content = (
+    <div className="space-y-6">
       {/* Team filter for staff and mentors */}
       {(userType === "staff" || userType === "mentor") && teams && teams.length > 0 && (
         <div className="mb-4">
@@ -122,48 +123,69 @@ function TasksPageContent() {
           </Select>
         </div>
       )}
-      <TaskView
-        tasks={filteredTasks}
-        isLoading={isLoading}
-        userType={userType}
-        userEmail={userContext.email}
-        // View state
-        view={viewState.view}
-        filter={viewState.filter}
-        sort={viewState.sort}
-        sortDirection={viewState.sortDirection}
-        groupBy={viewState.groupBy}
-        // View state handlers
-        onViewChange={setView}
-        onFilterChange={setFilter}
-        onSortChange={setSort}
-        onGroupByChange={setGroupBy}
-        // Configuration
-        availableViews={["table", "kanban", "list"]}
-        variant="full"
-        showHeader={true}
-        showStats={true}
-        showControls={true}
-        showViewSwitcher={true}
-        showFilter={true}
-        showSort={true}
-        showGroupBy={true}
-        showCreateButton={canCreate}
-        showAssignee={true}
-        showTeam={userType === "staff" || userType === "mentor"}
-        showActions={true}
-        // Callbacks
-        onTaskUpdate={updateTask}
-        onTaskClick={handleTaskClick}
-        onEditClick={handleTaskClick}
-        onPostUpdateClick={handleTaskClick}
-        onCreateTask={handleCreateTask}
-        // Text
-        title="Action Items"
-        description={getDescription()}
-      />
-    </>
+
+      {/* Main Task View with tour attributes */}
+      <div data-tour="tasks-header">
+        <div data-tour="tasks-view-controls">
+          <div data-tour="tasks-stats">
+            <div data-tour="tasks-create-button">
+              <TaskView
+                tasks={filteredTasks}
+                isLoading={isLoading}
+                userType={userType}
+                userEmail={userContext.email}
+                // View state
+                view={viewState.view}
+                filter={viewState.filter}
+                sort={viewState.sort}
+                sortDirection={viewState.sortDirection}
+                groupBy={viewState.groupBy}
+                // View state handlers
+                onViewChange={setView}
+                onFilterChange={setFilter}
+                onSortChange={setSort}
+                onGroupByChange={setGroupBy}
+                // Configuration
+                availableViews={["table", "kanban", "list"]}
+                variant="full"
+                showHeader={true}
+                showStats={true}
+                showControls={true}
+                showViewSwitcher={true}
+                showFilter={true}
+                showSort={true}
+                showGroupBy={true}
+                showCreateButton={canCreate}
+                showAssignee={true}
+                showTeam={userType === "staff" || userType === "mentor"}
+                showActions={true}
+                // Callbacks
+                onTaskUpdate={updateTask}
+                onTaskClick={handleTaskClick}
+                onEditClick={handleTaskClick}
+                onPostUpdateClick={handleTaskClick}
+                onCreateTask={handleCreateTask}
+                // Text
+                title="Action Items"
+                description={getDescription()}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
+
+  // Wrap with tour for students
+  if (userType === "student") {
+    return (
+      <PageTourWrapper userType="student" userName={userContext?.firstName}>
+        {content}
+      </PageTourWrapper>
+    );
+  }
+
+  return content;
 }
 
 function TasksPageSkeleton() {
