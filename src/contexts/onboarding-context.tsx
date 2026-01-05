@@ -59,6 +59,7 @@ interface OnboardingContextType {
   nextTourStep: () => void;
   prevTourStep: () => void;
   skipTour: () => void;
+  skipTourById: (tourId: string) => void;
   completeTour: () => void;
   isTourCompleted: (tourId: string) => boolean;
   isTourSkipped: (tourId: string) => boolean;
@@ -294,6 +295,33 @@ export function OnboardingProvider({
     setCurrentTourStep(0);
   }, [isImpersonating]);
 
+  /** Skip a specific tour by ID (without it being active) */
+  const skipTourById = useCallback(
+    (tourId: string) => {
+      setState((prev) => {
+        const progress = {
+          completed: false,
+          skipped: true,
+          skippedAt: new Date().toISOString(),
+        };
+        const newState = {
+          ...prev,
+          tourProgress: { ...prev.tourProgress, [tourId]: progress },
+          lastUpdated: new Date().toISOString(),
+        };
+        if (!isImpersonating && typeof window !== "undefined") {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+          } catch (error) {
+            console.error("[Onboarding] Failed to persist state:", error);
+          }
+        }
+        return newState;
+      });
+    },
+    [isImpersonating]
+  );
+
   const completeTour = useCallback(() => {
     setActiveTour((currentTour) => {
       if (currentTour) {
@@ -420,6 +448,7 @@ export function OnboardingProvider({
       nextTourStep,
       prevTourStep,
       skipTour,
+      skipTourById,
       completeTour,
       isTourCompleted,
       isTourSkipped,
@@ -444,6 +473,7 @@ export function OnboardingProvider({
       nextTourStep,
       prevTourStep,
       skipTour,
+      skipTourById,
       completeTour,
       isTourCompleted,
       isTourSkipped,
@@ -500,6 +530,7 @@ export function useOnboardingSafe(): OnboardingContextType {
       nextTourStep: () => {},
       prevTourStep: () => {},
       skipTour: () => {},
+      skipTourById: () => {},
       completeTour: () => {},
       isTourCompleted: () => false,
       isTourSkipped: () => false,

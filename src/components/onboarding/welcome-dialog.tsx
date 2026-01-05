@@ -19,6 +19,8 @@ interface WelcomeDialogProps {
   userType: OnboardingUserType;
   /** User's first name for personalized greeting */
   userName?: string;
+  /** Tour ID to skip if user chooses "Skip for now" */
+  tourId?: string;
   /** Callback when user chooses to start the tour */
   onStartTour?: () => void;
 }
@@ -68,9 +70,10 @@ const WELCOME_CONTENT = {
 export function WelcomeDialog({
   userType,
   userName,
+  tourId,
   onStartTour,
 }: WelcomeDialogProps) {
-  const { welcomeShown, markWelcomeShown, isLoading } = useOnboarding();
+  const { welcomeShown, markWelcomeShown, skipTourById, isLoading } = useOnboarding();
 
   // Only show for first-time users
   const shouldShow = !isLoading && !welcomeShown;
@@ -82,6 +85,10 @@ export function WelcomeDialog({
 
   const handleSkip = () => {
     markWelcomeShown();
+    // Also skip the tour to prevent auto-start
+    if (tourId) {
+      skipTourById(tourId);
+    }
   };
 
   const content = WELCOME_CONTENT[userType] || WELCOME_CONTENT.student;

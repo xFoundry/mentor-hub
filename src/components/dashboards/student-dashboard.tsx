@@ -186,7 +186,11 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
   const content = (
     <div className="space-y-6">
       {/* Welcome Dialog - shows on first visit */}
-      <WelcomeDialog userType="student" userName={userContext.firstName} />
+      <WelcomeDialog
+        userType="student"
+        userName={userContext.firstName}
+        tourId={dashboardTips.tour?.id}
+      />
 
       {/* Welcome Tip Card */}
       {welcomeTip && <TipCard tip={welcomeTip} userType="student" />}
