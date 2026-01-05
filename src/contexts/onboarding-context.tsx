@@ -205,9 +205,10 @@ export function OnboardingProvider({
     [isImpersonating]
   );
 
+  /** Reset all dismissed tips (does not affect tour progress) */
   const resetAllTips = useCallback(() => {
     setState((prev) => {
-      const newState = { ...prev, tipStates: {}, tourProgress: {}, lastUpdated: new Date().toISOString() };
+      const newState = { ...prev, tipStates: {}, lastUpdated: new Date().toISOString() };
       if (!isImpersonating && typeof window !== "undefined") {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
