@@ -11,7 +11,6 @@ import {
   CheckSquare,
   Plus,
   Clock,
-  AlertTriangle,
   CheckCircle2,
   Circle,
   ArrowRight,
@@ -50,11 +49,6 @@ const STATUS_CONFIG = {
     icon: Circle,
     color: "text-slate-400",
     bgColor: "bg-slate-50 dark:bg-slate-900",
-  },
-  "Blocked": {
-    icon: AlertTriangle,
-    color: "text-red-600",
-    bgColor: "bg-red-100 dark:bg-red-900/50",
   },
 };
 

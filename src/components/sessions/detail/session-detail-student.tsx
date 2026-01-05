@@ -221,6 +221,8 @@ export function SessionDetailStudent({
         />
       )}
 
+      {/* Intentionally passes all team tasks (not sessionTasks) so students can
+          update any pending work before meeting their mentor */}
       <PreMeetingWizard
         open={isPreMeetingWizardOpen}
         onOpenChange={setIsPreMeetingWizardOpen}
