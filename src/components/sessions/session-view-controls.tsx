@@ -72,6 +72,10 @@ export interface SessionViewControlsProps {
 
   // Styling
   className?: string;
+
+  // Tour/onboarding
+  /** Data-tour attribute for the controls container */
+  tourAttrControls?: string;
 }
 
 const VIEW_ICONS = {
@@ -130,6 +134,7 @@ export function SessionViewControls({
   showCreateButton = false,
   onCreateSession,
   className,
+  tourAttrControls,
 }: SessionViewControlsProps) {
   // Local search state for debouncing
   const [localSearch, setLocalSearch] = useState(search);
@@ -160,7 +165,10 @@ export function SessionViewControls({
   );
 
   return (
-    <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}>
+    <div
+      className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}
+      data-tour={tourAttrControls}
+    >
       {/* Left side: View switcher + Search */}
       <div className="flex items-center gap-2 flex-1">
         {showViewSwitcher && availableViews.length > 1 && (

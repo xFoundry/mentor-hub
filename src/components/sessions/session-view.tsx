@@ -27,6 +27,16 @@ import { SessionCardView } from "./views/session-card-view";
 
 export type SessionViewVariant = "full" | "compact" | "embedded";
 
+/** Tour attribute identifiers for onboarding */
+export interface SessionViewTourAttributes {
+  /** Attribute for the header section */
+  header?: string;
+  /** Attribute for the controls section */
+  controls?: string;
+  /** Attribute for the session list/grid section */
+  list?: string;
+}
+
 export interface SessionViewProps {
   // Data
   sessions: Session[];
@@ -84,6 +94,10 @@ export interface SessionViewProps {
   title?: string;
   description?: string;
   className?: string;
+
+  // Tour/onboarding
+  /** Data-tour attributes for onboarding tour steps */
+  tourAttributes?: SessionViewTourAttributes;
 }
 
 export function SessionView({
@@ -125,6 +139,7 @@ export function SessionView({
   title = "Sessions",
   description,
   className,
+  tourAttributes,
 }: SessionViewProps) {
   const { allowedGroupings, canCreate, showFeedbackStatus: shouldShowFeedback } = useSessionPermissions(userType, userEmail);
 
@@ -220,7 +235,10 @@ export function SessionView({
       <div className={cn("space-y-4", className)}>
         {/* Header */}
         {showHeader && (
-          <div className="flex items-center justify-between">
+          <div
+            className="flex items-center justify-between"
+            data-tour={tourAttributes?.header}
+          >
             <div>
               <h2 className="text-xl font-semibold">{title}</h2>
               {description && (
@@ -277,11 +295,14 @@ export function SessionView({
             showGroupBy={showGroupBy && view === "cards"}
             showCreateButton={shouldShowCreate}
             onCreateSession={onCreateSession}
+            tourAttrControls={tourAttributes?.controls}
           />
         )}
 
         {/* View */}
-        {renderView()}
+        <div data-tour={tourAttributes?.list}>
+          {renderView()}
+        </div>
       </div>
     );
   }

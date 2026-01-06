@@ -96,43 +96,44 @@ function SessionsPageContent() {
       </div>
 
       {/* Session View */}
-      <div data-tour="sessions-list">
-        <div data-tour="sessions-view-controls">
-          <SessionView
-            sessions={sessions}
-            isLoading={isLoading}
-            userType={userType ?? "student"}
-            userEmail={userContext?.email ?? ""}
-            view={viewState.view}
-            filter={viewState.filter}
-            sort={viewState.sort}
-            sortDirection={viewState.sortDirection}
-            groupBy={viewState.groupBy}
-            search={viewState.search}
-            onViewChange={setView}
-            onFilterChange={setFilter}
-            onSortChange={setSort}
-            onGroupByChange={setGroupBy}
-            onSearchChange={setSearch}
-            onSessionClick={handleSessionClick}
-            onFeedbackClick={handleFeedbackClick}
-            onCreateSession={handleCreateSession}
-            showHeader={false}
-            showStats={isStaff || isMentor}
-            showFeedbackBanner={true}
-            showControls={true}
-            showSearch={true}
-            showViewSwitcher={true}
-            showFilter={true}
-            showSort={true}
-            showGroupBy={true}
-            showCreateButton={false} // Already in page header
-            showTeamName={isMentor || isStaff}
-            showMentorName={userType === "student"}
-            showFeedbackStatus={true}
-          />
-        </div>
-      </div>
+      <SessionView
+        sessions={sessions}
+        isLoading={isLoading}
+        userType={userType ?? "student"}
+        userEmail={userContext?.email ?? ""}
+        view={viewState.view}
+        filter={viewState.filter}
+        sort={viewState.sort}
+        sortDirection={viewState.sortDirection}
+        groupBy={viewState.groupBy}
+        search={viewState.search}
+        onViewChange={setView}
+        onFilterChange={setFilter}
+        onSortChange={setSort}
+        onGroupByChange={setGroupBy}
+        onSearchChange={setSearch}
+        onSessionClick={handleSessionClick}
+        onFeedbackClick={handleFeedbackClick}
+        onCreateSession={handleCreateSession}
+        showHeader={false}
+        showStats={isStaff || isMentor}
+        showFeedbackBanner={true}
+        showControls={true}
+        showSearch={true}
+        showViewSwitcher={true}
+        showFilter={true}
+        showSort={true}
+        showGroupBy={true}
+        showCreateButton={false} // Already in page header
+        showTeamName={isMentor || isStaff}
+        showMentorName={userType === "student"}
+        showFeedbackStatus={true}
+        // Tour attributes for onboarding
+        tourAttributes={{
+          controls: "sessions-view-controls",
+          list: "sessions-list",
+        }}
+      />
 
       {/* Create Session Dialog */}
       <CreateSessionDialog

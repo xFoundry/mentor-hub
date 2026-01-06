@@ -76,7 +76,6 @@ export function TourStep({
   });
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const positionCalculatedRef = useRef(false);
 
   // Check if we're on mobile - only run once on mount
   useEffect(() => {
@@ -199,7 +198,6 @@ export function TourStep({
     // Initial calculation after a small delay to let the card render
     const timer = setTimeout(() => {
       calculatePosition();
-      positionCalculatedRef.current = true;
     }, 50);
 
     return () => clearTimeout(timer);
@@ -207,7 +205,7 @@ export function TourStep({
 
   // Handle resize and scroll events
   useEffect(() => {
-    if (!mounted || !positionCalculatedRef.current) return;
+    if (!mounted) return;
 
     const handleUpdate = () => {
       calculatePosition();

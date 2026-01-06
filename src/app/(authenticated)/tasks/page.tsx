@@ -124,55 +124,54 @@ function TasksPageContent() {
         </div>
       )}
 
-      {/* Main Task View with tour attributes */}
-      <div data-tour="tasks-header">
-        <div data-tour="tasks-view-controls">
-          <div data-tour="tasks-stats">
-            <div data-tour="tasks-create-button">
-              <TaskView
-                tasks={filteredTasks}
-                isLoading={isLoading}
-                userType={userType}
-                userEmail={userContext.email}
-                // View state
-                view={viewState.view}
-                filter={viewState.filter}
-                sort={viewState.sort}
-                sortDirection={viewState.sortDirection}
-                groupBy={viewState.groupBy}
-                // View state handlers
-                onViewChange={setView}
-                onFilterChange={setFilter}
-                onSortChange={setSort}
-                onGroupByChange={setGroupBy}
-                // Configuration
-                availableViews={["table", "kanban", "list"]}
-                variant="full"
-                showHeader={true}
-                showStats={true}
-                showControls={true}
-                showViewSwitcher={true}
-                showFilter={true}
-                showSort={true}
-                showGroupBy={true}
-                showCreateButton={canCreate}
-                showAssignee={true}
-                showTeam={userType === "staff" || userType === "mentor"}
-                showActions={true}
-                // Callbacks
-                onTaskUpdate={updateTask}
-                onTaskClick={handleTaskClick}
-                onEditClick={handleTaskClick}
-                onPostUpdateClick={handleTaskClick}
-                onCreateTask={handleCreateTask}
-                // Text
-                title="Action Items"
-                description={getDescription()}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Main Task View */}
+      <TaskView
+        tasks={filteredTasks}
+        isLoading={isLoading}
+        userType={userType}
+        userEmail={userContext.email}
+        // View state
+        view={viewState.view}
+        filter={viewState.filter}
+        sort={viewState.sort}
+        sortDirection={viewState.sortDirection}
+        groupBy={viewState.groupBy}
+        // View state handlers
+        onViewChange={setView}
+        onFilterChange={setFilter}
+        onSortChange={setSort}
+        onGroupByChange={setGroupBy}
+        // Configuration
+        availableViews={["table", "kanban", "list"]}
+        variant="full"
+        showHeader={true}
+        showStats={true}
+        showControls={true}
+        showViewSwitcher={true}
+        showFilter={true}
+        showSort={true}
+        showGroupBy={true}
+        showCreateButton={canCreate}
+        showAssignee={true}
+        showTeam={userType === "staff" || userType === "mentor"}
+        showActions={true}
+        // Callbacks
+        onTaskUpdate={updateTask}
+        onTaskClick={handleTaskClick}
+        onEditClick={handleTaskClick}
+        onPostUpdateClick={handleTaskClick}
+        onCreateTask={handleCreateTask}
+        // Text
+        title="Action Items"
+        description={getDescription()}
+        // Tour attributes for onboarding
+        tourAttributes={{
+          header: "tasks-header",
+          controls: "tasks-view-controls",
+          stats: "tasks-stats",
+          createButton: "tasks-create-button",
+        }}
+      />
     </div>
   );
 
