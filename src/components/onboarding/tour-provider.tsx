@@ -44,6 +44,7 @@ export function TourProvider({
     getFilteredSteps,
     welcomeShown,
     isLoading,
+    showTips,
   } = useOnboarding();
 
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
@@ -59,6 +60,7 @@ export function TourProvider({
   useEffect(() => {
     if (
       autoStart &&
+      showTips &&
       !isLoading &&
       welcomeShown &&
       !isComplete &&
@@ -75,6 +77,7 @@ export function TourProvider({
     }
   }, [
     autoStart,
+    showTips,
     isLoading,
     welcomeShown,
     isComplete,
@@ -125,8 +128,8 @@ export function TourProvider({
     skipTour();
   }, [skipTour]);
 
-  // If tour is not active or no current step, just render children
-  if (!isActive || !currentStep) {
+  // If tips disabled, tour is not active, or no current step, just render children
+  if (!showTips || !isActive || !currentStep) {
     return <>{children}</>;
   }
 

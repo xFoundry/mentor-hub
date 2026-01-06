@@ -73,10 +73,10 @@ export function WelcomeDialog({
   tourId,
   onStartTour,
 }: WelcomeDialogProps) {
-  const { welcomeShown, markWelcomeShown, skipTourById, isLoading } = useOnboarding();
+  const { welcomeShown, markWelcomeShown, skipTourById, isLoading, showTips } = useOnboarding();
 
-  // Only show for first-time users
-  const shouldShow = !isLoading && !welcomeShown;
+  // Only show for first-time users when tips are enabled
+  const shouldShow = !isLoading && !welcomeShown && showTips;
 
   const handleGetStarted = () => {
     markWelcomeShown();
