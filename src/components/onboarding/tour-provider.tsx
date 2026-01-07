@@ -48,6 +48,8 @@ export function TourProvider({
   } = useOnboarding();
 
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
+  // Track which step index had element not found (null = no step has failed)
+  const [notFoundForStep, setNotFoundForStep] = useState<number | null>(null);
 
   // Filter steps by user type
   const steps = getFilteredSteps(tour.steps, userType);
@@ -93,14 +95,19 @@ export function TourProvider({
   useEffect(() => {
     if (!isActive || !currentStep) {
       setTargetElement(null);
+      setNotFoundForStep(null);
       return;
     }
+
+    // Capture step index at effect start to avoid closure issues
+    const stepIndex = currentTourStep;
 
     const findTarget = () => {
       const element = document.querySelector(
         currentStep.targetSelector
       ) as HTMLElement | null;
       setTargetElement(element);
+      return element;
     };
 
     findTarget();
@@ -109,8 +116,35 @@ export function TourProvider({
     const retryDelays = [100, 300, 500, 1000];
     const timers = retryDelays.map((delay) => setTimeout(findTarget, delay));
 
-    return () => timers.forEach(clearTimeout);
+    // Final check after all retries - if still not found, mark this specific step as not found
+    const finalCheckTimer = setTimeout(() => {
+      const element = findTarget();
+      if (!element) {
+        setNotFoundForStep(stepIndex);
+      }
+    }, 1200);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(finalCheckTimer);
+    };
   }, [isActive, currentStep, currentTourStep]);
+
+  // Auto-advance when target element is not found after retries
+  // Only triggers when notFoundForStep matches the current step (prevents cascading skips)
+  useEffect(() => {
+    if (!isActive || notFoundForStep !== currentTourStep) return;
+
+    // Clear the not-found state before advancing to prevent re-triggering
+    setNotFoundForStep(null);
+
+    // Skip to next step or complete tour if element not found
+    if (currentTourStep >= steps.length - 1) {
+      completeTour();
+    } else {
+      nextTourStep();
+    }
+  }, [isActive, notFoundForStep, currentTourStep, steps.length, completeTour, nextTourStep]);
 
   const handleNext = useCallback(() => {
     if (currentTourStep >= steps.length - 1) {
