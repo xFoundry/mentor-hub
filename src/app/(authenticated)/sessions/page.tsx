@@ -10,6 +10,7 @@ import { useCohortContext } from "@/contexts/cohort-context";
 import { useLocalSessionViewState } from "@/hooks/use-session-view-state";
 import { SessionView, CreateSessionDialog } from "@/components/sessions";
 import { hasPermission } from "@/lib/permissions";
+import { PageTourWrapper } from "@/components/onboarding";
 import type { Session } from "@/types/schema";
 
 function SessionsPageContent() {
@@ -71,10 +72,11 @@ function SessionsPageContent() {
     router.push(`/sessions/${session.id}`);
   };
 
-  return (
+  // Wrap content with PageTourWrapper for students
+  const content = (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between" data-tour="sessions-header">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Sessions</h1>
           <p className="text-muted-foreground mt-2">
@@ -126,6 +128,11 @@ function SessionsPageContent() {
         showTeamName={isMentor || isStaff}
         showMentorName={userType === "student"}
         showFeedbackStatus={true}
+        // Tour attributes for onboarding
+        tourAttributes={{
+          controls: "sessions-view-controls",
+          list: "sessions-list",
+        }}
       />
 
       {/* Create Session Dialog */}
@@ -136,6 +143,17 @@ function SessionsPageContent() {
       />
     </div>
   );
+
+  // Wrap with tour for students
+  if (userType === "student") {
+    return (
+      <PageTourWrapper userType="student" userName={userContext?.firstName}>
+        {content}
+      </PageTourWrapper>
+    );
+  }
+
+  return content;
 }
 
 function SessionsPageFallback() {

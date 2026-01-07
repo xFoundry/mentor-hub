@@ -21,6 +21,7 @@ import {
   type FeedbackGroupBy,
 } from "@/components/feedback";
 import { MessageSquare, MessageSquarePlus } from "lucide-react";
+import { PageTourWrapper } from "@/components/onboarding";
 
 export default function FeedbackPage() {
   const { userContext, userType, isLoading: isUserLoading } = useUserType();
@@ -113,10 +114,10 @@ export default function FeedbackPage() {
     );
   }
 
-  return (
+  const content = (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" data-tour="feedback-header">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Feedback</h1>
           <p className="text-muted-foreground mt-2">
@@ -128,7 +129,7 @@ export default function FeedbackPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" data-tour="feedback-controls">
           <FeedbackViewToggle value={groupBy} onChange={setGroupBy} />
           {canProvideFeedback && (
             disabledReason && !isStaff ? (
@@ -173,13 +174,26 @@ export default function FeedbackPage() {
           </CardContent>
         </Card>
       ) : (
-        <FeedbackFeed
-          sessions={sessions}
-          groupBy={groupBy}
-          userType={userType}
-          userContactId={userContext?.contactId}
-        />
+        <div data-tour="feedback-feed">
+          <FeedbackFeed
+            sessions={sessions}
+            groupBy={groupBy}
+            userType={userType}
+            userContactId={userContext?.contactId}
+          />
+        </div>
       )}
     </div>
   );
+
+  // Wrap with tour for students
+  if (userType === "student") {
+    return (
+      <PageTourWrapper userType="student" userName={userContext?.firstName}>
+        {content}
+      </PageTourWrapper>
+    );
+  }
+
+  return content;
 }

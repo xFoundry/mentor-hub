@@ -11,6 +11,7 @@ import { useCohortContext } from "@/contexts/cohort-context";
 import { Mail, Linkedin, ExternalLink, GraduationCap, Lightbulb, Copy, Check, UserPlus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddMentorDialog, EditMentorDialog } from "@/components/mentors";
+import { PageTourWrapper } from "@/components/onboarding";
 import type { Participation } from "@/types/schema";
 
 export default function MentorsPage() {
@@ -72,9 +73,9 @@ export default function MentorsPage() {
     };
   };
 
-  return (
+  const content = (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="mentors-header">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mentors</h1>
           <p className="text-muted-foreground mt-2">
@@ -116,7 +117,7 @@ export default function MentorsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-tour="mentors-grid">
           {mentors.map((mentor) => {
             const initials = mentor.fullName
               ?.split(" ")
@@ -285,4 +286,15 @@ export default function MentorsPage() {
       )}
     </div>
   );
+
+  // Wrap with tour for students
+  if (userType === "student") {
+    return (
+      <PageTourWrapper userType="student" userName={userContext?.firstName}>
+        {content}
+      </PageTourWrapper>
+    );
+  }
+
+  return content;
 }

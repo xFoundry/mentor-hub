@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Video, MapPin, Calendar, Clock, ChevronRight } from "lucide-react";
+import { Video, MapPin, Calendar, Clock, ChevronRight, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { isToday, isTomorrow, differenceInDays } from "date-fns";
-import { parseAsLocalTime, getMentorParticipants, getLeadMentor } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getMentorParticipants, getLeadMentor, isSessionPrepRequired } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { MentorAvatarStack } from "@/components/shared/mentor-avatar-stack";
 import type { Session } from "@/types/schema";
@@ -17,6 +17,8 @@ interface NextSessionCardProps {
   session: Session;
   /** Whether current user is a mentor */
   isMentor?: boolean;
+  /** Whether the student has already submitted pre-meeting prep (only relevant for students) */
+  hasSubmittedPrep?: boolean;
   className?: string;
 }
 
@@ -27,6 +29,7 @@ interface NextSessionCardProps {
 export function NextSessionCard({
   session,
   isMentor = false,
+  hasSubmittedPrep = false,
   className,
 }: NextSessionCardProps) {
   const mentors = getMentorParticipants(session);
@@ -36,6 +39,9 @@ export function NextSessionCard({
   const isInPerson = session.meetingPlatform === "In-Person";
   const hasMeetingUrl = !!session.meetingUrl;
   const duration = session.duration || 60;
+
+  // Determine if student should see prep button (student, hasn't submitted, prep required)
+  const showPrepButton = !isMentor && !hasSubmittedPrep && isSessionPrepRequired(session);
 
   // Parse and format date/time
   const startTime = session.scheduledStart ? parseAsLocalTime(session.scheduledStart) : null;
@@ -132,7 +138,15 @@ export function NextSessionCard({
 
         {/* Action buttons */}
         <div className="flex gap-2">
-          {isInPerson ? (
+          {showPrepButton ? (
+            // Students who need to submit prep see this as primary action
+            <Button size="sm" className="flex-1" asChild>
+              <Link href={`/sessions/${session.id}?tab=preparation`}>
+                <FileText className="mr-2 h-4 w-4" />
+                Submit Prep
+              </Link>
+            </Button>
+          ) : isInPerson ? (
             <Button variant="outline" size="sm" className="flex-1" asChild>
               <Link href={`/sessions/${session.id}`}>
                 <MapPin className="mr-2 h-4 w-4" />

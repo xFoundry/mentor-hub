@@ -66,6 +66,12 @@ export interface TaskViewControlsProps {
 
   // Styling
   className?: string;
+
+  // Tour/onboarding
+  /** Data-tour attribute for the controls container */
+  tourAttrControls?: string;
+  /** Data-tour attribute for the create button */
+  tourAttrCreateButton?: string;
 }
 
 const VIEW_ICONS = {
@@ -120,13 +126,18 @@ export function TaskViewControls({
   showCreateButton = false,
   onCreateTask,
   className,
+  tourAttrControls,
+  tourAttrCreateButton,
 }: TaskViewControlsProps) {
   const filteredGroupOptions = GROUP_OPTIONS.filter(opt =>
     allowedGroupings.includes(opt.value)
   );
 
   return (
-    <div className={cn("flex items-center justify-between gap-4", className)}>
+    <div
+      className={cn("flex items-center justify-between gap-4", className)}
+      data-tour={tourAttrControls}
+    >
       {/* Left side: View switcher */}
       <div className="flex items-center gap-2">
         {showViewSwitcher && availableViews.length > 1 && (
@@ -230,7 +241,12 @@ export function TaskViewControls({
 
         {/* Create button */}
         {showCreateButton && onCreateTask && (
-          <Button onClick={onCreateTask} size="sm" className="h-9">
+          <Button
+            onClick={onCreateTask}
+            size="sm"
+            className="h-9"
+            data-tour={tourAttrCreateButton}
+          >
             <Plus className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Create Task</span>
           </Button>

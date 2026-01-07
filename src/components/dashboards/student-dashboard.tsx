@@ -25,6 +25,12 @@ import type { UserContext, Task, PreMeetingSubmission } from "@/types/schema";
 import { hasMenteeFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
 import { getSessionPhase, type SessionPhase } from "@/hooks/use-session-phase";
 import { useNow } from "@/hooks/use-now";
+import {
+  WelcomeDialog,
+  TipCard,
+  TourProvider,
+  dashboardTips,
+} from "@/components/onboarding";
 
 interface StudentDashboardProps {
   userContext: UserContext;
@@ -124,6 +130,15 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
     );
   }, [bannerSession, userContext.contactId]);
 
+  // Check if user has submitted pre-meeting prep for the next upcoming session
+  const hasSubmittedPrepForNextSession = useMemo(() => {
+    if (!nextUpcomingSession || !userContext.contactId) return false;
+    const submissions: PreMeetingSubmission[] = nextUpcomingSession.preMeetingSubmissions || [];
+    return submissions.some(
+      (s: PreMeetingSubmission) => s.respondant?.[0]?.id === userContext.contactId
+    );
+  }, [nextUpcomingSession, userContext.contactId]);
+
   // Open tasks
   const openTasks = useMemo(() => {
     return tasks.filter((t) => t.status !== "Completed" && t.status !== "Cancelled");
@@ -164,13 +179,29 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
     },
   ];
 
-  return (
+  // Get the welcome tip for the dashboard
+  const welcomeTip = dashboardTips.tips.find((t) => t.id === "dashboard-welcome");
+
+  // Wrap content with tour provider if tour is defined
+  const content = (
     <div className="space-y-6">
-      {/* Welcome Header */}
-      <WelcomeHeader
-        userContext={userContext}
-        subtitle={team ? `Team: ${team.teamName}` : "Your mentorship journey"}
+      {/* Welcome Dialog - shows on first visit */}
+      <WelcomeDialog
+        userType="student"
+        userName={userContext.firstName}
+        tourId={dashboardTips.tour?.id}
       />
+
+      {/* Welcome Tip Card */}
+      {welcomeTip && <TipCard tip={welcomeTip} userType="student" />}
+
+      {/* Welcome Header */}
+      <div data-tour="welcome-header">
+        <WelcomeHeader
+          userContext={userContext}
+          subtitle={team ? `Team: ${team.teamName}` : "Your mentorship journey"}
+        />
+      </div>
 
       {/* Live/Starting Soon Session Banner */}
       {bannerSession && bannerPhase && (
@@ -184,11 +215,17 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
 
       {/* Next Session Card (only if no banner showing) */}
       {!bannerSession && (
-        nextUpcomingSession ? (
-          <NextSessionCard session={nextUpcomingSession} isMentor={false} />
-        ) : (
-          <NoUpcomingSessionCard />
-        )
+        <div data-tour="next-session">
+          {nextUpcomingSession ? (
+            <NextSessionCard
+              session={nextUpcomingSession}
+              isMentor={false}
+              hasSubmittedPrep={hasSubmittedPrepForNextSession}
+            />
+          ) : (
+            <NoUpcomingSessionCard />
+          )}
+        </div>
       )}
 
       {/* Condensed Team Summary (collapsible) */}
@@ -197,7 +234,9 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
       )}
 
       {/* Stats Grid */}
-      <StatsGrid stats={statsData} isLoading={isLoading} columns={4} />
+      <div data-tour="stats-grid">
+        <StatsGrid stats={statsData} isLoading={isLoading} columns={4} />
+      </div>
 
       {/* Attention Section - Sessions Needing Feedback */}
       {stats.needsFeedback > 0 && (
@@ -233,7 +272,9 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
       )}
 
       {/* Quick Actions */}
-      <QuickActions userType="student" />
+      <div data-tour="quick-actions">
+        <QuickActions userType="student" />
+      </div>
 
       {/* Sessions and Tasks Side by Side */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -251,7 +292,7 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
           emptyStateMessage="No upcoming sessions"
         />
 
-        <Card>
+        <Card data-tour="tasks-section">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -289,4 +330,15 @@ export function StudentDashboard({ userContext }: StudentDashboardProps) {
       </div>
     </div>
   );
+
+  // Wrap with tour provider if tour is defined
+  if (dashboardTips.tour) {
+    return (
+      <TourProvider tour={dashboardTips.tour} userType="student">
+        {content}
+      </TourProvider>
+    );
+  }
+
+  return content;
 }

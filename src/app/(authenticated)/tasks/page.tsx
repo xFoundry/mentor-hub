@@ -18,6 +18,7 @@ import { useTaskViewState } from "@/hooks/use-task-view-state";
 import { TaskView } from "@/components/tasks";
 import { hasPermission } from "@/lib/permissions";
 import { useCreateTaskDialog } from "@/contexts/create-task-dialog-context";
+import { PageTourWrapper } from "@/components/onboarding";
 import type { Task } from "@/types/schema";
 
 function TasksPageContent() {
@@ -102,8 +103,8 @@ function TasksPageContent() {
     return <TasksPageSkeleton />;
   }
 
-  return (
-    <>
+  const content = (
+    <div className="space-y-6">
       {/* Team filter for staff and mentors */}
       {(userType === "staff" || userType === "mentor") && teams && teams.length > 0 && (
         <div className="mb-4">
@@ -122,6 +123,8 @@ function TasksPageContent() {
           </Select>
         </div>
       )}
+
+      {/* Main Task View */}
       <TaskView
         tasks={filteredTasks}
         isLoading={isLoading}
@@ -161,9 +164,27 @@ function TasksPageContent() {
         // Text
         title="Action Items"
         description={getDescription()}
+        // Tour attributes for onboarding
+        tourAttributes={{
+          header: "tasks-header",
+          controls: "tasks-view-controls",
+          stats: "tasks-stats",
+          createButton: "tasks-create-button",
+        }}
       />
-    </>
+    </div>
   );
+
+  // Wrap with tour for students
+  if (userType === "student") {
+    return (
+      <PageTourWrapper userType="student" userName={userContext?.firstName}>
+        {content}
+      </PageTourWrapper>
+    );
+  }
+
+  return content;
 }
 
 function TasksPageSkeleton() {

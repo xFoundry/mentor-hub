@@ -22,8 +22,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -153,12 +151,12 @@ export function ActionNotificationButton() {
       </TooltipProvider>
 
       <PopoverContent
-        className="w-[380px] p-0"
+        className="w-[380px] max-h-[min(550px,80vh)] p-0 overflow-hidden flex flex-col"
         align="end"
         sideOffset={8}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">Actions</h3>
             {hasActions && (
@@ -180,57 +178,61 @@ export function ActionNotificationButton() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : hasActions ? (
-          <ScrollArea className="max-h-[400px]">
-            <div className="divide-y">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div>
               {/* Urgent actions first */}
               {urgentActions.length > 0 && (
                 <div>
-                  <div className="bg-red-50 dark:bg-red-950/50 px-4 py-2">
+                  <div className="sticky top-0 z-10 bg-red-50 dark:bg-red-950/50 px-4 py-2 border-b border-red-100 dark:border-red-900">
                     <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
                       Urgent
                     </p>
                   </div>
-                  {urgentActions.map((action) => (
-                    <ActionItem
-                      key={action.id}
-                      action={action}
-                      onClick={() => handleActionClick(action)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Non-urgent actions */}
-              {actions.filter((a) => a.priority !== "urgent").length > 0 && (
-                <div>
-                  {urgentActions.length > 0 && (
-                    <div className="bg-muted/50 px-4 py-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Other
-                      </p>
-                    </div>
-                  )}
-                  {actions
-                    .filter((a) => a.priority !== "urgent")
-                    .map((action) => (
+                  <div className="divide-y">
+                    {urgentActions.map((action) => (
                       <ActionItem
                         key={action.id}
                         action={action}
                         onClick={() => handleActionClick(action)}
                       />
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Non-urgent actions */}
+              {actions.filter((a) => a.priority !== "urgent").length > 0 && (
+                <div>
+                  <div className={cn(
+                    "sticky top-0 z-10 bg-muted px-4 py-2 border-b",
+                    urgentActions.length > 0 && "border-t"
+                  )}>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      {urgentActions.length > 0 ? "Other" : "Pending Actions"}
+                    </p>
+                  </div>
+                  <div className="divide-y">
+                    {actions
+                      .filter((a) => a.priority !== "urgent")
+                      .map((action) => (
+                        <ActionItem
+                          key={action.id}
+                          action={action}
+                          onClick={() => handleActionClick(action)}
+                        />
+                      ))}
+                  </div>
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         ) : (
           <EmptyState />
         )}
 
-        {/* Footer */}
+        {/* Footer - sticky at bottom */}
         {hasActions && (
-          <>
-            <Separator />
+          <div className="shrink-0 bg-popover border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
             <div className="p-2">
               <Button
                 variant="ghost"
@@ -244,7 +246,7 @@ export function ActionNotificationButton() {
                 </Link>
               </Button>
             </div>
-          </>
+          </div>
         )}
       </PopoverContent>
     </Popover>

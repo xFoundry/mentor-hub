@@ -27,6 +27,7 @@ import { getNavItems } from "@/components/nav-items";
 import { useEffectiveUser } from "@/hooks/use-effective-user";
 import { CohortHeaderDropdown } from "@/components/cohort-header-dropdown";
 import { SidebarMeetingBanner } from "@/components/sidebar/sidebar-meeting-banner";
+import { HelpToggle } from "@/components/onboarding";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -149,6 +150,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="flex items-center justify-between">
                 <RoleBadge role={userType} />
                 <ThemeToggle />
+              </div>
+              {/* Help toggle for tips and onboarding */}
+              <div className="border-t pt-2 mt-1">
+                <HelpToggle />
               </div>
               <Button
                 variant="outline"

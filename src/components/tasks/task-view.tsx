@@ -22,6 +22,18 @@ import { TaskTableView } from "./views/task-table-view";
 
 export type TaskViewVariant = "full" | "compact" | "embedded";
 
+/** Tour attribute identifiers for onboarding */
+export interface TaskViewTourAttributes {
+  /** Attribute for the header section */
+  header?: string;
+  /** Attribute for the controls section */
+  controls?: string;
+  /** Attribute for the stats section */
+  stats?: string;
+  /** Attribute for the create button */
+  createButton?: string;
+}
+
 export interface TaskViewProps {
   // Data
   tasks: Task[];
@@ -80,6 +92,10 @@ export interface TaskViewProps {
   title?: string;
   description?: string;
   className?: string;
+
+  // Tour/onboarding
+  /** Data-tour attributes for onboarding tour steps */
+  tourAttributes?: TaskViewTourAttributes;
 }
 
 export function TaskView({
@@ -120,6 +136,7 @@ export function TaskView({
   title = "Tasks",
   description,
   className,
+  tourAttributes,
 }: TaskViewProps) {
   const { allowedGroupings, canCreate } = useTaskPermissions(userType, userEmail);
 
@@ -212,7 +229,10 @@ export function TaskView({
       <div className={cn("space-y-4", className)}>
         {/* Header */}
         {showHeader && (
-          <div className="flex items-center justify-between">
+          <div
+            className="flex items-center justify-between"
+            data-tour={tourAttributes?.header}
+          >
             <div>
               <h2 className="text-xl font-semibold">{title}</h2>
               {description && (
@@ -224,7 +244,10 @@ export function TaskView({
 
         {/* Stats */}
         {showStats && (
-          <div className="grid gap-4 md:grid-cols-4">
+          <div
+            className="grid gap-4 md:grid-cols-4"
+            data-tour={tourAttributes?.stats}
+          >
             <StatCard title="Total" value={stats.total} />
             <StatCard title="Open" value={stats.open} />
             <StatCard title="Completed" value={stats.completed} />
@@ -252,6 +275,8 @@ export function TaskView({
             showGroupBy={showGroupBy && view !== "kanban"}
             showCreateButton={shouldShowCreate}
             onCreateTask={onCreateTask}
+            tourAttrControls={tourAttributes?.controls}
+            tourAttrCreateButton={tourAttributes?.createButton}
           />
         )}
 

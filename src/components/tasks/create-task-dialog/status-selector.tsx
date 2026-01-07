@@ -1,9 +1,9 @@
 "use client";
 
 import { PillSelector, type PillOption } from "./pill-selector";
-import { Circle, PlayCircle, PauseCircle, CheckCircle2 } from "lucide-react";
+import { Circle, PlayCircle, CheckCircle2, XCircle } from "lucide-react";
 
-export type TaskStatus = "Not Started" | "In Progress" | "Blocked" | "Completed";
+export type TaskStatus = "Not Started" | "In Progress" | "Completed" | "Cancelled";
 
 const statusOptions: PillOption<TaskStatus>[] = [
   {
@@ -19,16 +19,16 @@ const statusOptions: PillOption<TaskStatus>[] = [
     icon: <PlayCircle className="h-3.5 w-3.5" />,
   },
   {
-    value: "Blocked",
-    label: "Blocked",
-    color: "text-red-500",
-    icon: <PauseCircle className="h-3.5 w-3.5" />,
-  },
-  {
     value: "Completed",
     label: "Completed",
     color: "text-green-500",
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  },
+  {
+    value: "Cancelled",
+    label: "Cancelled",
+    color: "text-slate-400",
+    icon: <XCircle className="h-3.5 w-3.5" />,
   },
 ];
 
