@@ -82,10 +82,11 @@ export function SessionEmailsTab({ sessionId, sessionCreatedAt }: SessionEmailsT
   const { jobs, summary, total, isLoading, error, mutate, cancelJob, retryJob, retryAllFailed, resendJob } =
     useSessionEmailJobs(sessionId);
 
-  // Check if session was created more than the retention period ago
+  // Check if session was created at or beyond the retention period
   // TTL starts from when email jobs are created (at session creation time)
+  // Use >= because Redis TTL expires at exactly the retention day mark
   const isOlderThanRetention = sessionCreatedAt
-    ? differenceInDays(new Date(), new Date(sessionCreatedAt)) > EMAIL_HISTORY_RETENTION_DAYS
+    ? differenceInDays(new Date(), new Date(sessionCreatedAt)) >= EMAIL_HISTORY_RETENTION_DAYS
     : false;
 
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);

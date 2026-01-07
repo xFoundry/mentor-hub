@@ -156,7 +156,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
             <Calendar className="h-4 w-4" />
             Sessions
             {stats.upcomingSessions > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.upcomingSessions}
               </Badge>
             )}
@@ -165,7 +165,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
             <CheckSquare className="h-4 w-4" />
             Tasks
             {stats.openTasks > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.openTasks}
               </Badge>
             )}
@@ -173,7 +173,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
           <TabsTrigger value="members" className="flex items-center gap-2">
             <Users2 className="h-4 w-4" />
             Members
-            <Badge variant="secondary" className="ml-1 text-xs">
+            <Badge variant="outline" className="ml-1 text-xs bg-background/80">
               {stats.memberCount}
             </Badge>
           </TabsTrigger>

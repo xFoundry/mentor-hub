@@ -25,20 +25,20 @@ export function StatsCard({
   const content = (
     <Card className={href ? "transition-colors hover:bg-muted/50" : ""}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="text-xs sm:text-sm font-medium truncate pr-2">{title}</CardTitle>
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <>
-            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-7 sm:h-8 w-16" />
             {subtitle && <Skeleton className="mt-1 h-4 w-24" />}
           </>
         ) : (
           <>
-            <div className="text-2xl font-bold">{value}</div>
+            <div className="text-xl sm:text-2xl font-bold">{value}</div>
             {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+              <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
             )}
           </>
         )}

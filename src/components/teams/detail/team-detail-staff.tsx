@@ -240,7 +240,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
             <Calendar className="h-4 w-4" />
             Sessions
             {stats.upcomingSessions > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.upcomingSessions}
               </Badge>
             )}
@@ -249,7 +249,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
             <CheckSquare className="h-4 w-4" />
             Tasks
             {stats.openTasks > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.openTasks}
               </Badge>
             )}
@@ -257,7 +257,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
           <TabsTrigger value="members" className="flex items-center gap-2">
             <Users2 className="h-4 w-4" />
             Members
-            <Badge variant="secondary" className="ml-1 text-xs">
+            <Badge variant="outline" className="ml-1 text-xs bg-background/80">
               {stats.memberCount}
             </Badge>
           </TabsTrigger>
@@ -265,7 +265,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
             <MessageSquare className="h-4 w-4" />
             Feedback
             {stats.feedbackCount > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.feedbackCount}
               </Badge>
             )}
@@ -279,8 +279,6 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
             userType="staff"
             stats={stats}
             mentors={mentors}
-            onAddMember={handleAddMember}
-            onEditTeam={handleEditTeam}
           />
         </TabsContent>
 

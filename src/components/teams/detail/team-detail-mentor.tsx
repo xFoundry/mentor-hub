@@ -193,7 +193,7 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
             <CheckSquare className="h-4 w-4" />
             Tasks
             {stats.openTasks > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.openTasks}
               </Badge>
             )}
@@ -201,7 +201,7 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
           <TabsTrigger value="members" className="flex items-center gap-2">
             <Users2 className="h-4 w-4" />
             Members
-            <Badge variant="secondary" className="ml-1 text-xs">
+            <Badge variant="outline" className="ml-1 text-xs bg-background/80">
               {stats.memberCount}
             </Badge>
           </TabsTrigger>
@@ -209,7 +209,7 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
             <MessageSquare className="h-4 w-4" />
             Feedback
             {stats.feedbackCount > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="outline" className="ml-1 text-xs bg-background/80">
                 {stats.feedbackCount}
               </Badge>
             )}

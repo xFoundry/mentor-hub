@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Clock, Video, ArrowRight } from "lucide-react";
 import { isToday, isTomorrow, differenceInDays, isFuture } from "date-fns";
-import { parseAsLocalTime, getLeadMentor } from "@/components/sessions/session-transformers";
+import { parseAsLocalTime, getLeadMentor, isCurrentUserMentor } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
 
@@ -18,6 +18,8 @@ interface UpcomingSessionsCardProps {
   maxItems?: number;
   showViewAll?: boolean;
   teamId?: string;
+  /** Current user's email - used to prioritize their sessions and show/hide join button */
+  currentUserEmail?: string;
 }
 
 export function UpcomingSessionsCard({
@@ -26,10 +28,11 @@ export function UpcomingSessionsCard({
   maxItems = 1,
   showViewAll = true,
   teamId,
+  currentUserEmail,
 }: UpcomingSessionsCardProps) {
-  // Get upcoming sessions sorted by date (must be in the future)
-  const upcomingSessions = useMemo(() => {
-    return sessions
+  // Get upcoming sessions, prioritizing current user's sessions if they're a mentor
+  const { nextSession, isUserSession } = useMemo(() => {
+    const futureSessions = sessions
       .filter((s: any) => {
         if (!s.scheduledStart) return false;
         // Only show sessions that are scheduled AND in the future
@@ -45,11 +48,23 @@ export function UpcomingSessionsCard({
         const dateA = new Date(a.scheduledStart!).getTime();
         const dateB = new Date(b.scheduledStart!).getTime();
         return dateA - dateB;
-      })
-      .slice(0, maxItems);
-  }, [sessions, maxItems]);
+      });
 
-  const nextSession = upcomingSessions[0];
+    // If currentUserEmail is provided, check if user has their own upcoming sessions
+    if (currentUserEmail) {
+      const userSessions = futureSessions.filter((s) =>
+        isCurrentUserMentor(s, currentUserEmail)
+      );
+
+      if (userSessions.length > 0) {
+        // User has their own sessions - show their next one
+        return { nextSession: userSessions[0], isUserSession: true };
+      }
+    }
+
+    // No user-specific sessions or no email provided - show team's next session
+    return { nextSession: futureSessions[0] || null, isUserSession: false };
+  }, [sessions, currentUserEmail]);
 
   // Get relative date label
   const getDateLabel = (dateStr: string) => {
@@ -164,30 +179,32 @@ export function UpcomingSessionsCard({
           </p>
         )}
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 pt-2">
-          {(nextSession as any).meetingUrl && (
-            <Button asChild>
-              <a
-                href={(nextSession as any).meetingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Video className="mr-2 h-4 w-4" />
-                Join Meeting
-              </a>
+        {/* Action buttons - only show if this is the user's session */}
+        {isUserSession && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
+            {(nextSession as any).meetingUrl && (
+              <Button asChild className="w-full sm:w-auto">
+                <a
+                  href={(nextSession as any).meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Video className="mr-2 h-4 w-4" />
+                  Join Meeting
+                </a>
+              </Button>
+            )}
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link href={`/sessions/${nextSession.id}`}>
+                View Details
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
             </Button>
-          )}
-          <Button variant="outline" asChild>
-            <Link href={`/sessions/${nextSession.id}`}>
-              View Details
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
+          </div>
+        )}
 
         {/* View all link */}
-        {showViewAll && upcomingSessions.length > 0 && (
+        {showViewAll && nextSession && (
           <div className="pt-2 border-t">
             <Button variant="ghost" size="sm" className="w-full" asChild>
               <Link href="/sessions">

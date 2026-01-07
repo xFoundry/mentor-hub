@@ -155,17 +155,17 @@ export function AttentionNeededCard({
         {attentionItems.map((item, index) => (
           <div
             key={index}
-            className="flex items-center justify-between rounded-lg border bg-background p-3"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border bg-background p-3"
           >
             <div className="flex items-center gap-3">
               {item.type === "feedback" && (
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
               )}
               {item.type === "overdue" && (
-                <Clock className="h-4 w-4 text-destructive" />
+                <Clock className="h-4 w-4 shrink-0 text-destructive" />
               )}
               {item.type === "pending" && (
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                <CheckSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
               )}
               <span className="text-sm">
                 <span className="font-medium">{item.count}</span> {item.label}
@@ -173,12 +173,12 @@ export function AttentionNeededCard({
             </div>
             {item.actionLabel && (
               item.onAction ? (
-                <Button variant="ghost" size="sm" onClick={item.onAction}>
+                <Button variant="ghost" size="sm" className="w-full sm:w-auto justify-center sm:justify-start" onClick={item.onAction}>
                   {item.actionLabel}
                   <ArrowRight className="ml-1 h-3 w-3" />
                 </Button>
               ) : (
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" className="w-full sm:w-auto justify-center sm:justify-start" asChild>
                   <Link href={item.actionHref || "#"}>
                     {item.actionLabel}
                     <ArrowRight className="ml-1 h-3 w-3" />
