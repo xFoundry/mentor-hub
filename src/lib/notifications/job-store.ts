@@ -376,11 +376,32 @@ export async function getJobProgressWithDetails(batchId: string): Promise<JobPro
  * Get all batches for a session
  */
 export async function getSessionBatches(sessionId: string): Promise<JobProgress[]> {
-  const batchIds = await redis.lrange(REDIS_KEYS.sessionBatches(sessionId), 0, -1);
+  const redisKey = REDIS_KEYS.sessionBatches(sessionId);
+  const batchIds = await redis.lrange(redisKey, 0, -1);
+
+  // DEBUG: Log what we're looking up
+  console.log(`[Job Store:DEBUG] getSessionBatches lookup`, {
+    sessionId,
+    redisKey,
+    batchIdsFound: batchIds.length,
+    batchIds: batchIds.slice(0, 5), // First 5
+  });
+
   const batches = await Promise.all(
     batchIds.map((id) => getJobProgress(id as string))
   );
-  return batches.filter((b): b is JobProgress => b !== null);
+  const filteredBatches = batches.filter((b): b is JobProgress => b !== null);
+
+  // DEBUG: Log how many batches were successfully retrieved
+  if (batchIds.length !== filteredBatches.length) {
+    console.log(`[Job Store:DEBUG] Some batches returned null`, {
+      sessionId,
+      requestedCount: batchIds.length,
+      retrievedCount: filteredBatches.length,
+    });
+  }
+
+  return filteredBatches;
 }
 
 /**

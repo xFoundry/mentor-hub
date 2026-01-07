@@ -25,6 +25,12 @@ export async function GET(
   try {
     const { id: sessionId } = await params;
 
+    // DEBUG: Log the session ID being queried
+    console.log(`[Session Emails API:DEBUG] Fetching jobs for session`, {
+      sessionId,
+      redisKeyPattern: `email:session:${sessionId}:batches`,
+    });
+
     // Check Redis availability
     const redisAvailable = await isRedisAvailable();
     if (!redisAvailable) {
@@ -35,6 +41,17 @@ export async function GET(
     }
 
     const jobs = await getSessionJobs(sessionId);
+
+    // DEBUG: Log the results
+    console.log(`[Session Emails API:DEBUG] Query results`, {
+      sessionId,
+      jobCount: jobs.length,
+      jobIds: jobs.map(j => j.id).slice(0, 5), // First 5 job IDs
+      statuses: jobs.reduce((acc, j) => {
+        acc[j.status] = (acc[j.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    });
 
     // Sort by scheduled time (upcoming first)
     jobs.sort((a, b) =>

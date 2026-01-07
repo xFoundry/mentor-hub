@@ -715,6 +715,7 @@ export async function getAllSessions(): Promise<{ sessions: Session[] }> {
         keyTopics
         requirePrep
         requireFeedback
+        created
         mentor {
           id
           fullName
@@ -1185,6 +1186,7 @@ export async function getSessionDetail(
         requirePrep
         requireFeedback
         scheduledEmailIds
+        created
         mentor {
           id
           fullName
