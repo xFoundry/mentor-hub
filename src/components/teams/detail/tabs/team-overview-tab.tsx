@@ -106,9 +106,9 @@ export function TeamOverviewTab({
         <UpcomingSessionsCard
           sessions={sessions}
           teamId={team.id}
-          maxItems={1}
           showViewAll={true}
           currentUserEmail={userContext.email}
+          userType={userType}
         />
       </div>
 

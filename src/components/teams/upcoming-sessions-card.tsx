@@ -15,20 +15,21 @@ import type { Session } from "@/types/schema";
 interface UpcomingSessionsCardProps {
   sessions: Session[];
   isLoading?: boolean;
-  maxItems?: number;
   showViewAll?: boolean;
   teamId?: string;
-  /** Current user's email - used to prioritize their sessions and show/hide join button */
+  /** Current user's email - used to prioritize mentor's own sessions */
   currentUserEmail?: string;
+  /** User type - determines action button visibility */
+  userType?: "student" | "mentor" | "staff";
 }
 
 export function UpcomingSessionsCard({
   sessions,
   isLoading = false,
-  maxItems = 1,
   showViewAll = true,
   teamId,
   currentUserEmail,
+  userType,
 }: UpcomingSessionsCardProps) {
   // Get upcoming sessions, prioritizing current user's sessions if they're a mentor
   const { nextSession, isUserSession } = useMemo(() => {
@@ -179,8 +180,8 @@ export function UpcomingSessionsCard({
           </p>
         )}
 
-        {/* Action buttons - only show if this is the user's session */}
-        {isUserSession && (
+        {/* Action buttons - show for students/staff always, mentors only for their sessions */}
+        {(userType === "student" || userType === "staff" || isUserSession) && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
             {(nextSession as any).meetingUrl && (
               <Button asChild className="w-full sm:w-auto">
