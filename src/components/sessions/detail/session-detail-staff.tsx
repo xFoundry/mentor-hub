@@ -225,7 +225,10 @@ export function SessionDetailStaff({
         </TabsContent>
 
         <TabsContent value="emails" className="mt-6">
-          <SessionEmailsTab sessionId={session.id} />
+          <SessionEmailsTab
+            sessionId={session.id}
+            sessionCreatedAt={session.created}
+          />
         </TabsContent>
       </Tabs>
 

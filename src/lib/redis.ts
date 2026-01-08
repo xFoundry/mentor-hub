@@ -34,17 +34,23 @@ export const REDIS_KEYS = {
 };
 
 /**
+ * Email history retention period in days
+ * Used for TTL and UI messaging about data expiration
+ */
+export const EMAIL_HISTORY_RETENTION_DAYS = 90;
+
+/**
  * TTL values in seconds
  */
 export const REDIS_TTL = {
-  /** Job data TTL: 7 days */
-  JOB: 60 * 60 * 24 * 7,
-  /** Batch data TTL: 7 days */
-  BATCH: 60 * 60 * 24 * 7,
+  /** Job data TTL: 90 days */
+  JOB: 60 * 60 * 24 * EMAIL_HISTORY_RETENTION_DAYS,
+  /** Batch data TTL: 90 days */
+  BATCH: 60 * 60 * 24 * EMAIL_HISTORY_RETENTION_DAYS,
   /** Active batch reference TTL: 24 hours */
   ACTIVE_BATCH: 60 * 60 * 24,
-  /** Dead letter queue TTL: 30 days */
-  DEAD_LETTER: 60 * 60 * 24 * 30,
+  /** Dead letter queue TTL: 90 days (same as email history) */
+  DEAD_LETTER: 60 * 60 * 24 * EMAIL_HISTORY_RETENTION_DAYS,
 };
 
 /**

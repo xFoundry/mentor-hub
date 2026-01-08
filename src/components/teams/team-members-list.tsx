@@ -85,7 +85,7 @@ export function TeamMembersList({
   if (members.length === 0) {
     return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Users2 className="h-5 w-5" />
@@ -95,7 +95,7 @@ export function TeamMembersList({
           </div>
           <PermissionGate userType={userType} entity="team" action="update">
             {showActions && onAddMember && (
-              <Button onClick={onAddMember} size="sm">
+              <Button onClick={onAddMember} size="sm" className="w-full sm:w-auto">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add Member
               </Button>
@@ -166,7 +166,7 @@ export function TeamMembersList({
   // Detailed or Grid variant
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
             <Users2 className="h-5 w-5" />
@@ -176,7 +176,7 @@ export function TeamMembersList({
         </div>
         <PermissionGate userType={userType} entity="team" action="update">
           {showActions && onAddMember && (
-            <Button onClick={onAddMember} size="sm">
+            <Button onClick={onAddMember} size="sm" className="w-full sm:w-auto">
               <UserPlus className="mr-2 h-4 w-4" />
               Add Member
             </Button>

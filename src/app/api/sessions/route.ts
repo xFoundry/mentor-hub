@@ -94,6 +94,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ session: createdSession });
     }
 
+    // DEBUG: Log session details before scheduling emails
+    console.log(`[Sessions API:DEBUG] About to schedule emails`, {
+      createdSessionId: createdSession.id,
+      fullSessionId: fullSession.id,
+      sessionIdsMatch: createdSession.id === fullSession.id,
+      teamId: fullSession.team?.[0]?.id,
+      teamName: fullSession.team?.[0]?.teamName,
+      memberCount: fullSession.team?.[0]?.members?.length || 0,
+      mentorCount: fullSession.mentor ? 1 : 0,
+      scheduledStart: fullSession.scheduledStart,
+      requirePrep: fullSession.requirePrep,
+      requireFeedback: fullSession.requireFeedback,
+    });
+
     // Schedule notification emails via QStash
     let batchId: string | null = null;
 
@@ -102,6 +116,10 @@ export async function POST(request: NextRequest) {
       if (qstashResult) {
         batchId = qstashResult.batchId;
         console.log(`[Sessions API] Queued ${qstashResult.jobCount} emails via QStash (batch: ${batchId})`);
+        // DEBUG: Log the Redis key that will be used for retrieval
+        console.log(`[Sessions API:DEBUG] Batch stored under session ID: ${fullSession.id}, Redis key pattern: email:session:${fullSession.id}:batches`);
+      } else {
+        console.log(`[Sessions API:DEBUG] scheduleSessionEmailsViaQStash returned null - no jobs created`);
       }
     } catch (error) {
       // Email scheduling failure shouldn't fail the session creation

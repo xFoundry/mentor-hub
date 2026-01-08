@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format, formatDistanceToNow, isPast } from "date-fns";
+import { format, formatDistanceToNow, isPast, differenceInDays } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,9 @@ import {
   RotateCcw,
   CalendarPlus,
   Send,
+  Info,
 } from "lucide-react";
+import { EMAIL_HISTORY_RETENTION_DAYS } from "@/lib/redis";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -54,6 +56,8 @@ import type { EmailJob, EmailJobStatus } from "@/lib/notifications/job-types";
 
 interface SessionEmailsTabProps {
   sessionId: string;
+  /** Session's creation time - used to determine if email history may have expired (TTL starts from creation) */
+  sessionCreatedAt?: string;
 }
 
 const STATUS_ICONS: Record<EmailJobStatus, typeof Clock> = {
@@ -74,9 +78,16 @@ const STATUS_COLORS: Record<EmailJobStatus, string> = {
   cancelled: "text-slate-400",
 };
 
-export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
+export function SessionEmailsTab({ sessionId, sessionCreatedAt }: SessionEmailsTabProps) {
   const { jobs, summary, total, isLoading, error, mutate, cancelJob, retryJob, retryAllFailed, resendJob } =
     useSessionEmailJobs(sessionId);
+
+  // Check if session was created at or beyond the retention period
+  // TTL starts from when email jobs are created (at session creation time)
+  // Use >= because Redis TTL expires at exactly the retention day mark
+  const isOlderThanRetention = sessionCreatedAt
+    ? differenceInDays(new Date(), new Date(sessionCreatedAt)) >= EMAIL_HISTORY_RETENTION_DAYS
+    : false;
 
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
@@ -342,11 +353,24 @@ export function SessionEmailsTab({ sessionId }: SessionEmailsTabProps) {
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Mail className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <p className="font-medium">No email notifications</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              No scheduled emails found for this session
-            </p>
+            {isOlderThanRetention ? (
+              <>
+                <Info className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="font-medium">Email history unavailable</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-md">
+                  Email notification history is only retained for {EMAIL_HISTORY_RETENTION_DAYS} days.
+                  This session is older than that, so the email history is no longer available.
+                </p>
+              </>
+            ) : (
+              <>
+                <Mail className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="font-medium">No email notifications</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  No scheduled emails found for this session
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

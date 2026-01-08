@@ -60,14 +60,14 @@ export function TeamDetailHeader({
   const cohortName = team.cohorts?.[0]?.shortName || "N/A";
 
   return (
-    <div className="flex items-start justify-between">
-      <div className="flex items-start gap-4">
-        <div className="bg-primary/10 text-primary flex h-16 w-16 items-center justify-center rounded-lg">
-          <Users2 className="h-8 w-8" />
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+        <div className="bg-primary/10 text-primary flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-lg">
+          <Users2 className="h-6 w-6 sm:h-8 sm:w-8" />
         </div>
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">{team.teamName}</h1>
-          <div className="flex items-center gap-2">
+        <div className="space-y-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">{team.teamName}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">{cohortName}</Badge>
             {team.teamStatus && (
               <Badge
@@ -84,11 +84,11 @@ export function TeamDetailHeader({
             <p className="text-muted-foreground text-sm">{subtitle}</p>
           )}
           {team.description && (
-            <p className="text-muted-foreground mt-2 max-w-3xl">{team.description}</p>
+            <p className="text-muted-foreground mt-2 max-w-3xl text-sm sm:text-base">{team.description}</p>
           )}
-          {/* Team member pills */}
+          {/* Team member pills - hidden on mobile, shown on tablet+ */}
           {members && members.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap pt-2">
+            <div className="hidden sm:flex items-center gap-2 flex-wrap pt-2">
               {members.map((member) => {
                 const contact = member.contact?.[0];
                 const initials = contact?.fullName
@@ -121,19 +121,19 @@ export function TeamDetailHeader({
       </div>
 
       {/* Action Buttons - varies by role */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Create Task button for mentors and staff */}
         <PermissionGate userType={userType} entity="task" action="create">
           {onCreateTask ? (
-            <Button onClick={onCreateTask}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Task
+            <Button onClick={onCreateTask} size="sm" className="sm:size-default">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Create Task</span>
             </Button>
           ) : (
-            <Button asChild>
+            <Button asChild size="sm" className="sm:size-default">
               <Link href={`/tasks/new?team=${team.id}`}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Task
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Create Task</span>
               </Link>
             </Button>
           )}
