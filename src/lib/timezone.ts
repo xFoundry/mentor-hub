@@ -196,14 +196,16 @@ export function toEasternISOString(date: Date): string {
 }
 
 /**
- * Check if a scheduled time is valid for Resend
- * (not in the past and within 30 days)
+ * Check if a scheduled time is valid for QStash
+ * (not in the past and within 1 year)
+ *
+ * QStash limits: Free tier = 7 days, Pay-as-you-go = 1 year, Fixed = unlimited
  *
  * @param scheduledFor - Date object for when to send
- * @param maxDays - Maximum days in advance (default 30)
+ * @param maxDays - Maximum days in advance (default 365)
  * @returns true if the time is valid for scheduling
  */
-export function isValidScheduleTime(scheduledFor: Date, maxDays: number = 30): boolean {
+export function isValidScheduleTime(scheduledFor: Date, maxDays: number = 365): boolean {
   const now = new Date();
   const maxDate = new Date(now.getTime() + maxDays * 24 * 60 * 60 * 1000);
   return scheduledFor > now && scheduledFor <= maxDate;
