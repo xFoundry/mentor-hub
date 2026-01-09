@@ -153,4 +153,6 @@ export interface UseChatReturn {
   clearChat: () => void;
   newChat: () => void;
   isConnected: boolean;
+  useMemory: boolean;
+  setUseMemory: (value: boolean) => void;
 }

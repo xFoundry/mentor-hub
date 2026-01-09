@@ -19,7 +19,7 @@ interface ChatContainerProps {
 }
 
 export function ChatContainer({ userContext }: ChatContainerProps) {
-  const { session, sendMessage, clearChat, newChat } = useChat({ userContext });
+  const { session, sendMessage, clearChat, newChat, useMemory, setUseMemory } = useChat({ userContext });
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card">
@@ -69,6 +69,8 @@ export function ChatContainer({ userContext }: ChatContainerProps) {
           <ChatInput
             onSend={sendMessage}
             isStreaming={session.isStreaming}
+            useMemory={useMemory}
+            onUseMemoryChange={setUseMemory}
           />
         </div>
 

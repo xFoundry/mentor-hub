@@ -28,6 +28,7 @@ import {
 } from "@/lib/chat-sse";
 
 const THREAD_ID_KEY = "chat_thread_id";
+const USE_MEMORY_KEY = "chat_use_memory";
 
 interface UseChatOptions {
   userContext?: UserContext;
@@ -43,6 +44,13 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       return localStorage.getItem(THREAD_ID_KEY);
     }
     return null;
+  });
+  const [useMemory, setUseMemory] = useState<boolean>(() => {
+    // Initialize from localStorage on client
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(USE_MEMORY_KEY) === "true";
+    }
+    return false;
   });
   const [traces, setTraces] = useState<AgentTrace[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -60,6 +68,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       localStorage.setItem(THREAD_ID_KEY, threadId);
     }
   }, [threadId]);
+
+  // Persist useMemory to localStorage
+  useEffect(() => {
+    localStorage.setItem(USE_MEMORY_KEY, useMemory.toString());
+  }, [useMemory]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -329,6 +342,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
             message: content.trim(),
             thread_id: threadId ?? undefined,
             user_context: userContext,
+            use_memory: useMemory,
           },
           {
             onAgentActivity: handleAgentActivity,
@@ -353,6 +367,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       isStreaming,
       threadId,
       userContext,
+      useMemory,
       handleAgentActivity,
       handleTextChunk,
       handleCitation,
@@ -405,5 +420,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     clearChat,
     newChat,
     isConnected: !error,
+    useMemory,
+    setUseMemory,
   };
 }
