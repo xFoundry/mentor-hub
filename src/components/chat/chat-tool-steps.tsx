@@ -36,7 +36,10 @@ function getToolLabel(toolName?: string): string {
     search_summaries: "Searching summaries",
     search_graph: "Searching knowledge graph",
     search_rag: "RAG search",
-    // Memory tools
+    // Memory tools (cognee integration)
+    cognee_add: "Storing to memory",
+    cognee_search: "Searching memory",
+    // Legacy memory tool names
     remember_about_user: "Storing to memory",
     recall_about_user: "Searching memory",
     graphiti_search: "Searching memory",
