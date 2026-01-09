@@ -74,8 +74,8 @@ export function ChatContainer({ userContext }: ChatContainerProps) {
           />
         </div>
 
-        {/* Agent trace sidebar */}
-        <div className="border-l p-2">
+        {/* Agent trace sidebar - hidden on mobile */}
+        <div className="hidden md:block border-l p-2">
           <ChatAgentTrace
             traces={session.traces}
             isStreaming={session.isStreaming}
