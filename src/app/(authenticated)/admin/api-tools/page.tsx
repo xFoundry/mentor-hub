@@ -41,6 +41,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquare,
+  Workflow,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useUserType } from "@/hooks/use-user-type";
@@ -311,6 +312,89 @@ const COGNEE_ENDPOINT_GROUPS: Record<string, { title: string; description: strin
       },
     ],
   },
+  pipelines: {
+    title: "Ingestion Pipelines",
+    description: "Task-based pipelines with structured data, LLM extraction, and relationship inference",
+    endpoints: [
+      {
+        name: "List Pipelines",
+        description: "List all available pipeline types",
+        endpoint: "/pipelines/",
+        method: "GET",
+      },
+      {
+        name: "Run Full Pipeline",
+        description: "Run complete Mentor Hub pipeline with all phases (structured, extraction, inference, cognify, memify)",
+        endpoint: "/pipelines/run/mentor_hub",
+        method: "POST",
+        body: {
+          run_structured: true,
+          run_extraction: true,
+          run_inference: true,
+          run_cognify: true,
+          run_memify: true,
+        },
+      },
+      {
+        name: "Run Pipeline (Structured Only)",
+        description: "Run pipeline with only structured data transformation (fastest, no LLM)",
+        endpoint: "/pipelines/run/mentor_hub",
+        method: "POST",
+        body: {
+          run_structured: true,
+          run_extraction: false,
+          run_inference: false,
+          run_cognify: true,
+          run_memify: false,
+        },
+      },
+      {
+        name: "Run Pipeline (No Inference)",
+        description: "Run pipeline without relationship inference phase",
+        endpoint: "/pipelines/run/mentor_hub",
+        method: "POST",
+        body: {
+          run_structured: true,
+          run_extraction: true,
+          run_inference: false,
+          run_cognify: true,
+          run_memify: true,
+        },
+      },
+      {
+        name: "Run Pipeline (Custom Thresholds)",
+        description: "Run pipeline with custom similarity thresholds for inference",
+        endpoint: "/pipelines/run/mentor_hub",
+        method: "POST",
+        body: {
+          run_structured: true,
+          run_extraction: true,
+          run_inference: true,
+          run_cognify: true,
+          run_memify: true,
+          similarity_threshold: 0.8,
+          expertise_match_threshold: 0.7,
+        },
+      },
+      {
+        name: "Check Pipeline Status",
+        description: "Get progress and status of a running pipeline job",
+        endpoint: "/pipelines/status/{job_id}",
+        method: "GET",
+        requiresInput: {
+          key: "job_id",
+          label: "Job ID",
+          placeholder: "Enter pipeline job ID...",
+        },
+      },
+      {
+        name: "List Pipeline Jobs",
+        description: "List all pipeline jobs and their statuses",
+        endpoint: "/pipelines/jobs",
+        method: "GET",
+      },
+    ],
+  },
   outlinePipeline: {
     title: "Outline Pipeline",
     description: "Ingest Outline documents with LLM extraction, entity resolution, and knowledge graph enrichment",
@@ -515,6 +599,7 @@ const TAB_ICONS: Record<string, React.ReactNode> = {
   outlinePipeline: <FileText className="h-4 w-4" />,
   query: <Search className="h-4 w-4" />,
   sync: <Database className="h-4 w-4" />,
+  pipelines: <Workflow className="h-4 w-4" />,
   search: <Search className="h-4 w-4" />,
   recommendations: <Users className="h-4 w-4" />,
   graph: <Sparkles className="h-4 w-4" />,
@@ -1027,6 +1112,18 @@ export default function ApiToolsPage() {
                 >
                   <Sparkles className="h-4 w-4" />
                   Graph Stats
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setActiveTab("pipelines");
+                    callEndpoint(COGNEE_ENDPOINT_GROUPS.pipelines.endpoints[6]);
+                  }}
+                  disabled={loading !== null}
+                  className="gap-2"
+                >
+                  <Workflow className="h-4 w-4" />
+                  Pipeline Jobs
                 </Button>
               </>
             ) : (
