@@ -93,7 +93,31 @@ export interface ToolStep {
   result?: string;
   status: "running" | "completed" | "error";
   timestamp: Date;
+  /** Parent agent that delegated this step (for sub-agent tracking) */
+  parentAgent?: string;
+  /** Parallel execution group ID (steps with same groupId execute together) */
+  parallelGroupId?: string;
 }
+
+/** Reasoning phases from the orchestrator */
+export type ReasoningPhase =
+  | "query_decomposition"
+  | "parallel_research"
+  | "evaluation"
+  | "synthesis"
+  | "final_answer"
+  | "planning"
+  | "reasoning"
+  | "action";
+
+/** Agent types in the multi-agent system */
+export type AgentType =
+  | "orchestrator"
+  | "entity_researcher"
+  | "text_researcher"
+  | "summary_researcher"
+  | "deep_reasoning"
+  | "mentor_matcher";
 
 export interface ChatMessage {
   id: string;

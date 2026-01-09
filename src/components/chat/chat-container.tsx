@@ -2,12 +2,19 @@
 
 /**
  * Main chat container component.
- * Composes all chat components into a complete interface.
+ * Enhanced for multi-agent orchestration with clean shadcn styling.
  */
 
-import { RotateCcw, Plus, AlertCircle } from "lucide-react";
+import { RotateCcw, Plus, AlertCircle, Bot, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useChat } from "@/hooks/use-chat";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
@@ -22,37 +29,75 @@ export function ChatContainer({ userContext }: ChatContainerProps) {
   const { session, sendMessage, clearChat, newChat, useMemory, setUseMemory } = useChat({ userContext });
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div>
-          <h2 className="font-semibold">AI Assistant</h2>
-          <p className="text-xs text-muted-foreground">
-            {session.threadId
-              ? `Thread: ${session.threadId.slice(0, 8)}...`
-              : "New conversation"}
-          </p>
+      <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <Bot className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold">AI Research Assistant</h2>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge variant="secondary" className="gap-1 text-[10px] h-5">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      Multi-Agent
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[250px]">
+                    <p className="text-xs">
+                      Powered by multiple specialized research agents working in parallel
+                      for comprehensive answers.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {session.threadId
+                ? `Session: ${session.threadId.slice(0, 8)}...`
+                : "New conversation"}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearChat}
-            disabled={session.messages.length === 0}
-          >
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Clear
-          </Button>
-          <Button variant="outline" size="sm" onClick={newChat}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New Chat
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearChat}
+                  disabled={session.messages.length === 0}
+                  className="h-8"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:ml-1.5">Clear</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Clear messages (keep session)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={newChat} className="h-8">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:ml-1.5">New</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Start new conversation</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
       {/* Error alert */}
       {session.error && (
-        <Alert variant="destructive" className="mx-4 mt-4">
+        <Alert variant="destructive" className="mx-4 mt-4 rounded-lg">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{session.error}</AlertDescription>
         </Alert>
@@ -75,7 +120,7 @@ export function ChatContainer({ userContext }: ChatContainerProps) {
         </div>
 
         {/* Agent trace sidebar - hidden on mobile */}
-        <div className="hidden md:block border-l p-2">
+        <div className="hidden lg:block border-l bg-muted/10 p-2">
           <ChatAgentTrace
             traces={session.traces}
             isStreaming={session.isStreaming}
