@@ -9,6 +9,7 @@ export type SSEEventType =
   | "text_chunk"
   | "citation"
   | "tool_result"
+  | "thinking"
   | "complete"
   | "error"
   | "heartbeat";
@@ -61,12 +62,21 @@ export interface ErrorData {
   recoverable: boolean;
 }
 
+// Thinking event data (from PlanReActPlanner)
+export interface ThinkingData {
+  phase: "planning" | "reasoning" | "action" | "final_answer";
+  content: string;
+  agent: string;
+  timestamp?: number;
+}
+
 // Union type for all SSE event data
 export type SSEEventData =
   | { type: "agent_activity"; data: AgentActivityData }
   | { type: "text_chunk"; data: TextChunkData }
   | { type: "citation"; data: CitationData }
   | { type: "tool_result"; data: ToolResultData }
+  | { type: "thinking"; data: ThinkingData }
   | { type: "complete"; data: CompleteData }
   | { type: "error"; data: ErrorData }
   | { type: "heartbeat"; data: { timestamp: number } };

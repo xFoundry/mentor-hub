@@ -10,6 +10,7 @@ import type {
   TextChunkData,
   CitationData,
   ToolResultData,
+  ThinkingData,
   CompleteData,
   ErrorData,
 } from "@/types/chat";
@@ -19,6 +20,7 @@ export interface SSECallbacks {
   onTextChunk?: (data: TextChunkData) => void;
   onCitation?: (data: CitationData) => void;
   onToolResult?: (data: ToolResultData) => void;
+  onThinking?: (data: ThinkingData) => void;
   onComplete?: (data: CompleteData) => void;
   onError?: (data: ErrorData) => void;
   onConnectionError?: (error: Error) => void;
@@ -117,6 +119,9 @@ export async function connectChatStream(
             break;
           case "tool_result":
             callbacks.onToolResult?.(event.data as ToolResultData);
+            break;
+          case "thinking":
+            callbacks.onThinking?.(event.data as ThinkingData);
             break;
           case "complete":
             callbacks.onComplete?.(event.data as CompleteData);

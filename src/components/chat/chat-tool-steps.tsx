@@ -26,14 +26,45 @@ function getToolLabel(toolName?: string): string {
   if (!toolName) return "Processing";
 
   const labels: Record<string, string> = {
+    // Graph query tools
+    get_graph_schema: "Getting graph schema",
+    query_graph: "Querying knowledge graph",
+    find_entity: "Finding entity",
+    search_text: "Searching text",
+    // Legacy search tools
     search_chunks: "Searching documents",
     search_summaries: "Searching summaries",
     search_graph: "Searching knowledge graph",
     search_rag: "RAG search",
+    // Memory tools
+    remember_about_user: "Storing to memory",
+    recall_about_user: "Searching memory",
     graphiti_search: "Searching memory",
   };
 
   return labels[toolName] || toolName.replace(/_/g, " ");
+}
+
+/** Get label for thinking phase */
+function getThinkingLabel(phase?: string): string {
+  const labels: Record<string, string> = {
+    planning: "Planning approach",
+    reasoning: "Reasoning",
+    action: "Deciding action",
+    final_answer: "Formulating response",
+  };
+  return labels[phase || ""] || "Thinking";
+}
+
+/** Render thinking content with proper type handling */
+function ThinkingContent({ content }: { content: unknown }) {
+  if (!content) return null;
+  const text = String(content);
+  return (
+    <div className="text-muted-foreground max-h-40 overflow-y-auto whitespace-pre-wrap">
+      {text.length > 300 ? `${text.slice(0, 300)}...` : text}
+    </div>
+  );
 }
 
 /** Get icon for step type */
@@ -64,11 +95,18 @@ function StepItem({ step }: { step: ToolStep }) {
   const [isOpen, setIsOpen] = useState(false);
   const hasDetails = step.toolArgs || step.result;
 
-  const label = step.type === "delegate"
-    ? `Delegating to ${step.agent}`
-    : step.type === "tool_result"
-    ? `${getToolLabel(step.toolName)} completed`
-    : getToolLabel(step.toolName);
+  // Determine the label based on step type
+  let label: string;
+  if (step.type === "delegate") {
+    label = `Delegating to ${step.agent}`;
+  } else if (step.type === "tool_result") {
+    label = `${getToolLabel(step.toolName)} completed`;
+  } else if (step.type === "thinking") {
+    const phase = (step.toolArgs?.phase as string) || "";
+    label = getThinkingLabel(phase);
+  } else {
+    label = getToolLabel(step.toolName);
+  }
 
   if (!hasDetails) {
     return (
@@ -98,12 +136,14 @@ function StepItem({ step }: { step: ToolStep }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="ml-6 mt-1 rounded bg-muted/50 p-2 text-xs font-mono">
-          {step.toolArgs && (
+          {step.type === "thinking" ? (
+            <ThinkingContent content={step.toolArgs?.content} />
+          ) : step.toolArgs ? (
             <div className="text-muted-foreground">
               <span className="font-semibold">Query: </span>
-              {step.toolArgs.query as string || JSON.stringify(step.toolArgs)}
+              {String(step.toolArgs.query || JSON.stringify(step.toolArgs))}
             </div>
-          )}
+          ) : null}
           {step.result && (
             <div className="mt-1 text-muted-foreground max-h-32 overflow-y-auto">
               <span className="font-semibold">Result: </span>

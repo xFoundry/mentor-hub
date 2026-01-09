@@ -15,6 +15,7 @@ import type {
   AgentActivityData,
   TextChunkData,
   ToolResultData,
+  ThinkingData,
   CompleteData,
   ErrorData,
   ToolStep,
@@ -130,6 +131,44 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     });
 
     // Update message with updated steps
+    setMessages((prev) => {
+      const updated = [...prev];
+      const lastMsg = updated[updated.length - 1];
+      if (lastMsg?.isStreaming) {
+        return [
+          ...updated.slice(0, -1),
+          { ...lastMsg, steps: [...streamingStepsRef.current] },
+        ];
+      }
+      return updated;
+    });
+  }, []);
+
+  // Handle thinking events (from PlanReActPlanner)
+  const handleThinking = useCallback((data: ThinkingData) => {
+    // Add thinking step to show planning/reasoning
+    const step: ToolStep = {
+      id: generateTraceId(),
+      type: "thinking",
+      agent: data.agent,
+      toolArgs: { phase: data.phase, content: data.content },
+      status: "completed",
+      timestamp: new Date(),
+    };
+
+    streamingStepsRef.current = [...streamingStepsRef.current, step];
+
+    // Also add to traces for the trace panel
+    const trace: AgentTrace = {
+      id: step.id,
+      agent: data.agent,
+      action: "thinking",
+      details: `[${data.phase.toUpperCase()}] ${data.content.slice(0, 100)}...`,
+      timestamp: new Date(),
+    };
+    setTraces((prev) => [...prev, trace]);
+
+    // Update message with new steps
     setMessages((prev) => {
       const updated = [...prev];
       const lastMsg = updated[updated.length - 1];
@@ -296,6 +335,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
             onTextChunk: handleTextChunk,
             onCitation: handleCitation,
             onToolResult: handleToolResult,
+            onThinking: handleThinking,
             onComplete: handleComplete,
             onError: handleError,
             onConnectionError: handleConnectionError,
@@ -317,6 +357,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       handleTextChunk,
       handleCitation,
       handleToolResult,
+      handleThinking,
       handleComplete,
       handleError,
       handleConnectionError,
