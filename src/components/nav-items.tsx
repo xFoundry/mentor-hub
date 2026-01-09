@@ -9,6 +9,7 @@ import {
   Mail,
   Terminal,
   BookUser,
+  Bot,
 } from "lucide-react";
 import type { UserType } from "@/types/schema";
 import type { LucideIcon } from "lucide-react";
@@ -157,6 +158,11 @@ export function getNavItems(userType: UserType): NavGroup[] {
               title: "API Tools",
               url: "/admin/api-tools",
               icon: Terminal,
+            },
+            {
+              title: "Chat",
+              url: "/chat",
+              icon: Bot,
             },
             {
               title: "Impersonate User",

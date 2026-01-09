@@ -197,7 +197,7 @@ export function SessionView({
       onSessionClick,
       onFeedbackClick,
       showTeamName: showTeamName || userType === "mentor" || userType === "staff",
-      showMentorName: showMentorName || userType === "student",
+      showMentorName: true,
       showFeedbackStatus: showFeedbackStatus && shouldShowFeedback,
       restrictInteractionToUserSessions,
     };
