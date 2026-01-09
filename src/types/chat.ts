@@ -121,6 +121,7 @@ export interface UserContext {
   role?: string;
   teams?: string[];
   cohort?: string;
+  auth0_id?: string;
 }
 
 export interface ChatRequest {

@@ -195,6 +195,8 @@ export function useUserType() {
     cohort: activeParticipation.cohorts?.[0],
     // Include info about linked contacts (for multi-contact users)
     linkedContactIds: data.contacts?.map(c => c.id).filter(id => id !== contact?.id),
+    // Auth0 ID for per-user memory isolation
+    auth0Id: auth0Id || undefined,
   };
 
   return {

@@ -25,6 +25,7 @@ export default function ChatPage() {
         : userContext.type === "student" ? "Participant"
         : undefined,
       cohort: userContext.cohort?.shortName,
+      auth0_id: userContext.auth0Id,
     };
   }, [userContext]);
 
