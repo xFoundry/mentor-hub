@@ -219,6 +219,7 @@ function StepItem({ step, isParallel }: { step: ToolStep; isParallel?: boolean }
 
   // Extract query for display
   const query = step.toolArgs?.query || step.toolArgs?.name || step.toolArgs?.cypher_query;
+  const hasQuery = query !== undefined && query !== null;
 
   if (!hasDetails) {
     return (
@@ -248,7 +249,7 @@ function StepItem({ step, isParallel }: { step: ToolStep; isParallel?: boolean }
         )}
         <StepIcon step={step} />
         <span className="flex-1 text-left text-muted-foreground truncate">{label}</span>
-        {query && (
+        {hasQuery && (
           <span className="text-[10px] text-muted-foreground/60 truncate max-w-[120px]">
             {String(query).slice(0, 30)}...
           </span>
@@ -277,7 +278,7 @@ function StepItem({ step, isParallel }: { step: ToolStep; isParallel?: boolean }
             />
           ) : step.toolArgs ? (
             <div className="text-muted-foreground font-mono text-[11px] bg-background/50 rounded p-1.5">
-              {query ? (
+              {hasQuery ? (
                 <div>
                   <span className="text-muted-foreground/60">Query: </span>
                   <span>{String(query)}</span>
