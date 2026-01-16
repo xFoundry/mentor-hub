@@ -10,6 +10,7 @@ export type SSEEventType =
   | "citation"
   | "tool_result"
   | "thinking"
+  | "artifact"
   | "complete"
   | "error"
   | "heartbeat";
@@ -31,11 +32,48 @@ export interface TextChunkData {
   is_partial: boolean;
 }
 
-// Citation event data
-export interface CitationData {
+// Citation event data - Legacy interface (kept for backward compatibility)
+export interface LegacyCitationData {
   source: string;
   content: string;
   confidence: number;
+}
+
+// Rich citation data with entity information for user-friendly display
+export interface RichCitationData {
+  source: string; // Unique ID: "task:rec123", "session:rec456"
+  entityType: string; // "task" | "session" | "team" | "mentor" | "document" | "entity"
+  displayName: string; // Human-readable: "Complete project proposal"
+  content: string; // Tooltip content / description
+  confidence: number;
+  groupKey: string; // For grouping: "tasks", "sessions", "documents"
+  sourceNumber?: number; // For inline [source:N] citation markers
+  metadata?: {
+    status?: string;
+    dueDate?: string;
+    assignee?: string;
+    mentor?: string;
+    team?: string;
+    excerpt?: string;
+    memberCount?: number;
+    cohorts?: string[];
+    scheduledStart?: string;
+    taskStatuses?: Record<string, number>;
+    resultCount?: number;
+    entityType?: string;
+    relationshipCount?: number;
+    [key: string]: unknown;
+  };
+}
+
+// CitationData now uses the rich format (backend sends snake_case, we transform)
+export type CitationData = RichCitationData;
+
+// Grouped citations for display
+export interface CitationGroup {
+  groupKey: string;
+  displayLabel: string; // "Tasks", "Sessions", "Documents"
+  citations: RichCitationData[];
 }
 
 // Tool result event data
@@ -53,6 +91,8 @@ export interface CompleteData {
   full_message: string;
   citations: CitationData[];
   agent_trace: AgentActivityData[];
+  handoff_summary?: string | null;
+  handoff_recent_messages?: { role: string; content: string }[];
 }
 
 // Error event data
@@ -70,6 +110,17 @@ export interface ThinkingData {
   timestamp?: number;
 }
 
+// Artifact event data
+export interface ArtifactData {
+  id: string;
+  artifact_type: "data_table" | "document" | "chat_block" | "graph" | string;
+  title: string;
+  summary?: string;
+  payload: unknown;
+  origin?: Record<string, unknown>;
+  created_at?: number;
+}
+
 // Union type for all SSE event data
 export type SSEEventData =
   | { type: "agent_activity"; data: AgentActivityData }
@@ -77,6 +128,7 @@ export type SSEEventData =
   | { type: "citation"; data: CitationData }
   | { type: "tool_result"; data: ToolResultData }
   | { type: "thinking"; data: ThinkingData }
+  | { type: "artifact"; data: ArtifactData }
   | { type: "complete"; data: CompleteData }
   | { type: "error"; data: ErrorData }
   | { type: "heartbeat"; data: { timestamp: number } };
@@ -167,6 +219,10 @@ export interface ChatRequest {
   thread_id?: string;
   group_ids?: string[];
   use_memory?: boolean;
+  canvas_id?: string;
+  chat_block_id?: string;
+  auto_artifacts?: boolean;
+  context_artifacts?: Record<string, unknown>[];
   model_config_override?: Record<string, string>;
 }
 

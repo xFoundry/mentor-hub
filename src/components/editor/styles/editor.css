@@ -131,6 +131,46 @@
   margin-bottom: 1.5rem;
 }
 
+/* Tables */
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border));
+}
+
+.ProseMirror th {
+  background-color: hsl(var(--muted) / 0.5);
+  font-weight: 500;
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.ProseMirror td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+  vertical-align: top;
+}
+
+.ProseMirror tr:last-child td {
+  border-bottom: none;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  position: relative;
+}
+
+/* Alternating row colors for better readability */
+.ProseMirror tbody tr:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.2);
+}
+
 /* Links */
 .ProseMirror a {
   color: hsl(var(--primary));
@@ -183,4 +223,123 @@
 .dark .ProseMirror ::selection,
 .dark .ProseMirror *::selection {
   background-color: rgba(96, 165, 250, 0.4); /* blue-400 at 40% */
+}
+
+/* =================================================================
+   Citation Node Styles
+   Styles for the Tiptap CitationNode extension
+   ================================================================= */
+
+/* Node wrapper - inline with text */
+.citation-node-wrapper {
+  display: inline;
+  vertical-align: baseline;
+}
+
+/* Citation badge - the clickable/hoverable element */
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 1.375rem;
+  height: 1.25rem;
+  padding-left: 0.375rem;
+  padding-right: 0.375rem;
+  margin-left: 0.125rem;
+  margin-right: 0.125rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: middle;
+  color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.1);
+  border: 1px solid hsl(var(--primary) / 0.25);
+  border-radius: 9999px;
+  cursor: help;
+  transition: all 0.15s ease;
+}
+
+.citation-badge:hover {
+  background-color: hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.4);
+  transform: translateY(-1px);
+}
+
+.citation-badge-fallback {
+  color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
+
+/* Icon inside badge */
+.citation-badge-icon {
+  width: 0.625rem;
+  height: 0.625rem;
+  flex-shrink: 0;
+}
+
+/* Tooltip styles */
+.citation-tooltip {
+  max-width: 320px;
+  padding: 0;
+}
+
+.citation-tooltip-content {
+  padding: 0.75rem;
+}
+
+.citation-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.citation-tooltip-icon {
+  width: 1rem;
+  height: 1rem;
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.citation-tooltip-title {
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.citation-tooltip-description {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.citation-tooltip-metadata {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid hsl(var(--border));
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.citation-tooltip-metadata p {
+  margin: 0.125rem 0;
+}
+
+/* Dark mode adjustments */
+:root.dark .citation-badge,
+.dark .citation-badge {
+  background-color: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+:root.dark .citation-badge:hover,
+.dark .citation-badge:hover {
+  background-color: hsl(var(--primary) / 0.25);
+  border-color: hsl(var(--primary) / 0.5);
 }

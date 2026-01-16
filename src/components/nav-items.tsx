@@ -10,6 +10,8 @@ import {
   Terminal,
   BookUser,
   Bot,
+  Zap,
+  LayoutGrid,
 } from "lucide-react";
 import type { UserType } from "@/types/schema";
 import type { LucideIcon } from "lucide-react";
@@ -163,6 +165,16 @@ export function getNavItems(userType: UserType): NavGroup[] {
               title: "Chat",
               url: "/chat",
               icon: Bot,
+            },
+            {
+              title: "Chat v2",
+              url: "/chat-v2",
+              icon: Zap,
+            },
+            {
+              title: "Canvas",
+              url: "/canvas",
+              icon: LayoutGrid,
             },
             {
               title: "Impersonate User",

@@ -3,15 +3,16 @@
 /**
  * Individual chat message component.
  * Renders user and assistant messages with different styling.
+ * Uses tiptap EditorViewer for rich markdown rendering with tables, lists, etc.
  */
 
-import ReactMarkdown from "react-markdown";
 import { Bot, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@/types/chat";
 import { ChatCitation } from "./chat-citation";
 import { ChatToolSteps } from "./chat-tool-steps";
+import { ChatMessageContent } from "./chat-message-content";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -68,9 +69,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   {message.content}
                 </div>
               ) : (
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
-                </div>
+                <ChatMessageContent
+                  content={message.content}
+                  citations={message.citations}
+                  isStreaming={message.isStreaming}
+                />
               )
             ) : (
               <span className={cn("italic text-sm", isUser ? "text-primary-foreground/70" : "text-muted-foreground")}>

@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Custom hook for managing chat state and SSE streaming.
+ * Custom hook for managing Chat v2 state and SSE streaming.
+ * Uses the LangGraph orchestrator backend.
  * Handles message history, agent traces, and session persistence.
  */
 
@@ -22,19 +23,20 @@ import type {
   UserContext,
 } from "@/types/chat";
 import {
-  connectChatStream,
+  connectChatStreamV2,
   generateMessageId,
   generateTraceId,
-} from "@/lib/chat-sse";
+} from "@/lib/chat-sse-v2";
 
-const THREAD_ID_KEY = "chat_thread_id";
-const USE_MEMORY_KEY = "chat_use_memory";
+// Use separate localStorage keys for v2 to keep sessions isolated
+const THREAD_ID_KEY = "chat_v2_thread_id";
+const USE_MEMORY_KEY = "chat_v2_use_memory";
 
 interface UseChatOptions {
   userContext?: UserContext;
 }
 
-export function useChat(options: UseChatOptions = {}): UseChatReturn {
+export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
   const { userContext } = options;
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -94,15 +96,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     };
     setTraces((prev) => [...prev, trace]);
 
-    // Skip creating steps for thinking actions - handleThinking will create them
-    // with the actual content from the thinking event
-    if (data.action === "thinking") {
-      return;
-    }
-
     // Create a step for inline display
     const stepType = data.action === "delegate" ? "delegate"
       : data.action === "tool_response" ? "tool_result"
+      : data.action === "thinking" ? "thinking"
       : "tool_call";
 
     const step: ToolStep = {
@@ -114,14 +111,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       status: stepType === "tool_result" ? "completed" : "running",
       timestamp: new Date(),
     };
-
-    // Mark previous running tool_call steps as completed (but NOT thinking steps)
-    // Thinking steps should stay visible until a new thinking phase starts or text streaming begins
-    streamingStepsRef.current = streamingStepsRef.current.map((s) =>
-      s.status === "running" && s.type !== "thinking"
-        ? { ...s, status: "completed" as const }
-        : s
-    );
 
     streamingStepsRef.current = [...streamingStepsRef.current, step];
 
@@ -170,22 +159,15 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     });
   }, []);
 
-  // Handle thinking events (from PlanReActPlanner)
-  // These events contain the actual thinking content from LLM reasoning
+  // Handle thinking events (from LangGraph ReAct agent)
   const handleThinking = useCallback((data: ThinkingData) => {
-    // Mark all previous running steps as completed
-    streamingStepsRef.current = streamingStepsRef.current.map((s) =>
-      s.status === "running" ? { ...s, status: "completed" as const } : s
-    );
-
-    // Create a new thinking step with the actual content
+    // Add thinking step to show planning/reasoning
     const step: ToolStep = {
       id: generateTraceId(),
       type: "thinking",
       agent: data.agent,
-      toolName: data.phase,
       toolArgs: { phase: data.phase, content: data.content },
-      status: "running", // Keep running so content shows inline
+      status: "completed",
       timestamp: new Date(),
     };
 
@@ -193,7 +175,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
     // Also add to traces for the trace panel
     const trace: AgentTrace = {
-      id: generateTraceId(),
+      id: step.id,
       agent: data.agent,
       action: "thinking",
       details: `[${data.phase.toUpperCase()}] ${data.content.slice(0, 100)}...`,
@@ -357,7 +339,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       setIsStreaming(true);
 
       try {
-        await connectChatStream(
+        await connectChatStreamV2(
           {
             message: content.trim(),
             thread_id: threadId ?? undefined,
@@ -379,7 +361,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       } catch (err) {
         // Error already handled by callbacks
         if (err instanceof Error && err.name !== "AbortError") {
-          console.error("Chat stream error:", err);
+          console.error("Chat V2 stream error:", err);
         }
       }
     },
