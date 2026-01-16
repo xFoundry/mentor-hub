@@ -7,6 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 const ORCHESTRATOR_API_URL = process.env.ORCHESTRATOR_API_URL;
 
+const buildUrl = (base: string, path: string) => {
+  const normalized = base.replace(/\/+$/, "");
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${normalized}${suffix}`;
+};
+
 export async function POST(request: NextRequest) {
   // Check if orchestrator URL is configured
   if (!ORCHESTRATOR_API_URL) {
@@ -20,7 +26,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Forward the request to the orchestrator
-    const response = await fetch(`${ORCHESTRATOR_API_URL}/chat/stream`, {
+    const response = await fetch(buildUrl(ORCHESTRATOR_API_URL, "/chat/stream"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -68,7 +74,9 @@ export async function GET() {
   }
 
   try {
-    const response = await fetch(`${ORCHESTRATOR_API_URL}/chat/stream/health`);
+    const response = await fetch(
+      buildUrl(ORCHESTRATOR_API_URL, "/chat/stream/health")
+    );
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {

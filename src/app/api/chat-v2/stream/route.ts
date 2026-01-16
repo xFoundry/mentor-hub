@@ -7,6 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 const ORCHESTRATOR_LANGGRAPH_URL = process.env.ORCHESTRATOR_LANGGRAPH_URL;
 
+const buildUrl = (base: string, path: string) => {
+  const normalized = base.replace(/\/+$/, "");
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${normalized}${suffix}`;
+};
+
 export async function POST(request: NextRequest) {
   // Check if orchestrator URL is configured
   if (!ORCHESTRATOR_LANGGRAPH_URL) {
@@ -20,7 +26,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.log(`[Chat V2] Connecting to: ${ORCHESTRATOR_LANGGRAPH_URL}`);
+  const streamUrl = buildUrl(ORCHESTRATOR_LANGGRAPH_URL, "/chat/stream");
+  console.log(`[Chat V2] Connecting to: ${streamUrl}`);
 
   try {
     const body = await request.json();
@@ -29,7 +36,7 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
 
-    const response = await fetch(`${ORCHESTRATOR_LANGGRAPH_URL}/chat/stream`, {
+    const response = await fetch(streamUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -99,7 +106,9 @@ export async function GET() {
   }
 
   try {
-    const response = await fetch(`${ORCHESTRATOR_LANGGRAPH_URL}/chat/stream/health`);
+    const response = await fetch(
+      buildUrl(ORCHESTRATOR_LANGGRAPH_URL, "/chat/stream/health")
+    );
     const data = await response.json();
     return NextResponse.json({
       ...data,
