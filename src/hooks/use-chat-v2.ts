@@ -34,10 +34,11 @@ const USE_MEMORY_KEY = "chat_v2_use_memory";
 
 interface UseChatOptions {
   userContext?: UserContext;
+  selectedTools?: string[];
 }
 
 export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
-  const { userContext } = options;
+  const { userContext, selectedTools } = options;
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [threadId, setThreadId] = useState<string | null>(() => {
@@ -345,6 +346,7 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
             thread_id: threadId ?? undefined,
             user_context: userContext,
             use_memory: useMemory,
+            selected_tools: selectedTools && selectedTools.length > 0 ? selectedTools : undefined,
           },
           {
             onAgentActivity: handleAgentActivity,
@@ -370,6 +372,7 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
       threadId,
       userContext,
       useMemory,
+      selectedTools,
       handleAgentActivity,
       handleTextChunk,
       handleCitation,

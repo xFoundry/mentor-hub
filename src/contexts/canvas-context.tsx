@@ -4,7 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 import type { Connection, Edge, NodeChange, EdgeChange, Viewport } from "@xyflow/react";
 import { addEdge as addFlowEdge, applyEdgeChanges, applyNodeChanges } from "@xyflow/react";
-import type { CanvasNode, CanvasSnapshot, CanvasStorageState } from "@/types/canvas";
+import type {
+  CanvasNode,
+  CanvasSnapshot,
+  CanvasStorageState,
+  ProjectTerritory,
+  ZoneData,
+} from "@/types/canvas";
+import { coordToPosition, positionToCoord } from "@/lib/hex-grid";
 
 interface CanvasContextValue {
   canvasId: string;
@@ -12,10 +19,11 @@ interface CanvasContextValue {
   edges: Edge[];
   viewport?: Viewport;
   hasStoredState: boolean;
-  activeChatBlockId: string | null;
+  activeZoneId: string | null;
   chatPanelOpen: boolean;
   focusedNodeId: string | null;
   snapshots: CanvasSnapshot[];
+  territories: ProjectTerritory[];
   onNodesChange: (changes: NodeChange<CanvasNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<Edge>[]) => void;
   onConnect: (connection: Connection) => void;
@@ -28,16 +36,17 @@ interface CanvasContextValue {
     nodeId: string,
     updater: (data: CanvasNode["data"]) => CanvasNode["data"]
   ) => void;
-  setActiveChatBlockId: (chatBlockId: string | null) => void;
+  setActiveZoneId: (zoneId: string | null) => void;
   setChatPanelOpen: (open: boolean) => void;
   setFocusedNodeId: (nodeId: string | null) => void;
   clearFocus: () => void;
-  openChatPanel: (chatBlockId?: string) => void;
+  openChatPanel: (zoneId?: string) => void;
   closeChatPanel: () => void;
   resetCanvas: () => void;
   createSnapshot: (title?: string) => void;
   restoreSnapshot: (snapshotId: string) => void;
   deleteSnapshot: (snapshotId: string) => void;
+  setTerritories: (territories: ProjectTerritory[]) => void;
 }
 
 interface CanvasProviderProps {
@@ -45,19 +54,31 @@ interface CanvasProviderProps {
   storageKey: string;
 }
 
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
+
+const DEFAULT_TERRITORIES: ProjectTerritory[] = [
+  {
+    id: "project_general",
+    name: "General",
+    color: "#4f46e5",
+    anchor: { q: 0, r: 0 },
+  },
+];
 
 const DEFAULT_NODES: CanvasNode[] = [
   {
-    id: "chat-block-1",
-    type: "chatBlock",
-    position: { x: 0, y: 0 },
+    id: "zone-1",
+    type: "zone",
+    position: coordToPosition({ q: 0, r: 0 }),
     data: {
-      title: "Chat Block",
+      title: "Main Zone",
       description: "Start a new conversation here.",
       messages: [],
       autoArtifacts: false,
       contextArtifactIds: undefined,
+      projectId: DEFAULT_TERRITORIES[0].id,
+      status: "idle",
+      coord: { q: 0, r: 0 },
     },
   },
 ];
@@ -76,7 +97,7 @@ function readStoredState(storageKey: string): CanvasStorageState | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as CanvasStorageState;
-    if (parsed?.version !== STORAGE_VERSION) return null;
+    if (!parsed?.version || parsed.version > STORAGE_VERSION) return null;
 
     return parsed;
   } catch {
@@ -92,23 +113,97 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
   const [hasStoredState, setHasStoredState] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [snapshots, setSnapshots] = useState<CanvasSnapshot[]>([]);
-  const [activeChatBlockId, setActiveChatBlockId] = useState<string | null>(
+  const [activeZoneId, setActiveZoneId] = useState<string | null>(
     DEFAULT_NODES[0]?.id ?? null
   );
   const [chatPanelOpen, setChatPanelOpen] = useState(true);
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const [territories, setTerritories] = useState<ProjectTerritory[]>(DEFAULT_TERRITORIES);
+
+  const migrateNodes = useCallback((rawNodes: CanvasNode[] | undefined): CanvasNode[] => {
+    if (!rawNodes?.length) return DEFAULT_NODES;
+
+    return rawNodes.map((node): CanvasNode => {
+      if (node.type === "zone") {
+        const data = (node.data ?? {}) as ZoneData;
+        const coord = data.coord ?? positionToCoord(node.position);
+        return {
+          ...node,
+          type: "zone" as const,
+          position: coordToPosition(coord),
+          data: {
+            ...data,
+            projectId: data.projectId ?? DEFAULT_TERRITORIES[0].id,
+            status: data.status ?? "idle",
+            coord,
+          },
+        };
+      }
+
+      if (node.type === "chatBlock") {
+        const legacy = node.data as ZoneData;
+        const coord = legacy.coord ?? positionToCoord(node.position);
+        return {
+          ...node,
+          type: "zone" as const,
+          position: coordToPosition(coord),
+          data: {
+            ...legacy,
+            projectId: legacy.projectId ?? DEFAULT_TERRITORIES[0].id,
+            status: legacy.status ?? "idle",
+            coord,
+          },
+        };
+      }
+
+      return node;
+    });
+  }, []);
+
+  const migrateTerritories = useCallback((rawTerritories?: ProjectTerritory[]) => {
+    if (!rawTerritories?.length) return DEFAULT_TERRITORIES;
+    return rawTerritories.map((territory, index) => ({
+      ...territory,
+      anchor: territory.anchor ?? { q: index * 4, r: 0 },
+    }));
+  }, []);
+
+  const migrateSnapshots = useCallback(
+    (rawSnapshots: CanvasSnapshot[] | undefined, nextTerritories: ProjectTerritory[]) => {
+      if (!rawSnapshots?.length) return [];
+      return rawSnapshots.map((snapshot) => ({
+        ...snapshot,
+        nodes: migrateNodes(snapshot.nodes),
+        territories: snapshot.territories ?? nextTerritories,
+        activeZoneId:
+          snapshot.activeZoneId
+          ?? (snapshot as CanvasSnapshot & { activeChatBlockId?: string | null }).activeChatBlockId
+          ?? snapshot.nodes?.[0]?.id
+          ?? null,
+      }));
+    },
+    [migrateNodes]
+  );
 
   useEffect(() => {
     const stored = readStoredState(storageKey);
     if (stored) {
-      setNodes(stored.nodes ?? DEFAULT_NODES);
+      const nextTerritories = migrateTerritories(stored.territories);
+      const nextNodes = migrateNodes(stored.nodes);
+      setNodes(nextNodes);
       setEdges(stored.edges ?? DEFAULT_EDGES);
       setViewport(stored.viewport ?? DEFAULT_VIEWPORT);
-      setSnapshots(stored.snapshots ?? []);
-      if (stored.activeChatBlockId !== undefined) {
-        setActiveChatBlockId(stored.activeChatBlockId ?? null);
+      setTerritories(nextTerritories);
+      setSnapshots(migrateSnapshots(stored.snapshots, nextTerritories));
+      if (stored.activeZoneId !== undefined) {
+        setActiveZoneId(stored.activeZoneId ?? null);
+      } else if ((stored as CanvasStorageState & { activeChatBlockId?: string | null }).activeChatBlockId !== undefined) {
+        setActiveZoneId(
+          (stored as CanvasStorageState & { activeChatBlockId?: string | null }).activeChatBlockId
+          ?? null
+        );
       } else {
-        setActiveChatBlockId((stored.nodes?.[0]?.id ?? DEFAULT_NODES[0]?.id) ?? null);
+        setActiveZoneId((nextNodes[0]?.id ?? DEFAULT_NODES[0]?.id) ?? null);
       }
       if (stored.chatPanelOpen !== undefined) {
         setChatPanelOpen(Boolean(stored.chatPanelOpen));
@@ -119,12 +214,13 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       setEdges(DEFAULT_EDGES);
       setViewport(DEFAULT_VIEWPORT);
       setSnapshots([]);
-      setActiveChatBlockId(DEFAULT_NODES[0]?.id ?? null);
+      setActiveZoneId(DEFAULT_NODES[0]?.id ?? null);
       setChatPanelOpen(true);
+      setTerritories(DEFAULT_TERRITORIES);
       setHasStoredState(false);
     }
     setHasLoaded(true);
-  }, [storageKey]);
+  }, [migrateNodes, migrateSnapshots, migrateTerritories, storageKey]);
 
   useEffect(() => {
     if (!hasLoaded || typeof window === "undefined") return;
@@ -134,9 +230,10 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       nodes,
       edges,
       viewport,
-      activeChatBlockId,
+      activeZoneId,
       chatPanelOpen,
       snapshots,
+      territories,
     };
 
     try {
@@ -144,7 +241,7 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
     } catch {
       // Ignore localStorage errors (quota, private mode, etc.)
     }
-  }, [activeChatBlockId, chatPanelOpen, edges, hasLoaded, nodes, snapshots, storageKey, viewport]);
+  }, [activeZoneId, chatPanelOpen, edges, hasLoaded, nodes, snapshots, storageKey, territories, viewport]);
 
   const onNodesChange = useCallback((changes: NodeChange<CanvasNode>[]) => {
     setNodes((current) => applyNodeChanges<CanvasNode>(changes, current));
@@ -157,9 +254,9 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
   const onConnect = useCallback((connection: Connection) => {
     const sourceNode = nodes.find((node) => node.id === connection.source);
     const targetNode = nodes.find((node) => node.id === connection.target);
-    const kind = sourceNode?.type === "chatBlock" && targetNode?.type === "chatBlock"
+    const kind = sourceNode?.type === "zone" && targetNode?.type === "zone"
       ? "handoff"
-      : sourceNode?.type === "chatBlock" || targetNode?.type === "chatBlock"
+      : sourceNode?.type === "zone" || targetNode?.type === "zone"
         ? "context"
         : "reference";
     setEdges((current) =>
@@ -199,10 +296,11 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
     setEdges(DEFAULT_EDGES);
     setViewport(DEFAULT_VIEWPORT);
     setHasStoredState(false);
-    setActiveChatBlockId(DEFAULT_NODES[0]?.id ?? null);
+    setActiveZoneId(DEFAULT_NODES[0]?.id ?? null);
     setChatPanelOpen(true);
     setFocusedNodeId(null);
     setSnapshots([]);
+    setTerritories(DEFAULT_TERRITORIES);
     if (typeof window !== "undefined") {
       localStorage.removeItem(storageKey);
     }
@@ -226,11 +324,12 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
         nodes: cloneState(nodes),
         edges: cloneState(edges),
         viewport: cloneState(viewport),
-        activeChatBlockId: activeChatBlockId ?? null,
+        activeZoneId: activeZoneId ?? null,
+        territories: cloneState(territories),
       };
       setSnapshots((current) => [snapshot, ...current].slice(0, 20));
     },
-    [activeChatBlockId, cloneState, edges, nodes, snapshots.length, viewport]
+    [activeZoneId, cloneState, edges, nodes, snapshots.length, territories, viewport]
   );
 
   const restoreSnapshot = useCallback(
@@ -240,11 +339,12 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       setNodes(cloneState(snapshot.nodes));
       setEdges(cloneState(snapshot.edges));
       setViewport(cloneState(snapshot.viewport));
-      setActiveChatBlockId(snapshot.activeChatBlockId ?? snapshot.nodes[0]?.id ?? null);
+      setActiveZoneId(snapshot.activeZoneId ?? snapshot.nodes[0]?.id ?? null);
+      setTerritories(cloneState(snapshot.territories ?? territories));
       setChatPanelOpen(true);
       setFocusedNodeId(null);
     },
-    [cloneState, snapshots]
+    [cloneState, snapshots, territories]
   );
 
   const deleteSnapshot = useCallback((snapshotId: string) => {
@@ -252,13 +352,13 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
   }, []);
 
   const openChatPanel = useCallback(
-    (chatBlockId?: string) => {
-      if (chatBlockId) {
-        setActiveChatBlockId(chatBlockId);
+    (zoneId?: string) => {
+      if (zoneId) {
+        setActiveZoneId(zoneId);
       }
       setChatPanelOpen(true);
     },
-    []
+    [setActiveZoneId, setChatPanelOpen]
   );
 
   const closeChatPanel = useCallback(() => {
@@ -276,10 +376,11 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       edges,
       viewport,
       hasStoredState,
-      activeChatBlockId,
+      activeZoneId,
       chatPanelOpen,
       focusedNodeId,
       snapshots,
+      territories,
       onNodesChange,
       onEdgesChange,
       onConnect,
@@ -289,7 +390,7 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       addNode,
       addEdge: addCanvasEdge,
       updateNodeData,
-      setActiveChatBlockId,
+      setActiveZoneId,
       setChatPanelOpen,
       setFocusedNodeId,
       clearFocus,
@@ -299,6 +400,7 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       createSnapshot,
       restoreSnapshot,
       deleteSnapshot,
+      setTerritories,
     }),
     [
       canvasId,
@@ -306,10 +408,11 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       edges,
       viewport,
       hasStoredState,
-      activeChatBlockId,
+      activeZoneId,
       chatPanelOpen,
       focusedNodeId,
       snapshots,
+      territories,
       onNodesChange,
       onEdgesChange,
       onConnect,
@@ -319,7 +422,7 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       addNode,
       addCanvasEdge,
       updateNodeData,
-      setActiveChatBlockId,
+      setActiveZoneId,
       setChatPanelOpen,
       setFocusedNodeId,
       clearFocus,
@@ -329,6 +432,7 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
       createSnapshot,
       restoreSnapshot,
       deleteSnapshot,
+      setTerritories,
     ]
   );
 

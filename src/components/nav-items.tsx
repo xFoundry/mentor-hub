@@ -172,8 +172,13 @@ export function getNavItems(userType: UserType): NavGroup[] {
               icon: Zap,
             },
             {
-              title: "Canvas",
+              title: "Map",
               url: "/canvas",
+              icon: LayoutGrid,
+            },
+            {
+              title: "Map v2",
+              url: "/map-v2",
               icon: LayoutGrid,
             },
             {

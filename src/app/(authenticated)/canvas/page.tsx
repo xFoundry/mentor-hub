@@ -52,14 +52,14 @@ export default function CanvasPage() {
     <div className="flex flex-col min-h-0 h-full gap-4 overflow-hidden">
       <div className="shrink-0">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Canvas</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Map</h1>
           <Badge variant="secondary" className="gap-1">
             <LayoutGrid className="h-3 w-3" />
             Experimental
           </Badge>
         </div>
         <p className="text-muted-foreground">
-          Arrange chat blocks and artifacts on an infinite canvas. Drag to connect context between nodes.
+          Create zones on a hex map and switch the right-side chat as you navigate projects.
         </p>
       </div>
 

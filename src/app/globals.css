@@ -115,9 +115,45 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+/* Zone drag wobble animation */
+@keyframes zone-wobble {
+  0%, 100% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  .map-flow .react-flow__node.selected,
+  .map-flow-v2 .react-flow__node.selected {
+    box-shadow: none;
+  }
+  .map-flow .react-flow__node:focus,
+  .map-flow .react-flow__node:focus-visible,
+  .map-flow-v2 .react-flow__node:focus,
+  .map-flow-v2 .react-flow__node:focus-visible {
+    outline: none;
+  }
+  /* Smooth dragging for map v2 */
+  .map-flow-v2 .react-flow__node {
+    transition: none;
+  }
+  .map-flow-v2 .react-flow__node.dragging {
+    z-index: 1000 !important;
+    cursor: grabbing;
+  }
+  /* Territory overlay should render above nodes but below dragging nodes and UI */
+  .map-flow-v2 .territory-overlay {
+    z-index: 5 !important;
+    position: absolute !important;
+  }
+  /* Ensure React Flow renderer doesn't block our overlay */
+  .map-flow-v2 .react-flow__renderer {
+    z-index: 0;
+  }
+  .map-flow-v2 .react-flow__viewport {
+    z-index: 1;
   }
   html {
     @apply h-full;

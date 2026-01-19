@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { useCanvas } from "@/contexts/canvas-context";
 import { useCanvasChat } from "@/hooks/use-canvas-chat";
 import type { ArtifactData, UserContext as ChatUserContext } from "@/types/chat";
-import type { CanvasNode, ChatBlockData, DocumentArtifactData } from "@/types/canvas";
+import type { CanvasNode, ZoneData, DocumentArtifactData } from "@/types/canvas";
 import { useEffectiveUser } from "@/hooks/use-effective-user";
 import {
   ChatMessage,
@@ -54,6 +54,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import {
+  coordKey,
+  coordToPosition,
+  findOpenCoord,
+  positionToCoord,
+  HEX_HEIGHT,
+  HEX_WIDTH,
+} from "@/lib/hex-grid";
 
 const ARTIFACT_RADIUS = 320;
 const ARTIFACT_RING_STEP = 220;
@@ -62,7 +70,8 @@ const NODE_GUTTER = 40;
 const ARTIFACT_PREVIEW_LIMIT = 6;
 
 const NODE_SIZES: Record<string, { width: number; height: number }> = {
-  chatBlock: { width: 320, height: 220 },
+  zone: { width: HEX_WIDTH, height: HEX_HEIGHT },
+  chatBlock: { width: HEX_WIDTH, height: HEX_HEIGHT },
   tableArtifact: { width: 320, height: 140 },
   documentArtifact: { width: 340, height: 220 },
   graphEntity: { width: 240, height: 140 },
@@ -73,7 +82,7 @@ const getNodeSize = (type?: string) => {
   return NODE_SIZES[type] ?? NODE_SIZES.documentArtifact;
 };
 
-type ChatBlockOption = { id: string; title: string };
+type ZoneOption = { id: string; title: string };
 
 function splitDocumentTitle(content: string) {
   const match = /^\s*#\s+(.+?)\s*\r?\n/.exec(content);
@@ -92,7 +101,7 @@ function estimateTokensFromText(value: string) {
 function estimateTokensFromNode(node: { type?: string; data?: any }) {
   if (!node?.data) return 0;
   const data = node.data as Record<string, unknown>;
-  if (node.type === "chatBlock") {
+  if (node.type === "zone") {
     const summary = (data.handoffSummary as string | undefined) ?? "";
     const recent = Array.isArray(data.handoffRecentMessages)
       ? data.handoffRecentMessages.map((message) => `${message.role}: ${message.content}`).join(" ")
@@ -124,8 +133,8 @@ export function CanvasChatSidebar() {
     addNode,
     addEdge,
     updateNodeData,
-    activeChatBlockId,
-    setActiveChatBlockId,
+    activeZoneId,
+    setActiveZoneId,
     chatPanelOpen,
     setChatPanelOpen,
     snapshots,
@@ -134,18 +143,19 @@ export function CanvasChatSidebar() {
     deleteSnapshot,
     setFocusedNodeId,
     resetCanvas,
+    territories,
   } = useCanvas();
   const { userContext } = useEffectiveUser();
   const [isDraggingContext, setIsDraggingContext] = useState(false);
   const [panelsOpen, setPanelsOpen] = useState(false);
 
-  const chatBlocks = useMemo<ChatBlockOption[]>(
+  const zones = useMemo<ZoneOption[]>(
     () =>
       nodes
-        .filter((node) => node.type === "chatBlock")
+        .filter((node) => node.type === "zone" || node.type === "chatBlock")
         .map((node) => ({
           id: node.id,
-          title: (node.data as { title?: string })?.title ?? "Chat Block",
+          title: (node.data as { title?: string })?.title ?? "Zone",
         })),
     [nodes]
   );
@@ -156,20 +166,55 @@ export function CanvasChatSidebar() {
   }, [nodes]);
 
   useEffect(() => {
-    if (!activeChatBlockId && chatBlocks[0]) {
-      setActiveChatBlockId(chatBlocks[0].id);
+    if (!activeZoneId && zones[0]) {
+      setActiveZoneId(zones[0].id);
     }
-  }, [activeChatBlockId, chatBlocks, setActiveChatBlockId]);
+  }, [activeZoneId, setActiveZoneId, zones]);
 
-  const activeChatId = activeChatBlockId ?? chatBlocks[0]?.id ?? "";
+  const activeZone = activeZoneId ?? zones[0]?.id ?? "";
+  const zoneNodes = useMemo(
+    () => nodes.filter((node) => node.type === "zone" || node.type === "chatBlock"),
+    [nodes]
+  );
+  const territoryById = useMemo(() => {
+    return new Map(territories.map((territory) => [territory.id, territory]));
+  }, [territories]);
+  const activeZoneNode = useMemo(
+    () => nodes.find((node) => node.id === activeZone),
+    [activeZone, nodes]
+  );
+  const activeProjectId = useMemo(() => {
+    const data = activeZoneNode?.data as ZoneData | undefined;
+    return data?.projectId ?? territories[0]?.id ?? "project_general";
+  }, [activeZoneNode, territories]);
+
+  const getNextZoneCoord = useCallback(
+    (projectId: string) => {
+      const territory = territoryById.get(projectId) ?? territories[0];
+      const anchor = territory?.anchor ?? { q: 0, r: 0 };
+      const occupied = new Set(
+        zoneNodes
+          .filter((node) => {
+            const data = node.data as ZoneData | undefined;
+            return (data?.projectId ?? territories[0]?.id) === projectId;
+          })
+          .map((node) => {
+            const coord = (node.data as ZoneData | undefined)?.coord ?? positionToCoord(node.position);
+            return coordKey(coord);
+          })
+      );
+      return findOpenCoord(occupied, anchor, 18);
+    },
+    [territories, territoryById, zoneNodes]
+  );
 
   const linkedNodeIds = useMemo(() => {
-    if (!activeChatId) return [];
+    if (!activeZone) return [];
     return edges
-      .filter((edge) => edge.source === activeChatId || edge.target === activeChatId)
-      .map((edge) => (edge.source === activeChatId ? edge.target : edge.source))
-      .filter((nodeId): nodeId is string => Boolean(nodeId && nodeId !== activeChatId));
-  }, [activeChatId, edges]);
+      .filter((edge) => edge.source === activeZone || edge.target === activeZone)
+      .map((edge) => (edge.source === activeZone ? edge.target : edge.source))
+      .filter((nodeId): nodeId is string => Boolean(nodeId && nodeId !== activeZone));
+  }, [activeZone, edges]);
 
   const linkedNodes = useMemo(
     () => nodes.filter((node) => linkedNodeIds.includes(node.id)),
@@ -178,7 +223,7 @@ export function CanvasChatSidebar() {
 
   const artifactPreviews = useMemo(() => {
     return linkedNodes
-      .filter((node) => node.type && node.type !== "chatBlock")
+      .filter((node) => node.type && node.type !== "zone")
       .map((node, index) => {
         const data = node.data as Record<string, unknown>;
         const createdAt = typeof data?.createdAt === "string" ? Date.parse(data.createdAt) : 0;
@@ -227,14 +272,14 @@ export function CanvasChatSidebar() {
   }, [linkedNodes]);
 
   const anchorNode = useMemo(
-    () => nodes.find((entry) => entry.id === activeChatId),
-    [activeChatId, nodes]
+    () => nodes.find((entry) => entry.id === activeZone),
+    [activeZone, nodes]
   );
   const anchorSize = useMemo(() => {
     if (anchorNode?.width && anchorNode?.height) {
       return { width: anchorNode.width, height: anchorNode.height };
     }
-    return NODE_SIZES.chatBlock;
+    return NODE_SIZES.zone;
   }, [anchorNode?.height, anchorNode?.width]);
   const anchorCenter = useMemo(() => {
     const position = anchorNode?.position ?? { x: 0, y: 0 };
@@ -341,17 +386,17 @@ export function CanvasChatSidebar() {
 
   const ensureEdge = useCallback(
     (targetId: string) => {
-      if (edges.some((edge) => edge.source === activeChatId && edge.target === targetId)) {
+      if (edges.some((edge) => edge.source === activeZone && edge.target === targetId)) {
         return;
       }
       addEdge({
-        id: `edge_${activeChatId}_${targetId}`,
-        source: activeChatId,
+        id: `edge_${activeZone}_${targetId}`,
+        source: activeZone,
         target: targetId,
         data: { kind: "context" },
       });
     },
-    [addEdge, activeChatId, edges]
+    [addEdge, activeZone, edges]
   );
 
   const updateTableGroup = useCallback(
@@ -464,7 +509,7 @@ export function CanvasChatSidebar() {
 
   const handleArtifact = useCallback(
     (artifact: ArtifactData) => {
-      if (!activeChatId) return;
+      if (!activeZone) return;
       const artifactId = artifact.id || `artifact_${Date.now()}`;
       const existingById = nodes.find((node) => node.id === artifactId);
       const isTable = artifact.artifact_type === "data_table";
@@ -489,7 +534,7 @@ export function CanvasChatSidebar() {
         const candidateDocs = nodes.filter((node) => {
           if (node.type !== "documentArtifact") return false;
           const nodeOrigin = (node.data as any)?.origin as { chat_block_id?: string; type?: string } | undefined;
-          return nodeOrigin?.chat_block_id === activeChatId && nodeOrigin?.type === "assistant_response";
+          return nodeOrigin?.chat_block_id === activeZone && nodeOrigin?.type === "assistant_response";
         });
         const latestDoc = candidateDocs.sort((a, b) => {
           const aTime = (a.data as any)?.createdAt ? Date.parse((a.data as any).createdAt) : 0;
@@ -514,7 +559,7 @@ export function CanvasChatSidebar() {
         const groupedDoc = nodes.find((node) => {
           if (node.type !== "documentArtifact") return false;
           const nodeOrigin = (node.data as any)?.origin as { tool_name?: string; chat_block_id?: string } | undefined;
-          return nodeOrigin?.tool_name === origin.tool_name && nodeOrigin?.chat_block_id === activeChatId;
+          return nodeOrigin?.tool_name === origin.tool_name && nodeOrigin?.chat_block_id === activeZone;
         });
         if (groupedDoc) {
           updateDocumentGroup(groupedDoc.id, artifact);
@@ -527,7 +572,7 @@ export function CanvasChatSidebar() {
         const groupedNode = nodes.find((node) => {
           if (node.type !== "tableArtifact") return false;
           const nodeOrigin = (node.data as any)?.origin as { tool_name?: string; chat_block_id?: string } | undefined;
-          return nodeOrigin?.tool_name === origin.tool_name && nodeOrigin?.chat_block_id === activeChatId;
+          return nodeOrigin?.tool_name === origin.tool_name && nodeOrigin?.chat_block_id === activeZone;
         });
         if (groupedNode) {
           updateTableGroup(groupedNode.id, artifact);
@@ -651,7 +696,7 @@ export function CanvasChatSidebar() {
       ensureEdge(artifactId);
     },
     [
-      activeChatId,
+      activeZone,
       addNode,
       ensureEdge,
       getNextArtifactPosition,
@@ -664,12 +709,12 @@ export function CanvasChatSidebar() {
   );
 
   const { messages, isStreaming, sendMessage, stopStreaming, setAutoArtifacts, data } = useCanvasChat({
-    chatBlockId: activeChatId,
+    zoneId: activeZone,
     canvasId,
     userContext: chatUserContext,
     onArtifact: handleArtifact,
     onDocumentCreate: ({ title, origin }) => {
-      if (!activeChatId) return null;
+      if (!activeZone) return null;
       const artifactId = `artifact_document_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const position = getNextArtifactPosition("documentArtifact");
 
@@ -732,34 +777,34 @@ export function CanvasChatSidebar() {
   const contextArtifactIds = data?.contextArtifactIds;
   const isContextAuto = contextArtifactIds === undefined;
   const includedContextIds = useMemo(() => {
-    if (!activeChatId) return new Set<string>();
+      if (!activeZone) return new Set<string>();
     if (isContextAuto) {
       return new Set(linkedNodeIds);
     }
     return new Set(contextArtifactIds ?? []);
-  }, [activeChatId, contextArtifactIds, isContextAuto, linkedNodeIds]);
+  }, [activeZone, contextArtifactIds, isContextAuto, linkedNodeIds]);
 
   const totalContextTokens = useMemo(() => {
-    if (!activeChatId) return 0;
+    if (!activeZone) return 0;
     return linkedNodes
       .filter((node) => includedContextIds.has(node.id))
       .reduce((sum, node) => sum + estimateTokensFromNode(node), 0);
-  }, [activeChatId, includedContextIds, linkedNodes]);
+  }, [activeZone, includedContextIds, linkedNodes]);
 
   const updateContextSelection = useCallback(
     (nextIds: string[] | undefined) => {
-      if (!activeChatId) return;
-      updateNodeData(activeChatId, (current) => ({
+      if (!activeZone) return;
+      updateNodeData(activeZone, (current) => ({
         ...(current ?? {}),
         contextArtifactIds: nextIds,
       }));
     },
-    [activeChatId, updateNodeData]
+    [activeZone, updateNodeData]
   );
 
   const toggleContextArtifact = useCallback(
     (nodeId: string) => {
-      if (!activeChatId) return;
+      if (!activeZone) return;
       const base = new Set(isContextAuto ? linkedNodeIds : contextArtifactIds ?? []);
       if (base.has(nodeId)) {
         base.delete(nodeId);
@@ -768,7 +813,7 @@ export function CanvasChatSidebar() {
       }
       updateContextSelection(Array.from(base));
     },
-    [activeChatId, contextArtifactIds, isContextAuto, linkedNodeIds, updateContextSelection]
+    [activeZone, contextArtifactIds, isContextAuto, linkedNodeIds, updateContextSelection]
   );
 
   const includeAllContext = useCallback(() => {
@@ -798,14 +843,14 @@ export function CanvasChatSidebar() {
 
   const handleClearCanvas = useCallback(() => {
     if (typeof window !== "undefined") {
-      const confirmed = window.confirm("Clear the entire canvas? This cannot be undone.");
+      const confirmed = window.confirm("Clear the entire map? This cannot be undone.");
       if (!confirmed) return;
     }
     resetCanvas();
   }, [resetCanvas]);
 
   const handleClearChat = useCallback(() => {
-    if (!activeChatId) return;
+    if (!activeZone) return;
     if (isStreaming) {
       stopStreaming();
     }
@@ -813,8 +858,8 @@ export function CanvasChatSidebar() {
       const confirmed = window.confirm("Clear this chat? This cannot be undone.");
       if (!confirmed) return;
     }
-    updateNodeData(activeChatId, (current) => {
-      const chatData = (current ?? {}) as ChatBlockData;
+    updateNodeData(activeZone, (current) => {
+      const chatData = (current ?? {}) as ZoneData;
       return {
         ...chatData,
         threadId: null,
@@ -822,23 +867,25 @@ export function CanvasChatSidebar() {
         isStreaming: false,
         handoffSummary: null,
         handoffRecentMessages: [],
+        status: "idle",
       };
     });
-  }, [activeChatId, isStreaming, stopStreaming, updateNodeData]);
+  }, [activeZone, isStreaming, stopStreaming, updateNodeData]);
 
-  const handleNewChat = useCallback(() => {
+  const handleNewZone = useCallback(() => {
     if (isStreaming) {
       stopStreaming();
     }
-    const nextIndex = chatBlocks.length + 1;
-    const chatId = `chat-block-${Date.now()}`;
-    const position = getNextArtifactPosition("chatBlock");
+    const nextIndex = zones.length + 1;
+    const zoneId = `zone-${Date.now()}`;
+    const coord = getNextZoneCoord(activeProjectId);
+    const position = coordToPosition(coord);
     addNode({
-      id: chatId,
-      type: "chatBlock",
+      id: zoneId,
+      type: "zone",
       position,
       data: {
-        title: `Chat Block ${nextIndex}`,
+        title: `Zone ${nextIndex}`,
         description: "Start a new conversation here.",
         messages: [],
         autoArtifacts: false,
@@ -847,16 +894,20 @@ export function CanvasChatSidebar() {
         threadId: null,
         handoffSummary: null,
         handoffRecentMessages: [],
+        projectId: activeProjectId,
+        status: "idle",
+        coord,
       },
     });
-    setActiveChatBlockId(chatId);
+    setActiveZoneId(zoneId);
     setChatPanelOpen(true);
   }, [
     addNode,
-    chatBlocks.length,
-    getNextArtifactPosition,
+    zones.length,
+    activeProjectId,
+    getNextZoneCoord,
     isStreaming,
-    setActiveChatBlockId,
+    setActiveZoneId,
     setChatPanelOpen,
     stopStreaming,
   ]);
@@ -907,9 +958,9 @@ export function CanvasChatSidebar() {
             </div>
             {chatPanelOpen && (
               <div>
-                <div className="text-sm font-semibold">Canvas Chat</div>
+                <div className="text-sm font-semibold">Zone Chat</div>
                 <div className="text-xs text-muted-foreground">
-                  {chatBlocks.find((block) => block.id === activeChatId)?.title ?? "Chat block"}
+                  {zones.find((zone) => zone.id === activeZone)?.title ?? "Zone"}
                 </div>
               </div>
             )}
@@ -937,16 +988,16 @@ export function CanvasChatSidebar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleNewChat}>
+                  <DropdownMenuItem onClick={handleNewZone}>
                     <Plus className="mr-2 h-4 w-4" />
-                    New chat block
+                    New zone
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleClearChat}>
                     Clear chat
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleClearCanvas}>
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Clear canvas
+                    Clear map
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -968,22 +1019,22 @@ export function CanvasChatSidebar() {
           <>
             <div className="px-3 pt-3">
               <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Active Chat
+                Active Zone
               </label>
               <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                {chatBlocks.map((block) => (
+                {zones.map((block) => (
                   <Button
                     key={block.id}
-                    variant={block.id === activeChatId ? "default" : "outline"}
+                    variant={block.id === activeZone ? "default" : "outline"}
                     size="sm"
                     className="h-8"
-                    onClick={() => setActiveChatBlockId(block.id)}
+                    onClick={() => setActiveZoneId(block.id)}
                   >
                     {block.title}
                   </Button>
                 ))}
-                {!chatBlocks.length && (
-                  <div className="text-xs text-muted-foreground">No chat blocks yet.</div>
+                {!zones.length && (
+                  <div className="text-xs text-muted-foreground">No zones yet.</div>
                 )}
               </div>
             </div>

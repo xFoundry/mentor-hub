@@ -71,7 +71,10 @@ export function ChatMessageAreaContent({
 }: ChatMessageAreaContentProps) {
   return (
     <StickToBottom.Content
-      className={cn("max-w-2xl mx-auto w-full h-full py-2 px-2 overflow-x-hidden", className)}
+      className={cn(
+        "max-w-2xl mx-auto w-full min-h-full py-2 px-2 overflow-x-hidden",
+        className
+      )}
       {...props}
     />
   );

@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { Edge, NodeTypes, ReactFlowInstance } from "@xyflow/react";
-import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, MarkerType } from "@xyflow/react";
+import { Controls, ReactFlow, ReactFlowProvider, MarkerType } from "@xyflow/react";
 import { useCanvas } from "@/contexts/canvas-context";
-import { ChatBlockNode } from "@/components/canvas/nodes/chat-block-node";
+import { ZoneHexNode } from "@/components/canvas/nodes/zone-hex-node";
 import { TableArtifactNode } from "@/components/canvas/nodes/table-artifact-node";
 import { DocumentArtifactNode } from "@/components/canvas/nodes/document-artifact-node";
 import { GraphEntityNode } from "@/components/canvas/nodes/graph-entity-node";
@@ -14,16 +14,21 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Search, Shuffle } from "lucide-react";
 import { CanvasCommandPalette } from "@/components/canvas/canvas-command-palette";
+import { HEX_HEIGHT, HEX_WIDTH, coordToPosition, positionToCoord } from "@/lib/hex-grid";
+import { MapGridBackground } from "@/components/canvas/map-grid-background";
+import { MapTerritories } from "@/components/canvas/map-territories";
 
 const nodeTypes = {
-  chatBlock: ChatBlockNode,
+  zone: ZoneHexNode,
+  chatBlock: ZoneHexNode,
   tableArtifact: TableArtifactNode,
   documentArtifact: DocumentArtifactNode,
   graphEntity: GraphEntityNode,
 } satisfies NodeTypes;
 
 const NODE_SIZES: Record<string, { width: number; height: number }> = {
-  chatBlock: { width: 320, height: 220 },
+  zone: { width: HEX_WIDTH, height: HEX_HEIGHT },
+  chatBlock: { width: HEX_WIDTH, height: HEX_HEIGHT },
   tableArtifact: { width: 320, height: 140 },
   documentArtifact: { width: 340, height: 220 },
   graphEntity: { width: 240, height: 140 },
@@ -49,11 +54,9 @@ function CanvasSurface() {
     updateNodeData,
   } = useCanvas();
   const [commandOpen, setCommandOpen] = useState(false);
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<CanvasNode, Edge> | null>(null);
 
   const handleInit = useCallback(
     (instance: ReactFlowInstance<CanvasNode, Edge>) => {
-      setReactFlowInstance(instance);
       if (hasStoredState && viewport) {
         instance.setViewport(viewport);
         return;
@@ -131,7 +134,7 @@ function CanvasSurface() {
   const handleSelectNode = useCallback(
     (node: CanvasNode) => {
       setFocusedNodeId(node.id);
-      if (node.type === "chatBlock") {
+      if (node.type === "zone" || node.type === "chatBlock") {
         openChatPanel(node.id);
       }
       if (node.type === "documentArtifact" || node.type === "tableArtifact") {
@@ -140,101 +143,49 @@ function CanvasSurface() {
           isExpanded: true,
         }));
       }
-      if (reactFlowInstance) {
-        const width = node.width ?? 300;
-        const height = node.height ?? 200;
-        reactFlowInstance.setCenter(
-          node.position.x + width / 2,
-          node.position.y + height / 2,
-          { zoom: Math.max(0.6, reactFlowInstance.getZoom()) }
-        );
-      }
     },
-    [openChatPanel, reactFlowInstance, setFocusedNodeId, updateNodeData]
+    [openChatPanel, setFocusedNodeId, updateNodeData]
   );
 
   const handleTidyLayout = useCallback(() => {
-    const occupied: Array<{ x: number; y: number; width: number; height: number }> = [];
-    const nextNodes = nodes.map((node) => ({ ...node }));
-    const chatBlocks = nextNodes.filter((node) => node.type === "chatBlock");
-
-    const placeNear = (anchor: { x: number; y: number }, nodeType: string) => {
-      const size = getNodeSize(nodeType);
-      const overlaps = (candidate: { x: number; y: number; width: number; height: number }) =>
-        occupied.some(
-          (rect) =>
-            candidate.x < rect.x + rect.width + 40 &&
-            candidate.x + candidate.width + 40 > rect.x &&
-            candidate.y < rect.y + rect.height + 40 &&
-            candidate.y + candidate.height + 40 > rect.y
-        );
-
-      for (let ring = 0; ring < 6; ring += 1) {
-        const radius = 320 + ring * 220;
-        const steps = Math.max(10, Math.ceil((2 * Math.PI * radius) / 260));
-        const step = (2 * Math.PI) / steps;
-        for (let i = 0; i < steps; i += 1) {
-          const angle = step * i;
-          const candidate = {
-            x: anchor.x + Math.cos(angle) * radius - size.width / 2,
-            y: anchor.y + Math.sin(angle) * radius - size.height / 2,
-            width: size.width,
-            height: size.height,
-          };
-          if (!overlaps(candidate)) {
-            occupied.push(candidate);
-            return { x: candidate.x, y: candidate.y };
-          }
-        }
-      }
-      return { x: anchor.x + 320, y: anchor.y };
-    };
-
-    const chatAnchors = new Map(
-      chatBlocks.map((node) => [
-        node.id,
-        {
-          x: node.position.x + (node.width ?? getNodeSize(node.type).width) / 2,
-          y: node.position.y + (node.height ?? getNodeSize(node.type).height) / 2,
+    const nextNodes = nodes.map((node): CanvasNode => {
+      if (node.type !== "zone" && node.type !== "chatBlock") return node;
+      const coord = positionToCoord(node.position);
+      return {
+        ...node,
+        type: "zone" as const,
+        position: coordToPosition(coord),
+        data: {
+          ...(node.data ?? {}),
+          coord,
         },
-      ])
-    );
-
-    const linkedByChat = new Map<string, string[]>();
-    edges.forEach((edge) => {
-      if (chatAnchors.has(edge.source)) {
-        linkedByChat.set(edge.source, [...(linkedByChat.get(edge.source) ?? []), edge.target]);
-      }
-      if (chatAnchors.has(edge.target)) {
-        linkedByChat.set(edge.target, [...(linkedByChat.get(edge.target) ?? []), edge.source]);
-      }
+      };
     });
-
-    chatBlocks.forEach((chat) => {
-      const size = getNodeSize(chat.type);
-      occupied.push({
-        x: chat.position.x,
-        y: chat.position.y,
-        width: chat.width ?? size.width,
-        height: chat.height ?? size.height,
-      });
-    });
-
-    linkedByChat.forEach((linkedIds, chatId) => {
-      const anchor = chatAnchors.get(chatId);
-      if (!anchor) return;
-      linkedIds.forEach((nodeId) => {
-        const node = nextNodes.find((item) => item.id === nodeId);
-        if (!node || node.type === "chatBlock") return;
-        node.position = placeNear(anchor, node.type ?? "documentArtifact");
-      });
-    });
-
     setNodes(nextNodes);
-  }, [edges, nodes, setNodes]);
+  }, [nodes, setNodes]);
 
   const handleNodeDragStop = useCallback(
     (_: unknown, draggedNode: CanvasNode) => {
+      if (draggedNode.type === "zone" || draggedNode.type === "chatBlock") {
+        const coord = positionToCoord(draggedNode.position);
+        const position = coordToPosition(coord);
+        const nextNodes = nodes.map((node): CanvasNode =>
+          node.id === draggedNode.id
+            ? {
+              ...node,
+              type: "zone" as const,
+              position,
+              data: {
+                ...(node.data ?? {}),
+                coord,
+              },
+            }
+            : node
+        );
+        setNodes(nextNodes);
+        return;
+      }
+
       const size = getNodeSize(draggedNode.type);
       const draggedRect = {
         x: draggedNode.position.x,
@@ -317,7 +268,7 @@ function CanvasSurface() {
             </Button>
           </>
         ) : (
-          <span className="text-muted-foreground">Canvas</span>
+          <span className="text-muted-foreground">Map</span>
         )}
         <Button
           variant="ghost"
@@ -330,7 +281,7 @@ function CanvasSurface() {
         </Button>
         <Button variant="ghost" size="sm" className="h-7" onClick={handleTidyLayout}>
           <Shuffle className="mr-1 h-4 w-4" />
-          Tidy
+          Snap
         </Button>
       </div>
       <CanvasCommandPalette
@@ -340,6 +291,7 @@ function CanvasSurface() {
         onSelectNode={handleSelectNode}
       />
       <ReactFlow<CanvasNode, Edge>
+        className="map-flow"
         nodes={nodesWithFocus}
         edges={edgesWithFocus}
         nodeTypes={nodeTypes}
@@ -348,7 +300,7 @@ function CanvasSurface() {
         onConnect={onConnect}
         onMoveEnd={(_, nextViewport) => setViewport(nextViewport)}
         onInit={handleInit}
-        onNodeClick={(_, node) => setFocusedNodeId(node.id)}
+        onNodeClick={(_, node) => handleSelectNode(node)}
         onPaneClick={() => clearFocus()}
         onNodeDragStop={handleNodeDragStop}
         minZoom={0.2}
@@ -356,13 +308,8 @@ function CanvasSurface() {
         noDragClassName="nodrag"
         noWheelClassName="nowheel"
       >
-        <Background gap={24} size={1} />
-        <MiniMap
-          pannable
-          zoomable
-          className="bg-card shadow-sm"
-          maskColor="rgba(0, 0, 0, 0.08)"
-        />
+        <MapGridBackground />
+        <MapTerritories />
         <Controls className="bg-card shadow-sm" />
       </ReactFlow>
     </div>

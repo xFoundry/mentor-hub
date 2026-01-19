@@ -16,6 +16,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { CohortProvider } from "@/contexts/cohort-context";
 import { BreadcrumbProvider, useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { JobStatusProvider } from "@/contexts/job-status-context";
@@ -34,6 +35,7 @@ import { CreateTaskKeyboardProvider } from "@/components/tasks/create-task-keybo
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { overrides } = useBreadcrumb();
+  const isMapV2 = pathname?.startsWith("/map-v2");
 
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split("/").filter(Boolean);
@@ -89,7 +91,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           {/* Actions notification button */}
           <ActionNotificationButton />
         </header>
-        <main className="flex flex-1 flex-col gap-4 min-h-0 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main
+          className={cn(
+            "flex flex-1 flex-col min-h-0 overflow-y-auto",
+            isMapV2 ? "p-0 overflow-hidden" : "gap-4 p-4 md:p-6"
+          )}
+        >
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

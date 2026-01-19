@@ -32,7 +32,7 @@ export function CanvasCommandPalette({
 }: CanvasCommandPaletteProps) {
   const groups = useMemo(() => {
     return {
-      Chats: nodes.filter((node) => node.type === "chatBlock"),
+      Zones: nodes.filter((node) => node.type === "zone" || node.type === "chatBlock"),
       Documents: nodes.filter((node) => node.type === "documentArtifact"),
       Tables: nodes.filter((node) => node.type === "tableArtifact"),
       Graph: nodes.filter((node) => node.type === "graphEntity"),
@@ -41,12 +41,12 @@ export function CanvasCommandPalette({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search canvas nodes..." />
+      <CommandInput placeholder="Search map..." />
       <CommandList>
         <CommandEmpty>No nodes found.</CommandEmpty>
         {Object.entries(groups).map(([label, items]) => {
           if (!items.length) return null;
-          const Icon = label === "Chats"
+          const Icon = label === "Zones"
             ? MessageSquare
             : label === "Documents"
               ? FileText

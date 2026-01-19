@@ -1,7 +1,33 @@
 import type { Edge, Node, Viewport } from "@xyflow/react";
 import type { ToolStep } from "@/types/chat";
 
-export type CanvasNodeType = "chatBlock" | "tableArtifact" | "documentArtifact" | "graphEntity";
+export type CanvasNodeType =
+  | "zone"
+  | "chatBlock"
+  | "tableArtifact"
+  | "documentArtifact"
+  | "graphEntity";
+
+export type ZoneStatus =
+  | "idle"
+  | "thinking"
+  | "researching"
+  | "drafting"
+  | "waiting"
+  | "blocked"
+  | "done";
+
+export interface HexCoord {
+  q: number;
+  r: number;
+}
+
+export interface ProjectTerritory {
+  id: string;
+  name: string;
+  color?: string;
+  anchor: HexCoord;
+}
 
 export interface CanvasNodeDataBase {
   [key: string]: unknown;
@@ -23,7 +49,7 @@ export interface CanvasChatAttachment {
   title?: string;
 }
 
-export interface ChatBlockData extends CanvasNodeDataBase {
+export interface ZoneData extends CanvasNodeDataBase {
   title?: string;
   description?: string;
   threadId?: string | null;
@@ -33,6 +59,11 @@ export interface ChatBlockData extends CanvasNodeDataBase {
   handoffSummary?: string | null;
   handoffRecentMessages?: { role: string; content: string }[];
   contextArtifactIds?: string[];
+  projectId?: string;
+  agentId?: string;
+  status?: ZoneStatus;
+  lastActivityAt?: string;
+  coord?: HexCoord;
 }
 
 export interface TableArtifactData extends CanvasNodeDataBase {
@@ -63,7 +94,7 @@ export interface GraphEntityData extends CanvasNodeDataBase {
 }
 
 export type CanvasNodeData =
-  | ChatBlockData
+  | ZoneData
   | TableArtifactData
   | DocumentArtifactData
   | GraphEntityData;
@@ -77,7 +108,8 @@ export interface CanvasSnapshot {
   nodes: CanvasNode[];
   edges: Edge[];
   viewport?: Viewport;
-  activeChatBlockId?: string | null;
+  activeZoneId?: string | null;
+  territories?: ProjectTerritory[];
 }
 
 export interface CanvasStorageState {
@@ -85,7 +117,10 @@ export interface CanvasStorageState {
   nodes: CanvasNode[];
   edges: Edge[];
   viewport?: Viewport;
-  activeChatBlockId?: string | null;
+  activeZoneId?: string | null;
   chatPanelOpen?: boolean;
   snapshots?: CanvasSnapshot[];
+  territories?: ProjectTerritory[];
 }
+
+export type ChatBlockData = ZoneData;

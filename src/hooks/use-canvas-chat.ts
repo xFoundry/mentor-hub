@@ -12,15 +12,16 @@ import type {
 } from "@/types/chat";
 import type {
   CanvasChatMessage,
-  ChatBlockData,
+  ZoneData,
   CanvasNode,
   CanvasChatAttachment,
+  ZoneStatus,
 } from "@/types/canvas";
 import { connectChatStreamV2, generateMessageId } from "@/lib/chat-sse-v2";
 import { useCanvas } from "@/contexts/canvas-context";
 
 interface UseCanvasChatOptions {
-  chatBlockId: string;
+  zoneId: string;
   canvasId: string;
   userContext?: UserContext;
   onArtifact?: (artifact: ArtifactData) => void;
@@ -33,7 +34,7 @@ interface UseCanvasChatOptions {
 }
 
 interface UseCanvasChatReturn {
-  data: ChatBlockData;
+  data: ZoneData;
   messages: CanvasChatMessage[];
   isStreaming: boolean;
   sendMessage: (content: string) => Promise<void>;
@@ -41,25 +42,25 @@ interface UseCanvasChatReturn {
   setAutoArtifacts: (value: boolean) => void;
 }
 
-function getChatNode(nodes: CanvasNode[], chatBlockId: string) {
-  return nodes.find((node) => node.id === chatBlockId) as CanvasNode | undefined;
+function getZoneNode(nodes: CanvasNode[], zoneId: string) {
+  return nodes.find((node) => node.id === zoneId) as CanvasNode | undefined;
 }
 
 function buildContextArtifacts(
   nodes: CanvasNode[],
   edges: { source?: string; target?: string }[],
-  chatBlockId: string,
+  zoneId: string,
   selectedIds?: string[]
 ) {
-  if (!chatBlockId) {
+  if (!zoneId) {
     return [];
   }
 
   const linkedIds = new Set(
     edges
-      .filter((edge) => edge.source === chatBlockId || edge.target === chatBlockId)
-      .map((edge) => (edge.source === chatBlockId ? edge.target : edge.source))
-      .filter((id): id is string => Boolean(id && id !== chatBlockId))
+      .filter((edge) => edge.source === zoneId || edge.target === zoneId)
+      .map((edge) => (edge.source === zoneId ? edge.target : edge.source))
+      .filter((id): id is string => Boolean(id && id !== zoneId))
   );
 
   const includeIds = selectedIds ? new Set(selectedIds) : linkedIds;
@@ -72,8 +73,8 @@ function buildContextArtifacts(
         title: (node.data as any)?.title,
       } as Record<string, unknown>;
 
-      if (node.type === "chatBlock") {
-        const chatData = node.data as ChatBlockData;
+      if (node.type === "zone") {
+        const chatData = node.data as ZoneData;
         return {
           ...base,
           artifact_type: "chat_block",
@@ -140,7 +141,7 @@ function shouldCreateDocument(content: string) {
 
 
 export function useCanvasChat({
-  chatBlockId,
+  zoneId,
   canvasId,
   userContext,
   onArtifact,
@@ -155,19 +156,30 @@ export function useCanvasChat({
   const streamingStepsRef = useRef<ToolStep[]>([]);
   const documentTargetRef = useRef<{ id: string; title: string } | null>(null);
 
-  const node = useMemo(() => getChatNode(nodes, chatBlockId), [nodes, chatBlockId]);
-  const data = (node?.data ?? {}) as ChatBlockData;
+  const node = useMemo(() => getZoneNode(nodes, zoneId), [nodes, zoneId]);
+  const data = (node?.data ?? {}) as ZoneData;
   const messages = data.messages ?? [];
   const isStreaming = data.isStreaming ?? false;
 
   const updateChatData = useCallback(
-    (updater: (current: ChatBlockData) => ChatBlockData) => {
-      updateNodeData(chatBlockId, (current) => {
-        const existing = (current ?? {}) as ChatBlockData;
+    (updater: (current: ZoneData) => ZoneData) => {
+      updateNodeData(zoneId, (current) => {
+        const existing = (current ?? {}) as ZoneData;
         return updater(existing);
       });
     },
-    [chatBlockId, updateNodeData]
+    [updateNodeData, zoneId]
+  );
+
+  const setZoneStatus = useCallback(
+    (status: ZoneStatus) => {
+      updateChatData((current) => ({
+        ...current,
+        status,
+        lastActivityAt: new Date().toISOString(),
+      }));
+    },
+    [updateChatData]
   );
 
   const updateStreamingMessage = useCallback(
@@ -248,8 +260,15 @@ export function useCanvasChat({
 
       streamingStepsRef.current = [...streamingStepsRef.current, step];
       updateSteps();
+      if (stepType === "tool_call" || stepType === "tool_result") {
+        setZoneStatus("researching");
+      } else if (stepType === "thinking") {
+        setZoneStatus("thinking");
+      } else if (stepType === "delegate") {
+        setZoneStatus("thinking");
+      }
     },
-    [updateSteps]
+    [setZoneStatus, updateSteps]
   );
 
   const handleToolResult = useCallback(
@@ -265,8 +284,9 @@ export function useCanvasChat({
         return step;
       });
       updateSteps();
+      setZoneStatus("researching");
     },
-    [updateSteps]
+    [setZoneStatus, updateSteps]
   );
 
   const handleThinking = useCallback(
@@ -282,8 +302,9 @@ export function useCanvasChat({
 
       streamingStepsRef.current = [...streamingStepsRef.current, step];
       updateSteps();
+      setZoneStatus("thinking");
     },
-    [updateSteps]
+    [setZoneStatus, updateSteps]
   );
 
   const sendMessage = useCallback(
@@ -293,13 +314,14 @@ export function useCanvasChat({
       }
 
       const userMessage = createMessage("user", content);
+      setZoneStatus("thinking");
       const wantsDocument = shouldCreateDocument(content);
       const documentTitle = wantsDocument ? "Draft document" : null;
       const documentOrigin = wantsDocument
         ? {
           type: "assistant_response",
           canvas_id: canvasId,
-          chat_block_id: chatBlockId,
+          chat_block_id: zoneId,
         }
         : null;
       const documentId = wantsDocument && onDocumentCreate && documentOrigin
@@ -340,9 +362,9 @@ export function useCanvasChat({
         user_context: userContext,
         thread_id: data.threadId ?? undefined,
         canvas_id: canvasId,
-        chat_block_id: chatBlockId,
+        chat_block_id: zoneId,
         auto_artifacts: data.autoArtifacts ?? false,
-        context_artifacts: buildContextArtifacts(nodes, edges, chatBlockId, data.contextArtifactIds),
+        context_artifacts: buildContextArtifacts(nodes, edges, zoneId, data.contextArtifactIds),
       };
 
       const abortController = new AbortController();
@@ -355,6 +377,7 @@ export function useCanvasChat({
             onTextChunk: (chunk) => {
               streamingContentRef.current += chunk.chunk;
               markStepsCompleted();
+              setZoneStatus("drafting");
               if (documentTargetRef.current && onDocumentUpdate) {
                 onDocumentUpdate(documentTargetRef.current.id, streamingContentRef.current);
                 return;
@@ -375,6 +398,7 @@ export function useCanvasChat({
                 onDocumentFinalize(documentTargetRef.current.id, finalMessage);
               }
               markStepsCompleted();
+              setZoneStatus("done");
               updateChatData((current) => ({
                 ...current,
                 threadId: complete.thread_id ?? current.threadId,
@@ -401,24 +425,27 @@ export function useCanvasChat({
               const fallbackMessage = documentTargetRef.current
                 ? "Document generation failed."
                 : streamingContentRef.current;
+              setZoneStatus("blocked");
               updateStreamingMessage(fallbackMessage, false);
             },
             onConnectionError: () => {
               const fallbackMessage = documentTargetRef.current
                 ? "Document generation failed."
                 : streamingContentRef.current;
+              setZoneStatus("blocked");
               updateStreamingMessage(fallbackMessage, false);
             },
           },
           abortController.signal
         );
       } catch {
+        setZoneStatus("blocked");
         updateStreamingMessage(streamingContentRef.current, false);
       }
     },
     [
       canvasId,
-      chatBlockId,
+      zoneId,
       data.autoArtifacts,
       data.threadId,
       isStreaming,
@@ -436,6 +463,7 @@ export function useCanvasChat({
       handleThinking,
       handleToolResult,
       userContext,
+      setZoneStatus,
     ]
   );
 

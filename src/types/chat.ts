@@ -219,6 +219,7 @@ export interface ChatRequest {
   thread_id?: string;
   group_ids?: string[];
   use_memory?: boolean;
+  selected_tools?: string[];
   canvas_id?: string;
   chat_block_id?: string;
   auto_artifacts?: boolean;

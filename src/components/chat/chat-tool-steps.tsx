@@ -25,6 +25,11 @@ const TOOL_LABELS: Record<string, string> = {
   search_mentor_hub_mentors: "Mentors",
   get_mentor_hub_tasks: "Tasks",
   get_mentor_hub_user_context: "Context",
+  firecrawl_scrape: "Web scrape",
+  firecrawl_search: "Web search",
+  firecrawl_map: "Site map",
+  firecrawl_crawl: "Web crawl",
+  firecrawl_extract: "Data extract",
 };
 
 const PHASE_LABELS: Record<string, string> = {

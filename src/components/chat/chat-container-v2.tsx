@@ -5,7 +5,8 @@
  * Uses the same UI as the original but connects to orchestrator-langgraph.
  */
 
-import { RotateCcw, Plus, AlertCircle, Bot, Sparkles, Zap } from "lucide-react";
+import { useState } from "react";
+import { RotateCcw, Plus, AlertCircle, Bot, Sparkles, Zap, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,13 @@ interface ChatContainerV2Props {
 }
 
 export function ChatContainerV2({ userContext }: ChatContainerV2Props) {
-  const { session, sendMessage, clearChat, newChat, useMemory, setUseMemory } = useChatV2({ userContext });
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const firecrawlEnabled = selectedTools.includes("firecrawl");
+
+  const { session, sendMessage, clearChat, newChat, useMemory, setUseMemory } = useChatV2({
+    userContext,
+    selectedTools,
+  });
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -132,6 +139,28 @@ export function ChatContainerV2({ userContext }: ChatContainerV2Props) {
             isStreaming={session.isStreaming}
             useMemory={useMemory}
             onUseMemoryChange={setUseMemory}
+            toolToggles={[
+              {
+                id: "firecrawl",
+                label: "Firecrawl",
+                description: "Force web search/scrape via your Firecrawl instance",
+                icon: (
+                  <Globe
+                    className={`h-4 w-4 ${
+                      firecrawlEnabled ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                ),
+                checked: firecrawlEnabled,
+                onCheckedChange: (checked) => {
+                  setSelectedTools((prev) =>
+                    checked
+                      ? Array.from(new Set([...prev, "firecrawl"]))
+                      : prev.filter((tool) => tool !== "firecrawl")
+                  );
+                },
+              },
+            ]}
           />
         </div>
 

@@ -4,7 +4,7 @@
  * Chat input component with send button, memory toggle, and keyboard shortcuts.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Send, Loader2, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,14 @@ interface ChatInputProps {
   isStreaming?: boolean;
   useMemory?: boolean;
   onUseMemoryChange?: (useMemory: boolean) => void;
+  toolToggles?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    icon?: ReactNode;
+    checked: boolean;
+    onCheckedChange: (checked: boolean) => void;
+  }>;
 }
 
 export function ChatInput({
@@ -30,6 +38,7 @@ export function ChatInput({
   isStreaming,
   useMemory = false,
   onUseMemoryChange,
+  toolToggles = [],
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -68,8 +77,33 @@ export function ChatInput({
 
   return (
     <div className="border-t bg-background p-4">
-      {/* Memory toggle row */}
-      <div className="mb-2 flex items-center justify-end gap-2">
+      {/* Toggles row */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {toolToggles.map((toggle) => (
+            <TooltipProvider key={toggle.id}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    {toggle.icon}
+                    <span className="text-xs text-muted-foreground">{toggle.label}</span>
+                    <Switch
+                      checked={toggle.checked}
+                      onCheckedChange={toggle.onCheckedChange}
+                      disabled={disabled || isStreaming}
+                    />
+                  </div>
+                </TooltipTrigger>
+                {toggle.description && (
+                  <TooltipContent side="top">
+                    <p>{toggle.description}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          ))}
+        </div>
+
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
