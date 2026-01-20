@@ -16,6 +16,7 @@ import type {
   ToolResultData,
   ThinkingData,
   ToolStep,
+  RichCitationData,
 } from "@/types/chat";
 import type { MapChatMessage, TileStatus, TileArtifact } from "@/types/map";
 import { connectChatStreamV2, generateMessageId } from "@/lib/chat-sse-v2";
@@ -212,6 +213,7 @@ class MapChatManagerClass {
       canvas_id: canvasId,
       chat_block_id: tileId,
       auto_artifacts: tile?.autoArtifacts ?? false,
+      use_deep_agent: true,
       selected_tools:
         tile?.selectedTools && tile.selectedTools.length > 0
           ? tile.selectedTools
@@ -459,6 +461,14 @@ class MapChatManagerClass {
     const session = this.sessions.get(tileId);
     if (!session || !this.callbacks) return;
 
+    if (
+      artifact.artifact_type === "clarification" ||
+      artifact.artifact_type === "todo_list" ||
+      artifact.artifact_type === "file"
+    ) {
+      return;
+    }
+
     session.hasReceivedData = true;
     this.resetTimeout(tileId);
 
@@ -490,6 +500,7 @@ class MapChatManagerClass {
       thread_id?: string;
       handoff_summary?: string | null;
       handoff_recent_messages?: Array<{ role: string; content: string }>;
+      citations?: RichCitationData[];
     }
   ) {
     const session = this.sessions.get(tileId);
@@ -512,11 +523,12 @@ class MapChatManagerClass {
         complete.handoff_recent_messages ?? tile?.handoffRecentMessages,
     });
 
-    // Finalize message
+    // Finalize message with citations
     this.callbacks.updateMessage(tileId, session.messageId, {
       content: finalMessage,
       isStreaming: false,
       steps: finalSteps,
+      citations: complete.citations ?? [],
     });
 
     this.callbacks.setTileStreaming(tileId, false);

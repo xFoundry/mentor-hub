@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -64,22 +64,27 @@ export function AddMentorDialog({
   const [formValues, setFormValues] = useState<MentorFormValues>(emptyFormValues);
   const [errors, setErrors] = useState<Partial<Record<keyof MentorFormValues | "contact" | "cohort" | "capacity", string>>>({});
 
-  // Initialize form when dialog opens
-  useEffect(() => {
-    if (open) {
-      const initialCohortId = defaultCohortId || (selectedCohortId !== "all" ? selectedCohortId : "");
-      setCohortId(initialCohortId);
-      // Default to Mentor capacity
-      const mentorCapacity = capacities.find((c) => c.name === "Mentor");
-      setCapacityId(mentorCapacity?.id || "");
-      setMode("link");
-      setSelectedContactId("");
-      setFormValues(emptyFormValues);
-      setErrors({});
-    }
-  }, [open, defaultCohortId, selectedCohortId, capacities]);
+  const resetForm = useCallback(() => {
+    const initialCohortId = defaultCohortId || (selectedCohortId !== "all" ? selectedCohortId : "");
+    setCohortId(initialCohortId);
+    // Default to Mentor capacity
+    const mentorCapacity = capacities.find((c) => c.name === "Mentor");
+    setCapacityId(mentorCapacity?.id || "");
+    setMode("link");
+    setSelectedContactId("");
+    setFormValues(emptyFormValues);
+    setErrors({});
+  }, [defaultCohortId, selectedCohortId, capacities]);
 
-  const handleFieldChange = useCallback((field: keyof MentorFormValues, value: any) => {
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      resetForm();
+    }
+    onOpenChange(nextOpen);
+  }, [onOpenChange, resetForm]);
+
+  const handleFieldChange = useCallback(
+    <K extends keyof MentorFormValues>(field: K, value: MentorFormValues[K]) => {
     setFormValues((prev) => ({ ...prev, [field]: value }));
     // Clear error when field changes
     if (errors[field]) {
@@ -170,7 +175,7 @@ export function AddMentorDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={isCreating ? undefined : onOpenChange}>
+    <Dialog open={open} onOpenChange={isCreating ? undefined : handleOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         {/* Loading Overlay */}
         {isCreating && (
@@ -215,9 +220,9 @@ export function AddMentorDialog({
                 <SelectValue placeholder="Select cohort" />
               </SelectTrigger>
               <SelectContent>
-                {activeCohorts.map((cohort: any) => (
+                {activeCohorts.map((cohort: Cohort) => (
                   <SelectItem key={cohort.id} value={cohort.id}>
-                    {cohort.displayName || cohort.shortName}
+                    {cohort.shortName || `Cohort ${cohort.cohortNumber ?? ""}`.trim()}
                   </SelectItem>
                 ))}
               </SelectContent>

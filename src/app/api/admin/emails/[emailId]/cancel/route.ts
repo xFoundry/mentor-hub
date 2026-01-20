@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getResendClient, rateLimitedResend } from "@/lib/resend";
+import { requireStaffSession } from "@/lib/api-auth";
 
 /**
  * POST /api/admin/emails/[emailId]/cancel
@@ -9,7 +10,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ emailId: string }> }
 ) {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   const { emailId } = await params;
 

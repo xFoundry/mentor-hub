@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { parseAsLocalTime, getMentorParticipants } from "@/components/sessions/session-transformers";
 import { formatAsEastern, TIMEZONE_ABBR } from "@/lib/timezone";
 import { BlurredMeetingLink } from "@/components/sessions/blurred-meeting-link";
-import type { Session } from "@/types/schema";
+import type { Member, Session } from "@/types/schema";
 import type { UserType } from "@/lib/permissions";
 import { Crown } from "lucide-react";
 
@@ -86,7 +86,7 @@ export function SessionOverviewTab({
           </div>
           <CardContent className="pt-4">
             <div className="flex flex-wrap gap-3">
-              {teamMembers.slice(0, 8).map((member: any) => {
+              {teamMembers.slice(0, 8).map((member: Member) => {
                 const contact = member.contact?.[0];
                 if (!contact) return null;
                 return (

@@ -87,7 +87,7 @@ const permissionRules: Record<
     task: {
       read: true, // Can read tasks from own sessions
       create: false, // Cannot create tasks (staff creates during sessions)
-      update: ["own"], // Can update tasks they created
+      update: ["status", "priority", "due", "levelOfEffort", "name", "description"], // Can update tasks they created
       delete: false,
     },
     update: {
@@ -221,7 +221,7 @@ export function canUpdateField(
   if (allowedFields === true) return true; // Can update all fields
   if (allowedFields === false) return false; // Cannot update any field
   if (Array.isArray(allowedFields)) {
-    return allowedFields.includes(field) || allowedFields.includes("own");
+    return allowedFields.includes(field);
   }
 
   return false;

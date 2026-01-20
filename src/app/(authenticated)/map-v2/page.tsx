@@ -9,13 +9,14 @@ import { MapProvider, useMap } from "@/contexts/map-context";
 import { MapSurface } from "@/components/map/map-surface";
 import { MapSidebar } from "@/components/map/map-sidebar";
 import { MapWorkspacePanel } from "@/components/map/map-workspace-panel";
+import { MapWorkspaceOverlay } from "@/components/map/map-workspace-overlay";
 import { MapMinimap } from "@/components/map/map-minimap";
 import { MapControls } from "@/components/map/map-controls";
 
 import "@xyflow/react/dist/style.css";
 
 function MapV2Content() {
-  const { expandedTileId, sidebarMode } = useMap();
+  const { expandedTileId, sidebarMode, workspaceDisplayMode } = useMap();
   const [showMinimap, setShowMinimap] = useState(false);
 
   // Storage key for canvas ID
@@ -85,19 +86,28 @@ function MapV2Content() {
               />
             </div>
           </ReactFlowProvider>
+
+          {/* Workspace overlay mode - renders over map only */}
+          {isWorkspaceOpen && workspaceDisplayMode === "overlay" && (
+            <MapWorkspaceOverlay />
+          )}
         </div>
 
-        {/* Workspace panel (slides in from right when tile is expanded) */}
-        {isWorkspaceOpen && <MapWorkspacePanel width={480} />}
+        {/* Workspace panel (slides in from right when tile is expanded) - only in panel mode */}
+        {isWorkspaceOpen && workspaceDisplayMode === "panel" && (
+          <MapWorkspacePanel width={480} />
+        )}
 
         {/* Chat sidebar - in flex when not full, absolute when full */}
-        {!isWorkspaceOpen && sidebarMode !== "hidden" && !isFull && (
-          <MapSidebar canvasId={canvasId} />
-        )}
+        {/* Show chat when: workspace closed, OR workspace in overlay mode */}
+        {(!isWorkspaceOpen || workspaceDisplayMode === "overlay") &&
+          sidebarMode !== "hidden" &&
+          !isFull && <MapSidebar canvasId={canvasId} />}
       </div>
 
       {/* Full mode sidebar - overlays the map */}
-      {!isWorkspaceOpen && isFull && (
+      {/* Show chat when: workspace closed, OR workspace in overlay mode */}
+      {(!isWorkspaceOpen || workspaceDisplayMode === "overlay") && isFull && (
         <div className="absolute inset-y-0 right-0 z-20">
           <MapSidebar canvasId={canvasId} />
         </div>

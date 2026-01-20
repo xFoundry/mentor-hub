@@ -117,7 +117,7 @@ export function EditTeamDialog({
         <DialogHeader>
           <DialogTitle>Edit Team</DialogTitle>
           <DialogDescription>
-            Update the team's details. Changes will be saved immediately.
+            Update the team&apos;s details. Changes will be saved immediately.
           </DialogDescription>
         </DialogHeader>
 

@@ -133,7 +133,7 @@ async function renderEmail(
 async function handleBatchPayload(
   payload: QStashBatchPayload
 ): Promise<NextResponse> {
-  const { batchId, sessionId, type, recipients, metadata } = payload;
+  const { sessionId, type, recipients, metadata } = payload;
 
   console.log(`[QStash Worker] Processing batch: ${recipients.length} ${type} emails for session ${sessionId}`);
 
@@ -205,7 +205,7 @@ async function handleBatchPayload(
   // Build per-recipient results
   // Resend batch.send returns { data: { data: [...] } } - extract the inner array
   // Handle both possible formats for compatibility
-  const rawData = result.data as any;
+  const rawData = result.data as Array<{ id: string }> | { data?: Array<{ id: string }> } | null;
   const batchData: Array<{ id: string }> | null = Array.isArray(rawData)
     ? rawData
     : (rawData?.data && Array.isArray(rawData.data) ? rawData.data : null);

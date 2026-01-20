@@ -4,6 +4,7 @@ import { getResendClient, rateLimitedResend } from "@/lib/resend";
 import { parseScheduledEmailIds } from "@/lib/notifications/types";
 import { calculateScheduleTimes } from "@/lib/timezone";
 import type { Session } from "@/types/schema";
+import { requireStaffSession } from "@/lib/api-auth";
 
 interface ScheduledEmailInfo {
   emailId: string;
@@ -21,7 +22,8 @@ interface ScheduledEmailInfo {
  * Returns all scheduled emails from sessions with their status
  */
 export async function GET() {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   try {
     // Fetch sessions with scheduled email IDs

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +61,7 @@ export default function MentorsPage() {
       if (match) {
         return {
           id: match.participationId,
-          status: match.status as any,
+          status: match.status as Participation["status"],
         };
       }
     }
@@ -69,7 +69,7 @@ export default function MentorsPage() {
     const first = mentor.participations[0];
     return {
       id: first.participationId,
-      status: first.status as any,
+      status: first.status as Participation["status"],
     };
   };
 
@@ -112,7 +112,7 @@ export default function MentorsPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="text-muted-foreground">
               <p className="text-lg font-medium">No mentors found</p>
-              <p className="text-sm">Mentors will appear here once they're assigned to your cohort</p>
+              <p className="text-sm">Mentors will appear here once they&apos;re assigned to your cohort</p>
             </div>
           </CardContent>
         </Card>

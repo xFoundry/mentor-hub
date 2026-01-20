@@ -19,6 +19,7 @@ import type {
   SidebarMode,
   TileStatus,
   HexCoord,
+  WorkspaceDisplayMode,
 } from "@/types/map";
 import { createEmptyTile } from "@/types/map";
 import { MapChatManager } from "@/lib/map-chat-manager";
@@ -223,6 +224,7 @@ interface MapContextValue {
   activeTileId: string | null;
   expandedTileId: string | null;
   sidebarMode: SidebarMode;
+  workspaceDisplayMode: WorkspaceDisplayMode;
   viewport: Viewport | undefined;
   territories: ProjectTerritory[];
   hasLoaded: boolean;
@@ -231,6 +233,7 @@ interface MapContextValue {
   setActiveTileId: (id: string | null) => void;
   setExpandedTileId: (id: string | null) => void;
   setSidebarMode: (mode: SidebarMode) => void;
+  setWorkspaceDisplayMode: (mode: WorkspaceDisplayMode) => void;
   setViewport: (viewport: Viewport) => void;
 
   // Tile CRUD
@@ -341,6 +344,7 @@ interface LegacyMapStorageState {
   expandedZoneId?: string | null;
   expandedTileId?: string | null;
   sidebarMode: SidebarMode;
+  workspaceDisplayMode?: WorkspaceDisplayMode;
   territories: ProjectTerritory[];
 }
 
@@ -362,6 +366,7 @@ function readStoredState(storageKey: string): MapStorageState | null {
       activeTileId: parsed.activeTileId ?? parsed.activeZoneId ?? null,
       expandedTileId: parsed.expandedTileId ?? parsed.expandedZoneId ?? null,
       sidebarMode: parsed.sidebarMode ?? "expanded",
+      workspaceDisplayMode: parsed.workspaceDisplayMode ?? "overlay",
       territories: parsed.territories ?? [],
     };
   } catch {
@@ -374,6 +379,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
   const [activeTileIdState, setActiveTileIdState] = useState<string | null>(null);
   const [expandedTileId, setExpandedTileId] = useState<string | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("expanded");
+  const [workspaceDisplayMode, setWorkspaceDisplayMode] = useState<WorkspaceDisplayMode>("overlay");
   const [viewport, setViewport] = useState<Viewport | undefined>(DEFAULT_VIEWPORT);
   const [hasLoaded, setHasLoaded] = useState(false);
 
@@ -413,6 +419,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
       setActiveTileIdState(stored.activeTileId ?? null);
       setExpandedTileId(stored.expandedTileId ?? null);
       setSidebarMode(stored.sidebarMode ?? "expanded");
+      setWorkspaceDisplayMode(stored.workspaceDisplayMode ?? "overlay");
       setViewport(stored.viewport ?? DEFAULT_VIEWPORT);
       // Territories are computed from tile positions, not stored
     } else {
@@ -442,6 +449,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
       activeTileId,
       expandedTileId,
       sidebarMode,
+      workspaceDisplayMode,
       territories: [], // Territories are computed, not stored
     };
 
@@ -455,6 +463,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
     expandedTileId,
     hasLoaded,
     sidebarMode,
+    workspaceDisplayMode,
     storageKey,
     viewport,
     tiles,
@@ -780,6 +789,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
       activeTileId,
       expandedTileId,
       sidebarMode,
+      workspaceDisplayMode,
       viewport,
       territories,
       hasLoaded,
@@ -788,6 +798,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
       setActiveTileId,
       setExpandedTileId,
       setSidebarMode,
+      setWorkspaceDisplayMode,
       setViewport,
 
       // Tile CRUD
@@ -827,6 +838,7 @@ export function MapProvider({ children, storageKey }: MapProviderProps) {
       activeTileId,
       expandedTileId,
       sidebarMode,
+      workspaceDisplayMode,
       viewport,
       territories,
       hasLoaded,

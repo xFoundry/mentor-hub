@@ -22,6 +22,7 @@ import {
   transformCitationsInContent,
 } from "@/components/editor/extensions/citation-node";
 import { ChatDataTable, parseDataTables } from "./chat-data-table";
+import { MarkdownContent } from "@/components/simple-ai/markdown-content";
 import type { RichCitationData } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import "@/components/editor/styles/editor.css";
@@ -34,15 +35,14 @@ interface ChatMessageContentProps {
 }
 
 /**
- * Lightweight streaming content renderer.
- * Used during streaming to avoid expensive Tiptap re-renders.
+ * Streaming content renderer with markdown support.
+ * Uses MarkdownContent for proper formatting during streaming,
+ * which is optimized with memoized blocks to avoid expensive re-renders.
  */
 function StreamingContent({ content }: { content: string }) {
-  // Simple markdown-like rendering for streaming
-  // Just preserve line breaks and basic formatting
   return (
-    <div className="whitespace-pre-wrap break-words">
-      {content}
+    <div className="streaming-content">
+      <MarkdownContent content={content} />
       <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom" />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import type { Node, NodeTypes, ReactFlowInstance, Viewport, NodeChange } from "@xyflow/react";
 import { Controls, ReactFlow, applyNodeChanges, Panel } from "@xyflow/react";
 import { Search, Plus, RotateCcw, GitMerge, HelpCircle } from "lucide-react";
@@ -107,7 +107,13 @@ export function MapSurface() {
   const isDraggingRef = useRef(false);
 
   // Calculate which hexes are occupied (for hover detection)
-  const [occupiedCoords, setOccupiedCoords] = useState<Set<string>>(new Set());
+  const occupiedCoords = useMemo(() => {
+    const set = new Set<string>();
+    tiles.forEach((tile) => {
+      set.add(mapCoordKey(tile.coord));
+    });
+    return set;
+  }, [tiles]);
 
   // State for merge territory confirmation dialog
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
@@ -168,19 +174,11 @@ export function MapSurface() {
     [territories]
   );
 
-  // Sync occupied coords when tiles change
-  useEffect(() => {
-    const set = new Set<string>();
-    tiles.forEach((tile) => {
-      set.add(mapCoordKey(tile.coord));
-    });
-    setOccupiedCoords(set);
-  }, [tiles]);
-
   // Sync nodes from tiles when tiles change (but not during drag)
   useEffect(() => {
     if (isDraggingRef.current) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNodes(tiles.map((tile) => tileToNode(tile, activeTileId)));
   }, [tiles, activeTileId]);
 

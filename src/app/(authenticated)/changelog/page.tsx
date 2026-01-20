@@ -31,7 +31,7 @@ export default function ChangelogPage() {
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">What's New</h1>
+            <h1 className="text-2xl font-bold tracking-tight">What&apos;s New</h1>
             <p className="text-sm text-muted-foreground">
               The latest updates and improvements
             </p>

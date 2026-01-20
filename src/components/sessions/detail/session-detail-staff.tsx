@@ -44,7 +44,12 @@ interface SessionDetailStaffProps {
   tasks: Task[];
   teamMembers: TeamMember[];
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  onCreateUpdate: (input: any) => Promise<void>;
+  onCreateUpdate: (input: {
+    taskId: string;
+    authorId: string;
+    health: string;
+    message: string;
+  }) => Promise<void>;
 }
 
 export function SessionDetailStaff({

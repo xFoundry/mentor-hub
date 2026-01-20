@@ -38,6 +38,9 @@ import type { AgentTrace } from "@/types/chat";
 interface ChatAgentTraceProps {
   traces: AgentTrace[];
   isStreaming: boolean;
+  variant?: "default" | "cowork";
+  className?: string;
+  title?: string;
 }
 
 /** Agent display configuration */
@@ -248,7 +251,13 @@ function AgentGroupSection({
   );
 }
 
-export function ChatAgentTrace({ traces, isStreaming }: ChatAgentTraceProps) {
+export function ChatAgentTrace({
+  traces,
+  isStreaming,
+  variant = "default",
+  className,
+  title,
+}: ChatAgentTraceProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set(["orchestrator"]));
 
@@ -272,8 +281,14 @@ export function ChatAgentTrace({ traces, isStreaming }: ChatAgentTraceProps) {
     });
   };
 
+  const panelTitle = title || "Agent Activity";
+
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-72">
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className={cn(variant === "cowork" ? "w-full" : "w-72", className)}
+    >
       <CollapsibleTrigger asChild>
         <Button
           variant="ghost"
@@ -284,7 +299,7 @@ export function ChatAgentTrace({ traces, isStreaming }: ChatAgentTraceProps) {
             <Activity
               className={cn("h-4 w-4", isStreaming && "animate-pulse text-primary")}
             />
-            <span className="font-medium">Agent Activity</span>
+            <span className="font-medium">{panelTitle}</span>
           </span>
           <div className="flex items-center gap-1.5">
             {uniqueAgents > 0 && (
@@ -308,7 +323,12 @@ export function ChatAgentTrace({ traces, isStreaming }: ChatAgentTraceProps) {
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <ScrollArea className="h-[450px] rounded-md border bg-muted/20">
+        <ScrollArea
+          className={cn(
+            "rounded-md border bg-muted/20",
+            variant === "cowork" ? "h-[320px]" : "h-[450px]"
+          )}
+        >
           <div className="p-2 space-y-2">
             {traces.length === 0 ? (
               <div className="py-8 text-center">

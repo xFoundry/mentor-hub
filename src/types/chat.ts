@@ -121,6 +121,48 @@ export interface ArtifactData {
   created_at?: number;
 }
 
+export interface TodoItem {
+  content: string;
+  status?: "pending" | "in_progress" | "completed" | string;
+  activeForm?: string;
+  id?: string;
+}
+
+export interface ClarificationOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export interface ClarificationQuestion {
+  id: string;
+  prompt: string;
+  description?: string;
+  selectionType?: "single" | "multi";
+  allowOther?: boolean;
+  required?: boolean;
+  options: ClarificationOption[];
+}
+
+export interface ClarificationPayload {
+  id: string;
+  title?: string;
+  description?: string;
+  questions: ClarificationQuestion[];
+}
+
+export interface ClarificationAnswer {
+  questionId: string;
+  selectedOptionIds: string[];
+  otherText?: string;
+}
+
+export interface ClarificationResponse {
+  requestId: string;
+  answers: ClarificationAnswer[];
+  skipped?: boolean;
+}
+
 // Union type for all SSE event data
 export type SSEEventData =
   | { type: "agent_activity"; data: AgentActivityData }
@@ -176,6 +218,10 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   citations?: CitationData[];
+  artifact?: ArtifactData;
+  clarification?: ClarificationPayload;
+  clarificationResponse?: ClarificationResponse;
+  clarificationStatus?: "pending" | "submitted" | "skipped";
   /** Tool steps executed while generating this message */
   steps?: ToolStep[];
   timestamp: Date;
@@ -197,6 +243,8 @@ export interface ChatSession {
   traces: AgentTrace[];
   isStreaming: boolean;
   error: string | null;
+  todos: TodoItem[];
+  artifacts: ArtifactData[];
 }
 
 // Request/Response types for API
@@ -225,12 +273,21 @@ export interface ChatRequest {
   auto_artifacts?: boolean;
   context_artifacts?: Record<string, unknown>[];
   model_config_override?: Record<string, string>;
+  use_deep_agent?: boolean;
 }
 
 // Hook return type
 export interface UseChatReturn {
   session: ChatSession;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (
+    content: string,
+    options?: { force?: boolean; skipUserMessage?: boolean }
+  ) => Promise<void>;
+  submitClarification: (
+    messageId: string,
+    clarification: ClarificationPayload,
+    response: ClarificationResponse
+  ) => Promise<void>;
   clearChat: () => void;
   newChat: () => void;
   isConnected: boolean;

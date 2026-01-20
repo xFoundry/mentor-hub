@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 interface LogoProps {
   size?: number;
@@ -18,20 +17,12 @@ interface LogoProps {
  */
 export function Logo({ size = 32, className }: LogoProps) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Show white logo by default (light mode) until mounted
-  const logoSrc = mounted && resolvedTheme === "dark"
+  const logoSrc = resolvedTheme === "dark"
     ? "/x-icon-blue.png"
     : "/x-icon-white.png";
 
   // For SSR, show a placeholder with the same dimensions
-  if (!mounted) {
+  if (!resolvedTheme) {
     return (
       <div
         className={className}

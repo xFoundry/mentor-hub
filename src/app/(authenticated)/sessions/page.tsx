@@ -24,12 +24,13 @@ function SessionsPageContent() {
   );
 
   // Create session dialog state
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(
+    () => searchParams.get("create") === "true"
+  );
 
   // Check for ?create=true param to auto-open dialog
   useEffect(() => {
     if (searchParams.get("create") === "true") {
-      setShowCreateDialog(true);
       // Remove the query param without navigation
       const newUrl = window.location.pathname;
       window.history.replaceState({}, "", newUrl);

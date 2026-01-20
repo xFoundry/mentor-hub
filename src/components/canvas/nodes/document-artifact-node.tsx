@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { FileText, MessageSquare, PencilLine } from "lucide-react";
@@ -42,8 +42,15 @@ export function DocumentArtifactNode({ data, selected, id }: NodeProps<DocumentN
   const documents = useMemo(() => payload?.documents ?? [], [payload?.documents]);
   const isGrouped = documents.length > 0;
   const [activeDocId, setActiveDocId] = useState(documents[0]?.id ?? "document");
+  const resolvedActiveDocId = useMemo(() => {
+    if (!isGrouped) return activeDocId;
+    if (documents.find((doc) => doc.id === activeDocId)) {
+      return activeDocId;
+    }
+    return documents[0]?.id ?? "document";
+  }, [activeDocId, documents, isGrouped]);
   const activeDoc = isGrouped
-    ? documents.find((doc) => doc.id === activeDocId) ?? documents[0]
+    ? documents.find((doc) => doc.id === resolvedActiveDocId) ?? documents[0]
     : undefined;
   const content = isGrouped ? activeDoc?.content ?? "" : payload?.content ?? "";
   const isEmpty = content.trim().length === 0;
@@ -101,13 +108,13 @@ export function DocumentArtifactNode({ data, selected, id }: NodeProps<DocumentN
       updater: (entry: NonNullable<DocumentPayload["documents"]>[number]) => NonNullable<DocumentPayload["documents"]>[number]
     ) => {
       updateNodeData(id, (current) => {
-        const currentPayload = (current as any)?.payload as DocumentPayload | undefined;
+        const currentPayload = (current as DocumentArtifactData)?.payload as DocumentPayload | undefined;
         const existingDocs = currentPayload?.documents ?? [];
         const nextDocs = existingDocs.map((doc) => (doc.id === docId ? updater(doc) : doc));
         return {
           ...current,
           summary:
-            docId === activeDocId
+            docId === resolvedActiveDocId
               ? nextDocs.find((doc) => doc.id === docId)?.summary ?? current?.summary
               : current?.summary,
           payload: {
@@ -117,15 +124,10 @@ export function DocumentArtifactNode({ data, selected, id }: NodeProps<DocumentN
         };
       });
     },
-    [activeDocId, id, updateNodeData]
+    [resolvedActiveDocId, id, updateNodeData]
   );
 
-  useEffect(() => {
-    if (!isGrouped) return;
-    if (!documents.find((doc) => doc.id === activeDocId)) {
-      setActiveDocId(documents[0]?.id ?? "document");
-    }
-  }, [activeDocId, documents, isGrouped]);
+  
 
   return (
     <>
@@ -259,7 +261,7 @@ export function DocumentArtifactNode({ data, selected, id }: NodeProps<DocumentN
           </DialogHeader>
           <div className="flex flex-1 min-h-0 flex-col px-6 py-4 overflow-hidden">
             {isGrouped ? (
-              <Tabs value={activeDocId} onValueChange={setActiveDocId} className="flex flex-1 min-h-0 flex-col">
+              <Tabs value={resolvedActiveDocId} onValueChange={setActiveDocId} className="flex flex-1 min-h-0 flex-col">
                 <TabsList className="mb-4 w-fit shrink-0">
                   {documents.map((doc, index) => (
                     <TabsTrigger key={doc.id} value={doc.id}>
@@ -310,15 +312,22 @@ export function DocumentArtifactNode({ data, selected, id }: NodeProps<DocumentN
               <RichTextEditor
                 value={content}
                 onChange={(nextValue) => {
-                  updateNodeData(id, (current) => ({
-                    ...current,
-                    summary: nextValue.replace(/\s+/g, " ").trim().slice(0, 160),
-                    payload: {
-                      ...(current as any)?.payload,
-                      content: nextValue,
-                      format: "markdown",
-                    },
-                  }));
+                  updateNodeData(id, (current) => {
+                    const existingPayload = (current as DocumentArtifactData)?.payload;
+                    const basePayload =
+                      existingPayload && typeof existingPayload === "object"
+                        ? existingPayload
+                        : {};
+                    return {
+                      ...current,
+                      summary: nextValue.replace(/\s+/g, " ").trim().slice(0, 160),
+                      payload: {
+                        ...basePayload,
+                        content: nextValue,
+                        format: "markdown",
+                      },
+                    };
+                  });
                 }}
                 size="lg"
                 className="flex-1 min-h-0"

@@ -6,10 +6,9 @@
  */
 
 import { useMemo } from "react";
-import { ShieldAlert, Zap } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { useEffectiveUser } from "@/hooks/use-effective-user";
 import { ChatContainerV2 } from "@/components/chat";
-import { Badge } from "@/components/ui/badge";
 import type { UserContext as ChatUserContext } from "@/types/chat";
 
 export default function ChatV2Page() {
@@ -56,25 +55,8 @@ export default function ChatV2Page() {
   }
 
   return (
-    <div className="flex flex-col min-h-0 h-full gap-4 overflow-hidden">
-      {/* Header */}
-      <div className="shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Chat v2</h1>
-          <Badge variant="secondary" className="gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-            <Zap className="h-3 w-3" />
-            LangGraph
-          </Badge>
-        </div>
-        <p className="text-muted-foreground">
-          Test the new LangGraph-based AI orchestrator. Same features, new architecture with improved streaming.
-        </p>
-      </div>
-
-      {/* Chat interface - takes remaining space */}
-      <div className="flex-1 min-h-0">
-        <ChatContainerV2 userContext={chatUserContext} />
-      </div>
+    <div className="h-full min-h-0">
+      <ChatContainerV2 userContext={chatUserContext} />
     </div>
   );
 }

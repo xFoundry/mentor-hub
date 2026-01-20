@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { baseqlClient } from "@/lib/baseql";
 import type { Contact } from "@/types/schema";
+import { requireStaffSession } from "@/lib/api-auth";
 
 // In-memory cache for contacts
 let contactsCache: Contact[] | null = null;
@@ -58,6 +59,9 @@ async function getContactsFromCache(): Promise<Contact[]> {
  * Uses in-memory caching to avoid repeated BaseQL queries
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
+
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q")?.trim().toLowerCase();
 

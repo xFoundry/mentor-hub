@@ -40,7 +40,7 @@ import {
   getMentorParticipants,
 } from "@/components/sessions/session-transformers";
 import Link from "next/link";
-import type { Session, Task } from "@/types/schema";
+import type { Contact, Member, Session, SessionFeedback, Task, Team } from "@/types/schema";
 import type { UserContext } from "@/types/schema";
 
 interface TeamDetailStaffProps {
@@ -51,12 +51,20 @@ interface TeamDetailStaffProps {
     teamStatus?: string;
     description?: string;
     cohorts?: Array<{ id: string; shortName: string }>;
-    members?: any[];
+    members?: Member[];
     mentorshipSessions?: Session[];
     actionItems?: Task[];
   };
   userContext: UserContext;
 }
+
+type FeedbackEntry = Omit<SessionFeedback, "session"> & {
+  session: {
+    id: string;
+    sessionType?: string;
+    scheduledStart?: string;
+  };
+};
 
 export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
   const router = useRouter();
@@ -91,11 +99,11 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
 
   // Transform team members for TaskDetailSheet (contact is an array in member structure)
   const teamMembersForSheet = useMemo<TeamMember[]>(() => {
-    return members.map((member: any) => ({
+    return members.map((member: Member) => ({
       memberId: member.id,
-      contact: member.contact?.[0] || {},
+      contact: member.contact?.[0] || ({} as Contact),
       type: member.type || "Member",
-      status: member.status,
+      status: member.status || "Active",
     }));
   }, [members]);
 
@@ -123,7 +131,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
     // Optimistically update the team detail cache
     mutate(
       [`/teams/${team.id}`],
-      (currentData: any) => {
+      (currentData: Team | undefined) => {
         if (!currentData) return currentData;
         return {
           ...currentData,
@@ -189,8 +197,8 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
 
   // Get current member contact IDs
   const currentMemberIds = members
-    .map((m: any) => m.contact?.[0]?.id)
-    .filter(Boolean);
+    .map((m: Member) => m.contact?.[0]?.id)
+  .filter((id): id is string => Boolean(id));
 
   // Extract unique mentors from sessions (including multi-mentor sessions)
   const mentors = useMemo(() => {
@@ -202,7 +210,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
       leadCount: number;
     }>();
 
-    sessions.forEach((session: any) => {
+    sessions.forEach((session: Session) => {
       // Get all mentor participants from this session
       const participants = getMentorParticipants(session);
 
@@ -236,21 +244,21 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
   // Calculate stats
   const stats = useMemo(() => {
     const upcomingSessions = sessions.filter(
-      (s: any) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
+      (s: Session) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
     );
     const openTasks = tasks.filter(
-      (t: any) => t.status !== "Completed" && t.status !== "Cancelled"
+      (t: Task) => t.status !== "Completed" && t.status !== "Cancelled"
     );
-    const overdueTasks = tasks.filter((t: any) => {
+    const overdueTasks = tasks.filter((t: Task) => {
       if (t.status === "Completed" || !t.due) return false;
       return new Date(t.due) < new Date();
     });
 
     // All feedback
     const allFeedback = sessions
-      .filter((s: any) => s.feedback && s.feedback.length > 0)
-      .flatMap((s: any) =>
-        s.feedback.map((fb: any) => ({
+      .filter((s: Session) => s.feedback && s.feedback.length > 0)
+      .flatMap((s: Session) =>
+          (s.feedback ?? []).map((fb: SessionFeedback) => ({
           ...fb,
           session: {
             id: s.id,
@@ -275,9 +283,9 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
   // Extract all feedback from sessions
   const allFeedback = useMemo(() => {
     return sessions
-      .filter((s: any) => s.feedback && s.feedback.length > 0)
-      .flatMap((s: any) =>
-        s.feedback.map((fb: any) => ({
+      .filter((s: Session) => s.feedback && s.feedback.length > 0)
+      .flatMap((s: Session) =>
+        (s.feedback ?? []).map((fb: SessionFeedback) => ({
           ...fb,
           session: {
             id: s.id,
@@ -482,7 +490,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
               <CardContent>
                 <SessionList
                   sessions={sessions.filter(
-                    (s: any) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
+                    (s: Session) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
                   ).slice(0, 3)}
                   userType="staff"
                   variant="compact"
@@ -644,7 +652,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
               </CardContent>
             </Card>
           ) : (
-            allFeedback.map((feedback: any) => (
+            allFeedback.map((feedback: FeedbackEntry) => (
               <Card key={feedback.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">

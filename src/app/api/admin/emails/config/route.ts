@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getEmailConfig } from "@/lib/resend";
+import { requireStaffSession } from "@/lib/api-auth";
 
 /**
  * GET /api/admin/emails/config
  * Returns email configuration status (staff only)
  */
 export async function GET() {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   const config = getEmailConfig();
 

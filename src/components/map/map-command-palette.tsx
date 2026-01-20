@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Hexagon, Plus, Search } from "lucide-react";
+import { Hexagon, Plus } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -11,7 +11,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import type { TileData, TileStatus } from "@/types/map";
+import type { TileData } from "@/types/map";
 import { STATUS_LABELS } from "@/types/map";
 
 interface MapCommandPaletteProps {
@@ -21,16 +21,6 @@ interface MapCommandPaletteProps {
   onSelectTile: (tileId: string) => void;
   onNewTile: () => void;
 }
-
-const STATUS_ICONS: Record<TileStatus, string> = {
-  idle: "",
-  thinking: "",
-  researching: "",
-  drafting: "",
-  waiting: "",
-  blocked: "",
-  done: "",
-};
 
 export function MapCommandPalette({
   open,

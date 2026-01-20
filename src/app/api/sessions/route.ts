@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession as createSessionInDb, getSessionDetail, addMentorsToSession } from "@/lib/baseql";
 import { scheduleSessionEmailsViaQStash } from "@/lib/notifications/qstash-scheduler";
+import { requireStaffSession } from "@/lib/api-auth";
 
 interface MentorInput {
   contactId: string;
@@ -15,6 +16,9 @@ interface MentorInput {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
     // Extract mentors - support both legacy mentorId and new mentors array

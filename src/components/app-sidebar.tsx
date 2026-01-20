@@ -126,7 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton asChild isActive={pathname === "/changelog"}>
               <Link href="/changelog">
                 <Sparkles className="size-4" />
-                <span>What's New</span>
+                <span>What&apos;s New</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

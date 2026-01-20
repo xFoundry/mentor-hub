@@ -41,9 +41,9 @@ import {
   ChatMessageContainer,
   ChatMessageContent,
   ChatMessageHeader,
-  ChatMessageMarkdown,
   ChatMessageTimestamp,
 } from "@/components/simple-ai/chat-message";
+import { ChatMessageContent as CitationAwareContent } from "@/components/chat/chat-message-content";
 import {
   ChatMessageArea,
   ChatMessageAreaContent,
@@ -459,7 +459,11 @@ export function MapSidebar({ canvasId }: MapSidebarProps) {
                               />
                             )}
                             {message.content.trim().length > 0 ? (
-                              <ChatMessageMarkdown content={message.content} />
+                              <CitationAwareContent
+                                content={message.content}
+                                citations={message.citations}
+                                isStreaming={message.isStreaming}
+                              />
                             ) : null}
                           </ChatMessageContent>
                         </ChatMessageContainer>

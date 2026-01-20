@@ -63,6 +63,19 @@ import {
   HEX_WIDTH,
 } from "@/lib/hex-grid";
 
+type CanvasNodeData = {
+  title?: string;
+  label?: string;
+  summary?: string;
+  origin?: unknown;
+  payload?: unknown;
+  titleEdited?: boolean;
+  createdAt?: string;
+  entityType?: string;
+  description?: string;
+  sourceNumber?: number;
+};
+
 const ARTIFACT_RADIUS = 320;
 const ARTIFACT_RING_STEP = 220;
 const ARTIFACT_MIN_STEPS = 10;
@@ -98,7 +111,7 @@ function estimateTokensFromText(value: string) {
   return Math.ceil(Math.max(1, value.length) / 4);
 }
 
-function estimateTokensFromNode(node: { type?: string; data?: any }) {
+function estimateTokensFromNode(node: { type?: string; data?: CanvasNodeData }) {
   if (!node?.data) return 0;
   const data = node.data as Record<string, unknown>;
   if (node.type === "zone") {
@@ -280,7 +293,7 @@ export function CanvasChatSidebar() {
       return { width: anchorNode.width, height: anchorNode.height };
     }
     return NODE_SIZES.zone;
-  }, [anchorNode?.height, anchorNode?.width]);
+  }, [anchorNode]);
   const anchorCenter = useMemo(() => {
     const position = anchorNode?.position ?? { x: 0, y: 0 };
     return {
@@ -414,7 +427,7 @@ export function CanvasChatSidebar() {
       };
 
       updateNodeData(nodeId, (current) => {
-        const existingPayload = (current as any)?.payload as {
+        const existingPayload = (current as CanvasNodeData)?.payload as {
           rows?: Array<Record<string, unknown>>;
           columns?: string[];
           tables?: Array<typeof entry>;
@@ -425,7 +438,7 @@ export function CanvasChatSidebar() {
           tables = [
             {
               id: nodeId,
-              title: (current as any)?.title ?? "Data Table",
+              title: (current as CanvasNodeData)?.title ?? "Data Table",
               rows: existingPayload.rows,
               columns: existingPayload.columns ?? (existingPayload.rows[0] ? Object.keys(existingPayload.rows[0]) : []),
               sourceNumber: undefined,
@@ -443,7 +456,7 @@ export function CanvasChatSidebar() {
           ...(current ?? {}),
           rowCount: totalRows,
           payload: { tables: nextTables },
-          origin: (current as any)?.origin ?? artifact.origin,
+          origin: (current as CanvasNodeData)?.origin ?? artifact.origin,
         } as typeof current;
       });
     },
@@ -465,7 +478,7 @@ export function CanvasChatSidebar() {
       };
 
       updateNodeData(nodeId, (current) => {
-        const existingPayload = (current as any)?.payload as {
+        const existingPayload = (current as CanvasNodeData)?.payload as {
           content?: string;
           documents?: Array<typeof entry>;
         } | undefined;
@@ -475,9 +488,9 @@ export function CanvasChatSidebar() {
           documents = [
             {
               id: nodeId,
-              title: (current as any)?.title ?? "Document",
+              title: (current as CanvasNodeData)?.title ?? "Document",
               content: existingPayload.content,
-              summary: (current as any)?.summary,
+              summary: (current as CanvasNodeData)?.summary,
               sourceNumber: undefined,
               query: undefined,
             },
@@ -491,7 +504,7 @@ export function CanvasChatSidebar() {
 
         const nextSummary = entry.summary
           ?? (entry.content ? entry.content.replace(/\s+/g, " ").trim().slice(0, 160) : undefined)
-          ?? (current as any)?.summary;
+          ?? (current as CanvasNodeData)?.summary;
 
         return {
           ...(current ?? {}),
@@ -500,7 +513,7 @@ export function CanvasChatSidebar() {
             ...(existingPayload ?? {}),
             documents: nextDocuments,
           },
-          origin: (current as any)?.origin ?? artifact.origin,
+          origin: (current as CanvasNodeData)?.origin ?? artifact.origin,
         } as typeof current;
       });
     },
@@ -510,6 +523,13 @@ export function CanvasChatSidebar() {
   const handleArtifact = useCallback(
     (artifact: ArtifactData) => {
       if (!activeZone) return;
+      if (
+        artifact.artifact_type === "clarification" ||
+        artifact.artifact_type === "todo_list" ||
+        artifact.artifact_type === "file"
+      ) {
+        return;
+      }
       const artifactId = artifact.id || `artifact_${Date.now()}`;
       const existingById = nodes.find((node) => node.id === artifactId);
       const isTable = artifact.artifact_type === "data_table";
@@ -518,13 +538,13 @@ export function CanvasChatSidebar() {
       const origin = artifact.origin as { tool_name?: string; chat_block_id?: string; type?: string } | undefined;
 
       if (existingById) {
-        const wasTitleEdited = Boolean((existingById.data as any)?.titleEdited);
+        const wasTitleEdited = Boolean((existingById.data as CanvasNodeData)?.titleEdited);
         updateNodeData(artifactId, (current) => ({
           ...current,
-          title: wasTitleEdited ? (current as any)?.title : artifact.title ?? (current as any)?.title,
-          payload: artifact.payload ?? (current as any)?.payload,
-          summary: artifact.summary ?? (current as any)?.summary,
-          origin: artifact.origin ?? (current as any)?.origin,
+          title: wasTitleEdited ? (current as CanvasNodeData)?.title : artifact.title ?? (current as CanvasNodeData)?.title,
+          payload: artifact.payload ?? (current as CanvasNodeData)?.payload,
+          summary: artifact.summary ?? (current as CanvasNodeData)?.summary,
+          origin: artifact.origin ?? (current as CanvasNodeData)?.origin,
         }));
         ensureEdge(artifactId);
         return;
@@ -533,22 +553,24 @@ export function CanvasChatSidebar() {
       if (isDocument && origin?.type === "assistant_response") {
         const candidateDocs = nodes.filter((node) => {
           if (node.type !== "documentArtifact") return false;
-          const nodeOrigin = (node.data as any)?.origin as { chat_block_id?: string; type?: string } | undefined;
+          const nodeOrigin = (node.data as CanvasNodeData)?.origin as { chat_block_id?: string; type?: string } | undefined;
           return nodeOrigin?.chat_block_id === activeZone && nodeOrigin?.type === "assistant_response";
         });
         const latestDoc = candidateDocs.sort((a, b) => {
-          const aTime = (a.data as any)?.createdAt ? Date.parse((a.data as any).createdAt) : 0;
-          const bTime = (b.data as any)?.createdAt ? Date.parse((b.data as any).createdAt) : 0;
+          const aCreatedAt = (a.data as CanvasNodeData)?.createdAt;
+          const bCreatedAt = (b.data as CanvasNodeData)?.createdAt;
+          const aTime = aCreatedAt ? Date.parse(aCreatedAt) : 0;
+          const bTime = bCreatedAt ? Date.parse(bCreatedAt) : 0;
           return bTime - aTime;
         })[0];
         if (latestDoc) {
-          const wasTitleEdited = Boolean((latestDoc.data as any)?.titleEdited);
+          const wasTitleEdited = Boolean((latestDoc.data as CanvasNodeData)?.titleEdited);
           updateNodeData(latestDoc.id, (current) => ({
             ...current,
-            title: wasTitleEdited ? (current as any)?.title : artifact.title ?? (current as any)?.title,
-            payload: artifact.payload ?? (current as any)?.payload,
-            summary: artifact.summary ?? (current as any)?.summary,
-            origin: artifact.origin ?? (current as any)?.origin,
+            title: wasTitleEdited ? (current as CanvasNodeData)?.title : artifact.title ?? (current as CanvasNodeData)?.title,
+            payload: artifact.payload ?? (current as CanvasNodeData)?.payload,
+            summary: artifact.summary ?? (current as CanvasNodeData)?.summary,
+            origin: artifact.origin ?? (current as CanvasNodeData)?.origin,
           }));
           ensureEdge(latestDoc.id);
           return;
@@ -558,7 +580,7 @@ export function CanvasChatSidebar() {
       if (isDocument && origin?.tool_name) {
         const groupedDoc = nodes.find((node) => {
           if (node.type !== "documentArtifact") return false;
-          const nodeOrigin = (node.data as any)?.origin as { tool_name?: string; chat_block_id?: string } | undefined;
+          const nodeOrigin = (node.data as CanvasNodeData)?.origin as { tool_name?: string; chat_block_id?: string } | undefined;
           return nodeOrigin?.tool_name === origin.tool_name && nodeOrigin?.chat_block_id === activeZone;
         });
         if (groupedDoc) {
@@ -571,7 +593,7 @@ export function CanvasChatSidebar() {
       if (isTable && origin?.tool_name) {
         const groupedNode = nodes.find((node) => {
           if (node.type !== "tableArtifact") return false;
-          const nodeOrigin = (node.data as any)?.origin as { tool_name?: string; chat_block_id?: string } | undefined;
+          const nodeOrigin = (node.data as CanvasNodeData)?.origin as { tool_name?: string; chat_block_id?: string } | undefined;
           return nodeOrigin?.tool_name === origin.tool_name && nodeOrigin?.chat_block_id === activeZone;
         });
         if (groupedNode) {
@@ -599,11 +621,11 @@ export function CanvasChatSidebar() {
           if (knownNodeIds.has(canvasId)) {
             updateNodeData(canvasId, (current) => ({
               ...current,
-              title: node.title ?? node.label ?? (current as any)?.title,
-              entityType: node.type ?? (current as any)?.entityType,
-              description: node.description ?? (current as any)?.description,
-              origin: artifact.origin ?? (current as any)?.origin,
-              sourceNumber: node.sourceNumber ?? (current as any)?.sourceNumber,
+              title: node.title ?? node.label ?? (current as CanvasNodeData)?.title,
+              entityType: node.type ?? (current as CanvasNodeData)?.entityType,
+              description: node.description ?? (current as CanvasNodeData)?.description,
+              origin: artifact.origin ?? (current as CanvasNodeData)?.origin,
+              sourceNumber: node.sourceNumber ?? (current as CanvasNodeData)?.sourceNumber,
             }));
             ensureEdge(canvasId);
             return;
@@ -698,6 +720,7 @@ export function CanvasChatSidebar() {
     [
       activeZone,
       addNode,
+      addEdge,
       ensureEdge,
       getNextArtifactPosition,
       nodes,
@@ -741,11 +764,14 @@ export function CanvasChatSidebar() {
         const hasTitle = Boolean(title);
         const shouldUpdateTitle = hasTitle && !doc.titleEdited;
         const nextTitle = shouldUpdateTitle && title ? title : doc.title;
+        const existingPayload = (doc as CanvasNodeData)?.payload;
+        const basePayload =
+          existingPayload && typeof existingPayload === "object" ? existingPayload : {};
         return {
           ...doc,
           title: nextTitle,
           payload: {
-            ...(doc as any)?.payload,
+            ...basePayload,
             content: hasTitle ? body : content,
             format: "markdown",
           },
@@ -760,12 +786,15 @@ export function CanvasChatSidebar() {
         const hasTitle = Boolean(title);
         const shouldUpdateTitle = hasTitle && !doc.titleEdited;
         const nextTitle = shouldUpdateTitle && title ? title : doc.title;
+        const existingPayload = (doc as CanvasNodeData)?.payload;
+        const basePayload =
+          existingPayload && typeof existingPayload === "object" ? existingPayload : {};
         return {
           ...doc,
           title: nextTitle,
           summary: summary || doc.summary,
           payload: {
-            ...(doc as any)?.payload,
+            ...basePayload,
             content: hasTitle ? body : content,
             format: "markdown",
           },
@@ -815,10 +844,6 @@ export function CanvasChatSidebar() {
     },
     [activeZone, contextArtifactIds, isContextAuto, linkedNodeIds, updateContextSelection]
   );
-
-  const includeAllContext = useCallback(() => {
-    updateContextSelection(undefined);
-  }, [updateContextSelection]);
 
   const clearContext = useCallback(() => {
     updateContextSelection([]);

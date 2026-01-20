@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth0 } from "@/lib/auth0";
-import {
-  getUserParticipation,
-  linkAuth0IdToContact,
-  executeQuery,
-} from "@/lib/baseql";
+import { linkAuth0IdToContact, executeQuery } from "@/lib/baseql";
+import { requireStaffSession } from "@/lib/api-auth";
 import type { Contact } from "@/types/schema";
 
 /**
@@ -25,22 +21,8 @@ import type { Contact } from "@/types/schema";
  */
 export async function POST(request: Request) {
   try {
-    // Verify authentication
-    const session = await auth0.getSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    // Verify staff role
-    const { participation } = await getUserParticipation(session.user.email);
-    const isStaff = participation.some((p) => p.capacity === "Staff" && p.status === "Active");
-
-    if (!isStaff) {
-      return NextResponse.json(
-        { error: "Forbidden - Staff access required" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
 
     // Parse request body
     const body = await request.json();
@@ -141,7 +123,7 @@ export async function POST(request: Request) {
     );
 
     console.log(
-      `[admin/link-contacts] Staff ${session.user.email} linked contact ` +
+      `[admin/link-contacts] Staff ${auth.email} linked contact ` +
       `${targetContactId} (${targetContact.email}) to auth0Id ${sourceContact.auth0Id} ` +
       `(from contact ${sourceContactId})`
     );
@@ -171,22 +153,8 @@ export async function POST(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
-    // Verify authentication
-    const session = await auth0.getSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    // Verify staff role
-    const { participation } = await getUserParticipation(session.user.email);
-    const isStaff = participation.some((p) => p.capacity === "Staff" && p.status === "Active");
-
-    if (!isStaff) {
-      return NextResponse.json(
-        { error: "Forbidden - Staff access required" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
     const { contactId } = body;
@@ -216,7 +184,7 @@ export async function DELETE(request: Request) {
     }>(mutation, { id: contactId });
 
     console.log(
-      `[admin/link-contacts] Staff ${session.user.email} unlinked contact ${contactId}`
+      `[admin/link-contacts] Staff ${auth.email} unlinked contact ${contactId}`
     );
 
     return NextResponse.json({

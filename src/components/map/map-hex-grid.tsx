@@ -2,7 +2,6 @@
 
 import { memo, useMemo } from "react";
 import { useStore } from "@xyflow/react";
-import { cn } from "@/lib/utils";
 import {
   useMap,
   MAP_HEX_SIZE,
@@ -266,9 +265,6 @@ function MapHexGridInner({ hoveredCoord, isDragging, dropPreviewCoord, draggingN
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
 
-  // Find the dragging tile's original coord (to exclude from occupied during drag)
-  const draggingTile = draggingNodeId ? tiles.find(t => t.id === draggingNodeId) : null;
-
   // Calculate which hexes are occupied (excluding dragging node during drag)
   const occupiedCoords = useMemo(() => {
     const set = new Set<string>();
@@ -366,7 +362,7 @@ function MapHexGridInner({ hoveredCoord, isDragging, dropPreviewCoord, draggingN
     }
 
     return map;
-  }, [tiles, territories, occupiedCoords, isDragging, draggingNodeId, dropPreviewCoord, tileCoordToTerritory]);
+  }, [tiles, occupiedCoords, isDragging, draggingNodeId, dropPreviewCoord, tileCoordToTerritory]);
 
   // Calculate visible hex range
   const hexRange = useMemo(
@@ -554,9 +550,9 @@ export function getHexAtPoint(
 
   // Round to nearest hex using cube coordinate rounding
   // Convert axial to cube
-  let x = q;
-  let z = r;
-  let y = -x - z;
+  const x = q;
+  const z = r;
+  const y = -x - z;
 
   // Round each coordinate
   let rx = Math.round(x);

@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { MentorTeam, MentorSessionSummary } from "@/hooks/use-mentor-teams";
+import type { Member } from "@/types/schema";
 import { parseAsLocalTime } from "@/components/sessions/session-transformers";
 
 interface MentorTeamCardProps {
@@ -120,7 +121,7 @@ export function MentorTeamCard({ team, href }: MentorTeamCardProps) {
               Team Members
             </p>
             <div className="flex -space-x-2">
-              {members.slice(0, 5).map((member: any) => {
+              {members.slice(0, 5).map((member: Member) => {
                 const contact = member.contact?.[0];
                 const initials =
                   contact?.fullName

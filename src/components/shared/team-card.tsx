@@ -5,15 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Users2, Calendar, CheckSquare } from "lucide-react";
-import type { Team } from "@/types/schema";
+import type { Member, Session, Task, Team } from "@/types/schema";
 
 interface TeamCardProps {
   team: Team & {
     memberCount?: number;
     openTaskCount?: number;
     sessionCount?: number;
-    mentorshipSessions?: any[];
-    actionItems?: any[];
+    mentorshipSessions?: Session[];
+    actionItems?: Task[];
   };
   variant?: "compact" | "detailed";
   showStats?: boolean;
@@ -67,7 +67,7 @@ export function TeamCard({
 
           {showMembers && members.length > 0 && (
             <div className="flex -space-x-2">
-              {members.slice(0, 4).map((member: any, i: number) => {
+              {members.slice(0, 4).map((member: Member, i: number) => {
                 const contact = member.contact?.[0];
                 if (!contact) return null;
                 return (
@@ -161,7 +161,7 @@ export function TeamCard({
           <div className="space-y-2">
             <p className="text-muted-foreground text-xs font-medium">Team Members</p>
             <div className="flex -space-x-2">
-              {members.slice(0, 5).map((member: any) => {
+              {members.slice(0, 5).map((member: Member) => {
                 const contact = member.contact?.[0];
                 const initials = contact?.fullName
                   ?.split(" ")

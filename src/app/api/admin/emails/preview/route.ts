@@ -4,6 +4,7 @@ import { MeetingPrepReminderEmail } from "@/emails/meeting-prep-reminder";
 import { ImmediateFeedbackReminderEmail } from "@/emails/immediate-feedback-reminder";
 import { FeedbackFollowupReminderEmail } from "@/emails/feedback-followup-reminder";
 import { getAppUrl } from "@/lib/resend";
+import { requireStaffSession } from "@/lib/api-auth";
 
 type EmailTemplate = "meeting-prep" | "immediate-feedback" | "feedback-followup";
 
@@ -12,7 +13,8 @@ type EmailTemplate = "meeting-prep" | "immediate-feedback" | "feedback-followup"
  * Preview an email template with sample data
  */
 export async function GET(request: NextRequest) {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   const searchParams = request.nextUrl.searchParams;
   const template = searchParams.get("template") as EmailTemplate;

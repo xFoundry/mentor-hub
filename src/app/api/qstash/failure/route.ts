@@ -21,21 +21,30 @@ export const runtime = "nodejs";
 /**
  * Extract error message from QStash callback data
  */
-function extractErrorMessage(callbackData: any): string {
+function extractErrorMessage(callbackData: Record<string, unknown>): string {
   let errorMessage = "Unknown error after retries exhausted";
 
-  if (callbackData.error) {
-    errorMessage = typeof callbackData.error === "string"
-      ? callbackData.error
-      : callbackData.error.message || JSON.stringify(callbackData.error);
+  const error = callbackData.error;
+  if (error) {
+    if (typeof error === "string") {
+      errorMessage = error;
+    } else if (typeof error === "object" && "message" in error && typeof error.message === "string") {
+      errorMessage = error.message;
+    } else {
+      errorMessage = JSON.stringify(error);
+    }
   }
-  if (callbackData.responseBody) {
+  const responseBodyValue = callbackData.responseBody;
+  if (responseBodyValue) {
     try {
-      const responseBody = typeof callbackData.responseBody === "string"
-        ? JSON.parse(callbackData.responseBody)
-        : callbackData.responseBody;
-      if (responseBody.error) {
-        errorMessage = responseBody.error;
+      const responseBody = typeof responseBodyValue === "string"
+        ? JSON.parse(responseBodyValue)
+        : responseBodyValue;
+      if (responseBody && typeof responseBody === "object" && "error" in responseBody) {
+        const responseError = responseBody.error;
+        if (typeof responseError === "string") {
+          errorMessage = responseError;
+        }
       }
     } catch {
       // Response parsing failed

@@ -77,7 +77,7 @@ export function SessionFeedbackTab({
           </AlertTitle>
           <AlertDescription className="text-slate-600 dark:text-slate-400">
             Feedback has been marked as optional for this session.
-            You can still submit feedback if you'd like to share your thoughts.
+            You can still submit feedback if you&apos;d like to share your thoughts.
           </AlertDescription>
         </Alert>
       )}
@@ -88,7 +88,7 @@ export function SessionFeedbackTab({
           <Clock className="h-4 w-4" />
           <AlertTitle>Feedback available after the session</AlertTitle>
           <AlertDescription>
-            You'll be able to submit feedback once this session is completed.
+            You&apos;ll be able to submit feedback once this session is completed.
           </AlertDescription>
         </Alert>
       )}

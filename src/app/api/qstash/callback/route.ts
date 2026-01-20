@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { qstashReceiver } from "@/lib/qstash";
-import { updateJobStatus, updateBatchJobStatuses, getJob, getBatch } from "@/lib/notifications/job-store";
+import { updateJobStatus, updateBatchJobStatuses } from "@/lib/notifications/job-store";
 import type { QStashCallbackPayload, QStashBatchPayload, BatchWorkerResult } from "@/lib/notifications/job-types";
 
 export const runtime = "nodejs";
@@ -59,7 +59,7 @@ async function handleSingleCallback(
   payload: QStashCallbackPayload["body"],
   resendEmailId?: string
 ): Promise<NextResponse> {
-  const { jobId, batchId, sessionId, type, to } = payload;
+  const { jobId, sessionId, type, to } = payload;
 
   console.log(`[QStash Callback] Job ${jobId} completed successfully (emailId: ${resendEmailId || "unknown"})`);
 
@@ -123,7 +123,8 @@ export async function POST(request: NextRequest) {
     if (callbackData.sourceBody) {
       const decodedBody = Buffer.from(callbackData.sourceBody, "base64").toString("utf-8");
       originalPayload = JSON.parse(decodedBody);
-      console.log(`[QStash Callback] Decoded sourceBody - isBatch: ${(originalPayload as any).isBatch}`);
+      const isBatch = "isBatch" in originalPayload && Boolean((originalPayload as QStashBatchPayload).isBatch);
+      console.log(`[QStash Callback] Decoded sourceBody - isBatch: ${isBatch}`);
     } else if (callbackData.body) {
       // Fallback for different callback formats
       originalPayload = typeof callbackData.body === "string"
@@ -135,19 +136,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the worker response - it's in the 'body' field (base64 encoded)
-    let workerResponse: any = {};
+    let workerResponse: Record<string, unknown> = {};
     if (callbackData.body) {
       try {
         // QStash callback body is base64 encoded
         const decodedResponse = Buffer.from(callbackData.body, "base64").toString("utf-8");
         console.log(`[QStash Callback] Decoded worker response body: ${decodedResponse.substring(0, 500)}`);
         workerResponse = JSON.parse(decodedResponse);
+        const workerResults = Array.isArray(workerResponse.results)
+          ? workerResponse.results
+          : [];
         console.log(`[QStash Callback] Worker response:`, {
           success: workerResponse.success,
           isBatch: workerResponse.isBatch,
-          hasResults: !!workerResponse.results,
-          resultsCount: workerResponse.results?.length || 0,
-          results: workerResponse.results?.slice(0, 3), // Log first 3 results for debugging
+          hasResults: workerResults.length > 0,
+          resultsCount: workerResults.length,
+          results: workerResults.slice(0, 3), // Log first 3 results for debugging
         });
       } catch (parseError) {
         console.error("[QStash Callback] Failed to parse worker response:", parseError);
@@ -157,15 +161,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if this is a batch callback
-    if ((originalPayload as QStashBatchPayload).isBatch) {
+    if ("isBatch" in originalPayload && (originalPayload as QStashBatchPayload).isBatch) {
       return await handleBatchCallback(
         originalPayload as QStashBatchPayload,
         workerResponse
       );
     } else {
+      const emailId = typeof workerResponse.emailId === "string"
+        ? workerResponse.emailId
+        : undefined;
       return await handleSingleCallback(
         originalPayload as QStashCallbackPayload["body"],
-        workerResponse.emailId
+        emailId
       );
     }
   } catch (error) {

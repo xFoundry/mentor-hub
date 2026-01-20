@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { requireStaffSession } from "@/lib/api-auth";
 
 const GRAPHITI_API_URL = process.env.GRAPHITI_API_URL;
 const GRAPHITI_API_SECRET = process.env.GRAPHITI_API_SECRET;
@@ -27,7 +28,8 @@ function generateSignature(timestamp: string, body: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   if (!GRAPHITI_API_URL) {
     return NextResponse.json(
@@ -102,7 +104,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   if (!GRAPHITI_API_URL) {
     return NextResponse.json(

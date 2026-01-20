@@ -49,27 +49,14 @@ export function clearCitationContext() {
   citationLookup = new Map();
 }
 
-/**
- * Get icon for entity type.
- */
-function getCitationIcon(entityType: string) {
-  switch (entityType) {
-    case "task":
-      return FileText;
-    case "session":
-      return Calendar;
-    case "team":
-      return Users;
-    case "mentor":
-      return User;
-    case "document":
-      return BookOpen;
-    case "entity":
-      return Database;
-    default:
-      return FileText;
-  }
-}
+const CITATION_ICON_BY_TYPE = {
+  task: FileText,
+  session: Calendar,
+  team: Users,
+  mentor: User,
+  document: BookOpen,
+  entity: Database,
+} as const;
 
 /**
  * Normalize citation from backend (snake_case to camelCase).
@@ -97,7 +84,10 @@ function CitationNodeView({ node }: NodeViewProps) {
   const sourceNumber = (node.attrs.sourceNumber as number) || 1;
   const rawCitation = citationLookup.get(sourceNumber);
   const citation = rawCitation ? normalizeCitation(rawCitation) : null;
-  const Icon = citation ? getCitationIcon(citation.entityType) : FileText;
+  const Icon = citation
+    ? (CITATION_ICON_BY_TYPE[citation.entityType as keyof typeof CITATION_ICON_BY_TYPE] ||
+        FileText)
+    : FileText;
 
   if (!citation) {
     // Fallback for citations without data

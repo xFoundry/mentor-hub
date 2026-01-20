@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { MessageSquare, Table } from "lucide-react";
@@ -41,7 +41,7 @@ export function TableArtifactNode({ data, selected, id }: NodeProps<TableNodeTyp
   const origin = data?.origin as { tool_name?: string; query?: string; chat_block_id?: string } | undefined;
   const isFocused = focusedNodeId === id;
 
-  const tables = useMemo<TableEntry[]>(() => {
+  const tables: TableEntry[] = (() => {
     if (payload?.tables?.length) {
       return payload.tables.map((table, index) => ({
         id: table.id || `table_${index}`,
@@ -61,7 +61,7 @@ export function TableArtifactNode({ data, selected, id }: NodeProps<TableNodeTyp
         columns,
       },
     ];
-  }, [data?.title, id, payload?.columns, payload?.rows, payload?.tables]);
+  })();
 
   const totalRows = useMemo(
     () => tables.reduce((sum, table) => sum + table.rows.length, 0),
@@ -79,10 +79,11 @@ export function TableArtifactNode({ data, selected, id }: NodeProps<TableNodeTyp
     return tool.replace(/_/g, " ");
   }, [origin?.tool_name]);
 
-  useEffect(() => {
-    if (!tables.find((table) => table.id === activeTab)) {
-      setActiveTab(tables[0]?.id ?? "table");
+  const resolvedActiveTab = useMemo(() => {
+    if (tables.find((table) => table.id === activeTab)) {
+      return activeTab;
     }
+    return tables[0]?.id ?? "table";
   }, [activeTab, tables]);
 
   const setExpanded = useCallback(
@@ -188,7 +189,7 @@ export function TableArtifactNode({ data, selected, id }: NodeProps<TableNodeTyp
           </DialogHeader>
           <div className="flex flex-1 min-h-0 flex-col">
             {tables.length > 1 ? (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 min-h-0 flex-col">
+              <Tabs value={resolvedActiveTab} onValueChange={setActiveTab} className="flex flex-1 min-h-0 flex-col">
                 <TabsList className="mx-6 mt-4 w-fit shrink-0">
                   {tables.map((table, index) => (
                     <TabsTrigger key={table.id} value={table.id}>
@@ -213,28 +214,25 @@ export function TableArtifactNode({ data, selected, id }: NodeProps<TableNodeTyp
 }
 
 function TableOverlayContent({ table }: { table?: TableEntry }) {
-  if (!table) {
-    return <div className="p-6 text-sm text-muted-foreground">No data available.</div>;
-  }
-
   const [filter, setFilter] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const safeTable: TableEntry = table ?? { id: "table", rows: [], columns: [] };
 
   const filteredRows = useMemo(() => {
     if (!filter.trim()) {
-      return table.rows;
+      return safeTable.rows;
     }
     const query = filter.trim().toLowerCase();
-    return table.rows.filter((row) =>
-      table.columns.some((column) =>
+    return safeTable.rows.filter((row) =>
+      safeTable.columns.some((column) =>
         String(row?.[column] ?? "")
           .toLowerCase()
           .includes(query)
       )
     );
-  }, [filter, table.columns, table.rows]);
+  }, [filter, safeTable.columns, safeTable.rows]);
 
   const sortedRows = useMemo(() => {
     if (!sortKey) {
@@ -247,6 +245,10 @@ function TableOverlayContent({ table }: { table?: TableEntry }) {
     });
     return sortDirection === "asc" ? sorted : sorted.reverse();
   }, [filteredRows, sortDirection, sortKey]);
+
+  if (!table) {
+    return <div className="p-6 text-sm text-muted-foreground">No data available.</div>;
+  }
 
   const handleSort = (column: string) => {
     if (sortKey === column) {

@@ -61,7 +61,7 @@ export default function TeamDetailPage() {
           <AlertCircle className="text-muted-foreground mb-4 h-12 w-12" />
           <div className="text-muted-foreground">
             <p className="text-lg font-medium">Team not found</p>
-            <p className="text-sm">The team you're looking for doesn't exist</p>
+            <p className="text-sm">The team you&apos;re looking for doesn&apos;t exist</p>
           </div>
         </CardContent>
       </Card>

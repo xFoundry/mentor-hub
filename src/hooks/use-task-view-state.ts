@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type TaskViewMode = "kanban" | "list" | "table";
 export type TaskFilter = "all" | "open" | "completed";
@@ -227,5 +227,3 @@ export function useLocalTaskViewState(initialState?: Partial<TaskViewState>): Us
   };
 }
 
-// Need to import useState for the local version
-import { useState } from "react";

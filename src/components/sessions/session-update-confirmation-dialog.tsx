@@ -213,7 +213,7 @@ export function SessionUpdateConfirmationDialog({
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="none" id="none" />
                     <Label htmlFor="none" className="font-normal cursor-pointer">
-                      Don't send notification emails
+                      Don&apos;t send notification emails
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">

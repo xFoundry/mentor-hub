@@ -41,7 +41,7 @@ import { Loader2, Save, UserPlus, Check, X, ChevronDown, Upload, Trash2, User, B
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { Contact, Role, Organization } from "@/types/schema";
+import type { Contact, Role } from "@/types/schema";
 import {
   CONTACT_TYPE_OPTIONS,
   WEBFLOW_STATUS_OPTIONS,
@@ -79,10 +79,24 @@ interface FormErrors {
   email?: string;
 }
 
+interface AirtableAttachment {
+  url?: string;
+  filename?: string;
+  size?: number;
+  type?: string;
+  thumbnails?: {
+    large?: {
+      url?: string;
+    };
+  };
+}
+
 /**
  * Convert Airtable headshot format to UploadedFile format
  */
-function headshotToUploadedFile(headshot?: any[]): UploadedFile[] {
+function headshotToUploadedFile(
+  headshot?: Array<AirtableAttachment | string>
+): UploadedFile[] {
   if (!headshot || headshot.length === 0) return [];
   return headshot.map((h) => {
     if (typeof h === "string") return { url: h, filename: "headshot" };

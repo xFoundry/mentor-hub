@@ -208,7 +208,7 @@ export function EditSessionDialog({
 
   // Confirmation dialog state
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [pendingUpdates, setPendingUpdates] = useState<Record<string, any> | null>(null);
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, unknown> | null>(null);
   const [pendingChanges, setPendingChanges] = useState<SessionChanges | null>(null);
 
   // Reset form when session changes or dialog opens
@@ -266,33 +266,37 @@ export function EditSessionDialog({
   };
 
   // Helper to check if updates contain notification-triggering changes
-  const hasNotificationTriggeringChanges = (updates: Record<string, any>): boolean => {
+  const hasNotificationTriggeringChanges = (updates: Record<string, unknown>): boolean => {
     return NOTIFICATION_TRIGGER_FIELDS.some((field) => field in updates);
   };
 
   // Build SessionChanges object for the confirmation dialog
-  const buildChangesForConfirmation = (updates: Record<string, any>): SessionChanges => {
+  const buildChangesForConfirmation = (updates: Record<string, unknown>): SessionChanges => {
     const changes: SessionChanges = {};
     const originalDateTime = parseDateTime(session.scheduledStart);
     const originalScheduledStart = originalDateTime.date && originalDateTime.time
       ? `${originalDateTime.date}T${originalDateTime.time}:00`
       : "";
 
-    if (updates.scheduledStart && updates.scheduledStart !== originalScheduledStart) {
+    const nextScheduledStart = typeof updates.scheduledStart === "string"
+      ? updates.scheduledStart
+      : "";
+    if (nextScheduledStart && nextScheduledStart !== originalScheduledStart) {
       changes.scheduledStart = {
         old: session.scheduledStart || "",
-        new: updates.scheduledStart,
+        new: nextScheduledStart,
       };
     }
-    if (updates.duration && updates.duration !== session.duration) {
+    const nextDuration = typeof updates.duration === "number" ? updates.duration : undefined;
+    if (nextDuration && nextDuration !== session.duration) {
       changes.duration = {
         old: session.duration || 60,
-        new: updates.duration,
+        new: nextDuration,
       };
     }
     if (updates.locationId !== undefined) {
       const oldLocationId = session.locations?.[0]?.id || "";
-      const newLocationId = updates.locationId || "";
+      const newLocationId = typeof updates.locationId === "string" ? updates.locationId : "";
       if (oldLocationId !== newLocationId) {
         changes.locationId = { old: oldLocationId, new: newLocationId };
         changes.locationName = {
@@ -301,10 +305,11 @@ export function EditSessionDialog({
         };
       }
     }
-    if (updates.meetingUrl !== undefined && updates.meetingUrl !== (session.meetingUrl || "")) {
+    const nextMeetingUrl = typeof updates.meetingUrl === "string" ? updates.meetingUrl : "";
+    if (updates.meetingUrl !== undefined && nextMeetingUrl !== (session.meetingUrl || "")) {
       changes.meetingUrl = {
         old: session.meetingUrl || "",
-        new: updates.meetingUrl || "",
+        new: nextMeetingUrl,
       };
     }
 
@@ -316,7 +321,7 @@ export function EditSessionDialog({
 
     if (!validate()) return;
 
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
 
     // Convert Eastern time input to UTC for storage
     const newScheduledStart = easternToUTC(scheduledDate, scheduledTime);

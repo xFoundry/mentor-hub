@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { retryJob, updateJobStatus } from "@/lib/notifications/job-store";
 import { scheduleSingleJobViaQStash } from "@/lib/notifications/qstash-scheduler";
+import { requireStaffSession } from "@/lib/api-auth";
 
 /**
  * POST /api/admin/emails/[emailId]/retry
@@ -10,7 +11,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ emailId: string }> }
 ) {
-  // TODO: Add auth check for staff only
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
 
   const { emailId } = await params;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, use, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
@@ -59,15 +59,7 @@ export function LoginForm({ searchParams }: LoginFormProps) {
 
   const returnTo = params.returnTo || "/dashboard";
 
-  // If we have a pre-verified email, fetch contact info
-  useEffect(() => {
-    if (preVerifiedEmail && !contactInfo) {
-      fetchContactInfo(preVerifiedEmail);
-    }
-  }, [preVerifiedEmail]);
-
-  // Fetch contact info for pre-verified email
-  const fetchContactInfo = async (emailToVerify: string) => {
+  const fetchContactInfo = useCallback(async (emailToVerify: string) => {
     try {
       const response = await fetch("/api/verify-email", {
         method: "POST",
@@ -81,7 +73,14 @@ export function LoginForm({ searchParams }: LoginFormProps) {
     } catch (err) {
       console.error("Failed to fetch contact info:", err);
     }
-  };
+  }, []);
+
+  // If we have a pre-verified email, fetch contact info
+  useEffect(() => {
+    if (preVerifiedEmail && !contactInfo) {
+      fetchContactInfo(preVerifiedEmail);
+    }
+  }, [preVerifiedEmail, contactInfo, fetchContactInfo]);
 
   // Map Auth0 error codes to user-friendly messages
   const getErrorMessage = (error?: string) => {

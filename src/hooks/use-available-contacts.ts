@@ -3,7 +3,7 @@
 import useSWR from "swr";
 import { getAvailableContacts, searchContacts } from "@/lib/baseql";
 import type { Contact } from "@/types/schema";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 /**
  * Hook to fetch available contacts for adding to a team
@@ -95,15 +95,17 @@ export function useContactSearch() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
 
-  // Debounce the search term
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
-    // Simple debounce - in production, use useDebouncedValue or similar
+  }, []);
+
+  // Debounce the search term
+  useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setDebouncedTerm(term);
+      setDebouncedTerm(searchTerm);
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, []);
+  }, [searchTerm]);
 
   const { data, error, isLoading } = useSWR(
     debouncedTerm.length >= 2 ? [`/search-contacts`, debouncedTerm] : null,

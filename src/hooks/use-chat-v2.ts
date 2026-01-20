@@ -21,6 +21,10 @@ import type {
   ErrorData,
   ToolStep,
   UserContext,
+  ArtifactData,
+  TodoItem,
+  ClarificationPayload,
+  ClarificationResponse,
 } from "@/types/chat";
 import {
   connectChatStreamV2,
@@ -35,6 +39,108 @@ const USE_MEMORY_KEY = "chat_v2_use_memory";
 interface UseChatOptions {
   userContext?: UserContext;
   selectedTools?: string[];
+}
+
+function normalizeClarificationPayload(
+  artifact: ArtifactData
+): ClarificationPayload | null {
+  // Use loose typing since payload comes from external API
+  const payload = artifact.payload as Record<string, unknown> | undefined;
+  if (!payload || !Array.isArray(payload.questions)) return null;
+
+  const questions = (payload.questions as unknown[])
+    .map((question, index) => {
+      const q = question as Record<string, unknown>;
+      const options = Array.isArray(q.options) ? (q.options as unknown[]) : [];
+      const normalizedOptions = options
+        .map((option, optionIndex) => {
+          if (typeof option === "string") {
+            const label = option.trim();
+            if (!label) return null;
+            return {
+              id: `option_${optionIndex + 1}`,
+              label,
+            };
+          }
+          if (option && typeof option === "object") {
+            const opt = option as { id?: string; label?: string; description?: string };
+            const label = opt.label?.trim();
+            if (!label) return null;
+            return {
+              id: opt.id || `option_${optionIndex + 1}`,
+              label,
+              description: opt.description,
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) as ClarificationPayload["questions"][number]["options"];
+
+      if (!normalizedOptions.length) return null;
+
+      const selectionType =
+        (q.selectionType as string | undefined) ||
+        (q.selection_type as string | undefined) ||
+        ((q.multi_select as boolean | undefined) ? "multi" : "single");
+
+      return {
+        id: (q.id as string | undefined) || `question_${index + 1}`,
+        prompt: (q.prompt as string | undefined) || `Question ${index + 1}`,
+        description: q.description as string | undefined,
+        selectionType: selectionType === "multi" ? "multi" : "single",
+        allowOther:
+          (q.allowOther as boolean | undefined) ??
+          (q.allow_other as boolean | undefined) ??
+          true,
+        required: (q.required as boolean | undefined) ?? true,
+        options: normalizedOptions,
+      };
+    })
+    .filter(Boolean) as ClarificationPayload["questions"];
+
+  if (!questions.length) return null;
+
+  return {
+    id: (payload.id as string | undefined) || artifact.id || `clarification_${Date.now()}`,
+    title: (payload.title as string | undefined) || artifact.title || "Clarifying questions",
+    description: (payload.description as string | undefined) || artifact.summary,
+    questions,
+  };
+}
+
+function formatClarificationResponse(
+  clarification: ClarificationPayload,
+  response: ClarificationResponse
+): string {
+  const lines: string[] = [];
+  lines.push(`Clarification responses (id: ${response.requestId}):`);
+
+  if (response.skipped) {
+    lines.push("- Skipped");
+    return lines.join("\n");
+  }
+
+  const questionById = new Map(
+    clarification.questions.map((question) => [question.id, question])
+  );
+
+  response.answers.forEach((answer, index) => {
+    const question = questionById.get(answer.questionId);
+    const label = question?.prompt || `Question ${index + 1}`;
+    const optionLabels =
+      answer.selectedOptionIds
+        ?.map((optionId) =>
+          question?.options.find((opt) => opt.id === optionId)?.label
+        )
+        .filter(Boolean) ?? [];
+
+    const segments = [];
+    if (optionLabels.length) segments.push(optionLabels.join(", "));
+    if (answer.otherText) segments.push(`Other: ${answer.otherText}`);
+    lines.push(`- ${label}: ${segments.join(" | ") || "No selection"}`);
+  });
+
+  return lines.join("\n");
 }
 
 export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
@@ -58,6 +164,9 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
   const [traces, setTraces] = useState<AgentTrace[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [artifacts, setArtifacts] = useState<Map<string, ArtifactData>>(new Map());
+  const artifactKeysRef = useRef<Set<string>>(new Set());
 
   // Refs for streaming accumulation (avoid re-renders during streaming)
   const streamingContentRef = useRef<string>("");
@@ -198,6 +307,101 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
     });
   }, []);
 
+  // Handle artifact events (clarifications, todos, artifacts)
+  const handleArtifact = useCallback((artifact: ArtifactData) => {
+    if (artifact.artifact_type === "todo_list") {
+      const payload = artifact.payload as { todos?: TodoItem[] } | TodoItem[] | undefined;
+      const nextTodos = Array.isArray(payload)
+        ? payload
+        : payload?.todos ?? [];
+      setTodos(nextTodos);
+      return;
+    }
+
+    if (artifact.artifact_type === "clarification") {
+      const clarification = normalizeClarificationPayload(artifact);
+      if (!clarification) return;
+
+      abortControllerRef.current?.abort();
+      setIsStreaming(false);
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        const lastMsg = updated[lastIndex];
+
+        if (lastMsg?.role === "assistant" && lastMsg.isStreaming) {
+          updated[lastIndex] = {
+            ...lastMsg,
+            isStreaming: false,
+            clarification,
+            clarificationStatus: "pending",
+          };
+          return updated;
+        }
+
+        return [
+          ...updated,
+          {
+            id: generateMessageId(),
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+            clarification,
+            clarificationStatus: "pending",
+          },
+        ];
+      });
+      return;
+    }
+
+    const payload = artifact.payload as { path?: string } | undefined;
+    const key = payload?.path || artifact.summary || artifact.id;
+    const path = payload?.path || artifact.summary || artifact.id;
+
+    if (path) {
+      setMessages((prev) =>
+        prev.map((message) => {
+          if (
+            message.role !== "assistant" ||
+            !message.content ||
+            !message.content.includes(path)
+          ) {
+            return message;
+          }
+
+          const cleaned = message.content
+            .split("\n")
+            .filter((line) => !line.includes(path))
+            .join("\n")
+            .trim();
+
+          return { ...message, content: cleaned };
+        })
+      );
+    }
+
+    setArtifacts((prev) => {
+      const next = new Map(prev);
+      const isNew = !next.has(key) && !artifactKeysRef.current.has(key);
+      next.set(key, artifact);
+      if (isNew) {
+        artifactKeysRef.current.add(key);
+        setMessages((messages) => [
+          ...messages,
+          {
+            id: generateMessageId(),
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+            artifact,
+          },
+        ]);
+      }
+      return next;
+    });
+  }, []);
+
   // Handle text chunk events
   const handleTextChunk = useCallback((data: TextChunkData) => {
     streamingContentRef.current += data.chunk;
@@ -305,8 +509,15 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
 
   // Send a message
   const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isStreaming) return;
+    async (
+      content: string,
+      options?: { force?: boolean; skipUserMessage?: boolean }
+    ) => {
+      if (!content.trim() || (isStreaming && !options?.force)) return;
+
+      if (isStreaming && options?.force) {
+        abortControllerRef.current?.abort();
+      }
 
       // Abort any existing connection
       abortControllerRef.current?.abort();
@@ -319,14 +530,6 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
       setError(null);
       setTraces([]);
 
-      // Add user message
-      const userMessage: ChatMessage = {
-        id: generateMessageId(),
-        role: "user",
-        content: content.trim(),
-        timestamp: new Date(),
-      };
-
       // Add placeholder assistant message for streaming
       const assistantMessage: ChatMessage = {
         id: generateMessageId(),
@@ -336,7 +539,19 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
         isStreaming: true,
       };
 
-      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      setMessages((prev) => {
+        const next = [...prev];
+        if (!options?.skipUserMessage) {
+          next.push({
+            id: generateMessageId(),
+            role: "user",
+            content: content.trim(),
+            timestamp: new Date(),
+          });
+        }
+        next.push(assistantMessage);
+        return next;
+      });
       setIsStreaming(true);
 
       try {
@@ -347,6 +562,7 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
             user_context: userContext,
             use_memory: useMemory,
             selected_tools: selectedTools && selectedTools.length > 0 ? selectedTools : undefined,
+            use_deep_agent: true,
           },
           {
             onAgentActivity: handleAgentActivity,
@@ -354,6 +570,7 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
             onCitation: handleCitation,
             onToolResult: handleToolResult,
             onThinking: handleThinking,
+            onArtifact: handleArtifact,
             onComplete: handleComplete,
             onError: handleError,
             onConnectionError: handleConnectionError,
@@ -378,10 +595,35 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
       handleCitation,
       handleToolResult,
       handleThinking,
+      handleArtifact,
       handleComplete,
       handleError,
       handleConnectionError,
     ]
+  );
+
+  const submitClarification = useCallback(
+    async (
+      messageId: string,
+      clarification: ClarificationPayload,
+      response: ClarificationResponse
+    ) => {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                clarificationResponse: response,
+                clarificationStatus: response.skipped ? "skipped" : "submitted",
+              }
+            : message
+        )
+      );
+
+      const content = formatClarificationResponse(clarification, response);
+      await sendMessage(content, { force: true, skipUserMessage: true });
+    },
+    [sendMessage]
   );
 
   // Clear chat (keep thread)
@@ -391,6 +633,9 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
     setTraces([]);
     setError(null);
     setIsStreaming(false);
+    setTodos([]);
+    setArtifacts(new Map());
+    artifactKeysRef.current = new Set();
     streamingContentRef.current = "";
     streamingCitationsRef.current = [];
     streamingStepsRef.current = [];
@@ -403,6 +648,9 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
     setTraces([]);
     setError(null);
     setIsStreaming(false);
+    setTodos([]);
+    setArtifacts(new Map());
+    artifactKeysRef.current = new Set();
     setThreadId(null);
     localStorage.removeItem(THREAD_ID_KEY);
     streamingContentRef.current = "";
@@ -417,11 +665,14 @@ export function useChatV2(options: UseChatOptions = {}): UseChatReturn {
     traces,
     isStreaming,
     error,
+    todos,
+    artifacts: Array.from(artifacts.values()),
   };
 
   return {
     session,
     sendMessage,
+    submitClarification,
     clearChat,
     newChat,
     isConnected: !error,

@@ -135,7 +135,7 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
 
     mutate(
       [`/teams/${team.id}`],
-      (currentData: any) => {
+      (currentData: TeamDetail | undefined) => {
         if (!currentData) return currentData;
         return {
           ...currentData,

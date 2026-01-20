@@ -92,7 +92,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
 
     mutate(
       [`/teams/${team.id}`],
-      (currentData: any) => {
+      (currentData: TeamDetail | undefined) => {
         if (!currentData) return currentData;
         return {
           ...currentData,

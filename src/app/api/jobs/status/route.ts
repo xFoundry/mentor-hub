@@ -16,6 +16,7 @@ import {
   deleteBatch,
 } from "@/lib/notifications/job-store";
 import { isRedisAvailable } from "@/lib/redis";
+import { requireStaffSession } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -32,6 +33,9 @@ export const runtime = "nodejs";
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     // Check Redis availability
     const redisAvailable = await isRedisAvailable();
     if (!redisAvailable) {

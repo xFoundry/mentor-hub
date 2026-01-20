@@ -22,7 +22,7 @@ import { Calendar, CheckSquare, Users2, MessageSquare, GraduationCap } from "luc
 import { format, isFuture } from "date-fns";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import type { Session, Task } from "@/types/schema";
+import type { Contact, Member, Session, SessionFeedback, Task, Team } from "@/types/schema";
 import type { UserContext } from "@/types/schema";
 import { hasMentorFeedback, isSessionEligibleForFeedback, isCurrentUserMentor, parseAsLocalTime } from "@/components/sessions/session-transformers";
 
@@ -34,12 +34,20 @@ interface TeamDetailMentorProps {
     teamStatus?: string;
     description?: string;
     cohorts?: Array<{ id: string; shortName: string }>;
-    members?: any[];
+    members?: Member[];
     mentorshipSessions?: Session[];
     actionItems?: Task[];
   };
   userContext: UserContext;
 }
+
+type FeedbackEntry = Omit<SessionFeedback, "session"> & {
+  session: {
+    id: string;
+    sessionType?: string;
+    scheduledStart?: string;
+  };
+};
 
 export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
   const router = useRouter();
@@ -75,11 +83,11 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
 
   // Transform team members for TaskDetailSheet (contact is an array in member structure)
   const teamMembersForSheet = useMemo<TeamMember[]>(() => {
-    return members.map((member: any) => ({
+    return members.map((member: Member) => ({
       memberId: member.id,
-      contact: member.contact?.[0] || {},
+      contact: member.contact?.[0] || ({} as Contact),
       type: member.type || "Member",
-      status: member.status,
+      status: member.status || "Active",
     }));
   }, [members]);
 
@@ -122,7 +130,7 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
     // Optimistically update the team detail cache
     mutate(
       [`/teams/${team.id}`],
-      (currentData: any) => {
+      (currentData: Team | undefined) => {
         if (!currentData) return currentData;
         return {
           ...currentData,
@@ -160,30 +168,30 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
   // Calculate stats and attention items
   const stats = useMemo(() => {
     const upcomingSessions = sessions.filter(
-      (s: any) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
+      (s: Session) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
     );
-    const completedSessions = sessions.filter((s: any) => s.status === "Completed");
+    const completedSessions = sessions.filter((s: Session) => s.status === "Completed");
     const openTasks = tasks.filter(
-      (t: any) => t.status !== "Completed" && t.status !== "Cancelled"
+      (t: Task) => t.status !== "Completed" && t.status !== "Cancelled"
     );
-    const overdueTasks = tasks.filter((t: any) => {
+    const overdueTasks = tasks.filter((t: Task) => {
       if (t.status === "Completed" || !t.due) return false;
       return new Date(t.due) < new Date();
     });
 
     // Sessions needing feedback from mentor - only count sessions where current user was the mentor
     const needsFeedback = sessions.filter(
-      (s: any) => isCurrentUserMentor(s, userContext.email) && isSessionEligibleForFeedback(s) && !hasMentorFeedback(s)
+      (s: Session) => isCurrentUserMentor(s, userContext.email) && isSessionEligibleForFeedback(s) && !hasMentorFeedback(s)
     );
 
     // Count of sessions where current user is the mentor
-    const mySessions = sessions.filter((s: any) => isCurrentUserMentor(s, userContext.email));
+    const mySessions = sessions.filter((s: Session) => isCurrentUserMentor(s, userContext.email));
 
     // All feedback given
     const allFeedback = sessions
-      .filter((s: any) => s.feedback && s.feedback.length > 0)
-      .flatMap((s: any) =>
-        s.feedback.map((fb: any) => ({
+      .filter((s: Session) => s.feedback && s.feedback.length > 0)
+      .flatMap((s: Session) =>
+        (s.feedback ?? []).map((fb: SessionFeedback) => ({
           ...fb,
           session: {
             id: s.id,
@@ -209,9 +217,9 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
   // Extract all feedback from sessions
   const allFeedback = useMemo(() => {
     return sessions
-      .filter((s: any) => s.feedback && s.feedback.length > 0)
-      .flatMap((s: any) =>
-        s.feedback.map((fb: any) => ({
+      .filter((s: Session) => s.feedback && s.feedback.length > 0)
+      .flatMap((s: Session) =>
+        (s.feedback ?? []).map((fb: SessionFeedback) => ({
           ...fb,
           session: {
             id: s.id,
@@ -430,7 +438,7 @@ export function TeamDetailMentor({ team, userContext }: TeamDetailMentorProps) {
               </CardContent>
             </Card>
           ) : (
-            allFeedback.map((feedback: any) => (
+            allFeedback.map((feedback: FeedbackEntry) => (
               <Card key={feedback.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">

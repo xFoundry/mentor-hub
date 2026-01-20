@@ -40,7 +40,7 @@ export default function ImpersonatePage() {
     }
   );
 
-  const contacts = data || [];
+  const contacts = useMemo(() => data ?? [], [data]);
 
   // Filter contacts by search term and role
   const filteredContacts = useMemo(() => {

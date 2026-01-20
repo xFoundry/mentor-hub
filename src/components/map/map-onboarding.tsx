@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   MousePointerClick,
   Plus,
@@ -22,14 +22,10 @@ interface MapOnboardingProps {
 }
 
 export function MapOnboarding({ hasTiles, forceShow, onClose }: MapOnboardingProps) {
-  const [dismissed, setDismissed] = useState(true);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const wasDismissed = localStorage.getItem(ONBOARDING_DISMISSED_KEY) === "true";
-      setDismissed(wasDismissed);
-    }
-  }, []);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(ONBOARDING_DISMISSED_KEY) === "true";
+  });
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);

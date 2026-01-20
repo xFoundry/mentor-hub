@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import type { SessionFeedback } from "@/types/schema";
 import type { TeamTabBaseProps, FeedbackWithSession } from "./types";
 
-interface TeamFeedbackTabProps extends TeamTabBaseProps {}
+type TeamFeedbackTabProps = TeamTabBaseProps;
 
 export function TeamFeedbackTab({
   team,

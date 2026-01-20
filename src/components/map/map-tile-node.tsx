@@ -131,32 +131,29 @@ function MapTileNodeInner({
     if (data?.id) {
       setActiveTileId(data.id);
     }
-  }, [data?.id, setActiveTileId]);
+  }, [data, setActiveTileId]);
 
   const handleOpenWorkspace = useCallback(() => {
     if (data?.id) {
       setExpandedTileId(data.id);
     }
-  }, [data?.id, setExpandedTileId]);
+  }, [data, setExpandedTileId]);
 
   const handleDelete = useCallback(() => {
     if (data?.id) {
       deleteTile(data.id);
     }
-  }, [data?.id, deleteTile]);
+  }, [data, deleteTile]);
 
   // Hover tip state
   const [showHoverTip, setShowHoverTip] = useState(false);
-  const [tipsShown, setTipsShown] = useState(true);
+  const [tipsShown, setTipsShown] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(TILE_TIPS_SHOWN_KEY) === "true";
+  });
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if tips have been shown before
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const shown = localStorage.getItem(TILE_TIPS_SHOWN_KEY) === "true";
-      setTipsShown(shown);
-    }
-  }, []);
+  // Check if tips have been shown before (handled in state initializer)
 
   // Handle hover - show tip after delay (only if tips not yet shown)
   const handleMouseEnter = useCallback(() => {

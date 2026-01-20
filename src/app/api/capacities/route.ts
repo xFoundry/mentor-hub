@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { baseqlClient } from "@/lib/baseql";
+import { requireStaffSession } from "@/lib/api-auth";
 
 interface Capacity {
   id: string;
@@ -12,6 +13,9 @@ interface Capacity {
  */
 export async function GET() {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const query = `
       query GetCapacities {
         capacities(_order_by: { name: "asc" }) {

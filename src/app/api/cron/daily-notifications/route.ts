@@ -7,7 +7,6 @@ import {
   type AnyNotificationPayload,
 } from "@/lib/notifications";
 import {
-  hasMentorFeedback,
   isSessionEligibleForFeedback,
   getMentorParticipants,
   getLeadMentor,
@@ -16,7 +15,7 @@ import {
   getSessionEndTime,
   formatInEastern,
 } from "@/lib/timezone";
-import type { Session, Contact } from "@/types/schema";
+import type { Session, SessionFeedback } from "@/types/schema";
 
 /**
  * Daily Notifications Cron Job
@@ -148,7 +147,7 @@ async function fetchAllSessions(): Promise<Session[]> {
   `;
 
   try {
-    const result = await executeQuery<{ sessions: any[] }>(query);
+    const result = await executeQuery<{ sessions: Session[] }>(query);
     return result.sessions || [];
   } catch (error) {
     console.error("[Cron] Error fetching sessions:", error);
@@ -225,8 +224,8 @@ function generateFeedbackFollowupNotifications(
     const feedbackList = session.feedback || session.sessionFeedback || [];
     const mentorsWithFeedback = new Set(
       feedbackList
-        .filter((f: any) => f.role === "Mentor")
-        .map((f: any) => f.respondant?.[0]?.id)
+        .filter((f: SessionFeedback) => f.role === "Mentor")
+        .map((f: SessionFeedback) => f.respondant?.[0]?.id)
         .filter(Boolean)
     );
 
@@ -251,9 +250,10 @@ function generateFeedbackFollowupNotifications(
 
     // Check student feedback - only send if NOT already submitted
     // Exclude mentors from student list
-    const students = team.members?.filter(
-      (m: any) => !mentorIds.has(m.contact?.[0]?.id)
-    );
+    const students = team.members?.filter((m) => {
+      const contactId = m.contact?.[0]?.id;
+      return contactId ? !mentorIds.has(contactId) : true;
+    });
 
     // Use formatted mentor name for students (shows lead + count of others)
     const mentorNameForStudents = formatMentorNameForEmail(session);
@@ -264,7 +264,7 @@ function generateFeedbackFollowupNotifications(
 
       // Check if this student has already provided feedback
       const hasFeedback = feedbackList.some(
-        (f: any) => f.role === "Mentee" && f.respondant?.[0]?.id === contact.id
+        (f: SessionFeedback) => f.role === "Mentee" && f.respondant?.[0]?.id === contact.id
       );
 
       if (hasFeedback) continue;

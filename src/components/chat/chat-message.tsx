@@ -9,17 +9,36 @@
 import { Bot, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import type { ChatMessage as ChatMessageType } from "@/types/chat";
+import type {
+  ChatMessage as ChatMessageType,
+  ClarificationPayload,
+  ClarificationResponse,
+  ArtifactData,
+} from "@/types/chat";
 import { ChatCitation } from "./chat-citation";
 import { ChatToolSteps } from "./chat-tool-steps";
 import { ChatMessageContent } from "./chat-message-content";
+import { ChatClarificationCard } from "./chat-clarification-card";
+import { ChatArtifactCard } from "./chat-artifact-card";
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  onClarificationSubmit?: (
+    messageId: string,
+    clarification: ClarificationPayload,
+    response: ClarificationResponse
+  ) => void;
+  onArtifactOpen?: (artifact: ArtifactData) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  onClarificationSubmit,
+  onArtifactOpen,
+}: ChatMessageProps) {
   const isUser = message.role === "user";
+  const hasClarification = Boolean(message.clarification);
+  const hasArtifact = Boolean(message.artifact);
 
   return (
     <div
@@ -51,36 +70,61 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
 
-        {/* Message bubble - hide if streaming with steps but no content yet */}
-        {(message.content || !(message.isStreaming && message.steps?.length)) && (
-          <div
-            className={cn(
-              "max-w-[85%] rounded-lg px-4 py-2",
-              isUser
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted",
-              // Only pulse if streaming with no content yet and no steps
-              message.isStreaming && !message.content && !message.steps?.length && "animate-pulse"
-            )}
-          >
-            {message.content ? (
-              isUser ? (
-                <div className="whitespace-pre-wrap break-words text-sm">
-                  {message.content}
-                </div>
-              ) : (
-                <ChatMessageContent
-                  content={message.content}
-                  citations={message.citations}
-                  isStreaming={message.isStreaming}
-                />
+        {hasArtifact ? (
+          <ChatArtifactCard
+            artifact={message.artifact!}
+            onOpen={onArtifactOpen}
+          />
+        ) : hasClarification ? (
+          <ChatClarificationCard
+            clarification={message.clarification!}
+            status={message.clarificationStatus}
+            response={message.clarificationResponse}
+            onSubmit={(response) =>
+              onClarificationSubmit?.(
+                message.id,
+                message.clarification!,
+                response
               )
-            ) : (
-              <span className={cn("italic text-sm", isUser ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                Thinking...
-              </span>
-            )}
-          </div>
+            }
+          />
+        ) : (
+          /* Message bubble - hide if streaming with steps but no content yet */
+          (message.content || !(message.isStreaming && message.steps?.length)) && (
+            <div
+              className={cn(
+                "max-w-[85%] rounded-lg px-4 py-2",
+                isUser
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted",
+                // Only pulse if streaming with no content yet and no steps
+                message.isStreaming && !message.content && !message.steps?.length && "animate-pulse"
+              )}
+            >
+              {message.content ? (
+                isUser ? (
+                  <div className="whitespace-pre-wrap break-words text-sm">
+                    {message.content}
+                  </div>
+                ) : (
+                  <ChatMessageContent
+                    content={message.content}
+                    citations={message.citations}
+                    isStreaming={message.isStreaming}
+                  />
+                )
+              ) : (
+                <span
+                  className={cn(
+                    "italic text-sm",
+                    isUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                  )}
+                >
+                  Thinking...
+                </span>
+              )}
+            </div>
+          )
         )}
 
         {/* Citations (only for assistant messages) */}

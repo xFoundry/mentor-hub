@@ -18,6 +18,7 @@ import {
 import { EmailJobStatusCard } from "@/components/notifications";
 import { useSessionJobProgress } from "@/contexts/job-status-context";
 import type { TeamMember } from "@/hooks/use-team-members";
+import type { Contact, Member, Task } from "@/types/schema";
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -47,29 +48,29 @@ export default function SessionDetailPage() {
   // Transform team members for role-specific components
   const teamMembers = useMemo<TeamMember[]>(() => {
     const members = session?.team?.[0]?.members || [];
-    return members.map((member: any) => ({
+    return members.map((member: Member) => ({
       memberId: member.id,
-      contact: member.contact?.[0] || {},
+      contact: member.contact?.[0] || ({} as Contact),
       type: member.type || "Member",
       status: member.status,
     }));
-  }, [session?.team]);
+  }, [session]);
 
   // Filter tasks to those assigned to team members
   const tasks = useMemo(() => {
     if (!allTasks || !session?.team?.[0]?.members) return [];
     const teamMemberContactIds = session.team[0].members
-      .map((member: any) => member.contact?.[0]?.id)
+      .map((member: Member) => member.contact?.[0]?.id)
       .filter(Boolean) as string[];
 
     return allTasks.filter((task) => {
       const assignedToIds = task.assignedTo?.map((c) => c.id) || [];
       return assignedToIds.some((id) => teamMemberContactIds.includes(id));
     });
-  }, [allTasks, session?.team]);
+  }, [allTasks, session]);
 
   // Handler for task updates
-  const handleTaskUpdate = async (taskId: string, updates: any) => {
+  const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
     await updateTask(taskId, updates);
   };
 
@@ -105,7 +106,7 @@ export default function SessionDetailPage() {
             <AlertCircle className="text-muted-foreground mb-4 h-12 w-12" />
             <div className="text-muted-foreground">
               <p className="text-lg font-medium">Session not found</p>
-              <p className="text-sm">This session may have been removed or you don't have access</p>
+              <p className="text-sm">This session may have been removed or you don&apos;t have access</p>
             </div>
           </CardContent>
         </Card>

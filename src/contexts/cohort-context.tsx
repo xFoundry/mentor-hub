@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { useUserType } from "@/hooks/use-user-type";
 import { useImpersonationSafe } from "@/contexts/impersonation-context";
 
@@ -18,37 +18,14 @@ interface CohortContextType {
 const CohortContext = createContext<CohortContextType | undefined>(undefined);
 
 export function CohortProvider({ children }: { children: React.ReactNode }) {
-  const { userType, userContext, isLoading } = useUserType();
+  const { userType, userContext } = useUserType();
   const { isImpersonating, targetUserContext } = useImpersonationSafe();
 
   // Staff's actual selected cohort (persisted to localStorage)
-  const [internalSelectedCohortId, setInternalSelectedCohortId] = useState<string>("all");
-  const [hasMounted, setHasMounted] = useState(false);
-
-  // Load from localStorage after mount (client-side only)
-  useEffect(() => {
-    setHasMounted(true);
-    const savedCohortId = localStorage.getItem("selectedCohortId");
-    if (savedCohortId) {
-      setInternalSelectedCohortId(savedCohortId);
-    }
-  }, []);
-
-  // Update default cohort when user context loads
-  useEffect(() => {
-    if (!hasMounted || isLoading || !userContext) return;
-
-    const savedCohortId = localStorage.getItem("selectedCohortId");
-
-    // Only set default if no saved preference exists
-    if (!savedCohortId) {
-      if (userType === "staff") {
-        setInternalSelectedCohortId("all");
-      } else {
-        setInternalSelectedCohortId(userContext.cohortId || "all");
-      }
-    }
-  }, [hasMounted, isLoading, userContext, userType]);
+  const [internalSelectedCohortId, setInternalSelectedCohortId] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return localStorage.getItem("selectedCohortId") || "all";
+  });
 
   // Save to localStorage when changed (blocked during impersonation)
   const setSelectedCohortId = useCallback((cohortId: string) => {

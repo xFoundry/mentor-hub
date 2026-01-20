@@ -558,7 +558,7 @@ export function TaskDetailSheet({
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>What's the latest?</Label>
+                      <Label>What&apos;s the latest?</Label>
                       <Textarea
                         value={updateMessage}
                         onChange={(e) => setUpdateMessage(e.target.value)}
@@ -694,7 +694,7 @@ export function TaskDetailSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Task</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{task.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{task.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

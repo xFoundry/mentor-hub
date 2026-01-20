@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Loader2, UserPlus, Check, AlertCircle } from "lucide-react";
 import { useAvailableContacts } from "@/hooks/use-available-contacts";
+import type { Contact } from "@/types/schema";
 
 interface AddMemberDialogProps {
   open: boolean;
@@ -35,6 +36,10 @@ interface AddMemberDialogProps {
   currentMemberIds: string[];
   onAddMember: (contactId: string, type?: string) => Promise<void>;
 }
+
+type ContactWithTeam = Contact & {
+  currentTeamName?: string;
+};
 
 export function AddMemberDialog({
   open,
@@ -63,7 +68,7 @@ export function AddMemberDialog({
   }, [open, setSearchTerm]);
 
   // Filter out contacts who are already members
-  const availableContacts = contacts.filter(
+  const availableContacts = (contacts as ContactWithTeam[]).filter(
     (contact) => !currentMemberIds.includes(contact.id)
   );
 
@@ -82,7 +87,7 @@ export function AddMemberDialog({
     }
   };
 
-  const selectedContact = contacts.find((c) => c.id === selectedContactId);
+  const selectedContact = (contacts as ContactWithTeam[]).find((c) => c.id === selectedContactId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,7 +160,7 @@ export function AddMemberDialog({
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarImage
-                            src={(contact as any).headshot?.[0]?.url}
+                            src={contact.headshot?.[0]?.url}
                             alt={contact.fullName || ""}
                           />
                           <AvatarFallback>{initials}</AvatarFallback>
@@ -173,9 +178,9 @@ export function AddMemberDialog({
                             {contact.email}
                           </p>
                         </div>
-                        {(contact as any).currentTeamName && (
+                        {contact.currentTeamName && (
                           <Badge variant="outline" className="text-xs shrink-0">
-                            {(contact as any).currentTeamName}
+                            {contact.currentTeamName}
                           </Badge>
                         )}
                       </button>
@@ -213,7 +218,7 @@ export function AddMemberDialog({
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={(selectedContact as any).headshot?.[0]?.url}
+                    src={selectedContact.headshot?.[0]?.url}
                     alt={selectedContact.fullName || ""}
                   />
                   <AvatarFallback>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Loader2, Plus, X, Crown, Users, Eye, UserPlus } from "lucide-react";
 import { useTeams } from "@/hooks/use-teams";
-import { useMentors } from "@/hooks/use-mentors";
+import { useMentors, type MentorWithCohort } from "@/hooks/use-mentors";
 import { useCohortContext } from "@/contexts/cohort-context";
 import { useCreateSession } from "@/hooks/use-create-session";
 import { useCreateRecurringSession } from "@/hooks/use-create-recurring-session";
@@ -33,7 +33,7 @@ import { AddMentorDialog } from "@/components/mentors";
 import { easternToUTC } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import type { RecurrenceConfig } from "@/types/recurring";
-import type { Session, Contact } from "@/types/schema";
+import type { Session, Contact, Team } from "@/types/schema";
 
 // Mentor role types
 type MentorRole = "Lead Mentor" | "Supporting Mentor" | "Observer";
@@ -133,26 +133,30 @@ export function CreateSessionDialog({
   const isSubmitting = isCreating || isCreatingRecurring;
   const isLoading = isTeamsLoading || isMentorsLoading;
 
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (open) {
-      setSessionType("");
-      setTeamId(defaultTeamId || "");
-      setSelectedMentors([]);
-      setScheduledDate(getDefaultDate());
-      setScheduledTime(getDefaultTime());
-      setDuration("60");
-      setMeetingPlatform("");
-      setMeetingUrl("");
-      setLocationId("");
-      setAgenda("");
-      setIsRecurring(false);
-      setRecurrenceConfig(null);
-      setErrors({});
-      setRequirePrep(true);
-      setRequireFeedback(true);
+  const resetForm = useCallback(() => {
+    setSessionType("");
+    setTeamId(defaultTeamId || "");
+    setSelectedMentors([]);
+    setScheduledDate(getDefaultDate());
+    setScheduledTime(getDefaultTime());
+    setDuration("60");
+    setMeetingPlatform("");
+    setMeetingUrl("");
+    setLocationId("");
+    setAgenda("");
+    setIsRecurring(false);
+    setRecurrenceConfig(null);
+    setErrors({});
+    setRequirePrep(true);
+    setRequireFeedback(true);
+  }, [defaultTeamId]);
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      resetForm();
     }
-  }, [open, defaultTeamId]);
+    onOpenChange(nextOpen);
+  }, [onOpenChange, resetForm]);
 
   // Mentor management helpers
   const addMentor = useCallback((contactId: string) => {
@@ -185,12 +189,12 @@ export function CreateSessionDialog({
   }, []);
 
   const getMentorById = useCallback((contactId: string) => {
-    return mentors.find((m: any) => m.id === contactId);
+    return mentors.find((m: MentorWithCohort) => m.id === contactId);
   }, [mentors]);
 
   // Available mentors (not already selected)
   const availableMentors = mentors.filter(
-    (m: any) => !selectedMentors.some(sm => sm.contactId === m.id)
+    (m: MentorWithCohort) => !selectedMentors.some(sm => sm.contactId === m.id)
   );
 
   // Validation
@@ -262,7 +266,7 @@ export function CreateSessionDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={isSubmitting ? undefined : onOpenChange}>
+      <Dialog open={open} onOpenChange={isSubmitting ? undefined : handleOpenChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           {/* Loading Overlay */}
           {isSubmitting && (
@@ -324,7 +328,7 @@ export function CreateSessionDialog({
                     <SelectValue placeholder="Select team" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams.map((team: any) => (
+                    {teams.map((team: Team) => (
                       <SelectItem key={team.id} value={team.id}>
                         {team.teamName}
                       </SelectItem>
@@ -441,7 +445,7 @@ export function CreateSessionDialog({
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {availableMentors.map((mentor: any) => (
+                          {availableMentors.map((mentor: MentorWithCohort) => (
                             <SelectItem key={mentor.id} value={mentor.id}>
                               <div className="flex flex-col">
                                 <span>{mentor.fullName}</span>

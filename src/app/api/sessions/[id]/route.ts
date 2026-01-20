@@ -13,6 +13,7 @@ import {
   cancelSessionEmailsViaQStash,
 } from "@/lib/notifications/qstash-scheduler";
 import type { SessionChanges } from "@/lib/notifications/types";
+import { requireStaffSession } from "@/lib/api-auth";
 
 interface MentorInput {
   contactId: string;
@@ -29,6 +30,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const { id: sessionId } = await params;
     const body = await request.json();
 
@@ -282,6 +286,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const { id: sessionId } = await params;
 
     // Get session to verify it exists

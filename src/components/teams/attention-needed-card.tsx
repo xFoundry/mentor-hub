@@ -74,7 +74,7 @@ export function AttentionNeededCard({
     }
 
     // Common: Overdue tasks
-    const overdueTasks = tasks.filter((t: any) => {
+    const overdueTasks = tasks.filter((t: Task) => {
       if (t.status === "Completed" || t.status === "Cancelled" || !t.due) return false;
       return new Date(t.due) < new Date();
     });
@@ -91,7 +91,7 @@ export function AttentionNeededCard({
 
     // Staff/Mentor-specific: Pending tasks (not started)
     if (userType === "staff" || userType === "mentor") {
-      const pendingTasks = tasks.filter((t: any) => t.status === "Not Started");
+      const pendingTasks = tasks.filter((t: Task) => t.status === "Not Started");
       if (pendingTasks.length > 0) {
         items.push({
           type: "pending",

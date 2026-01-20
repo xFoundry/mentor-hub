@@ -22,6 +22,8 @@ interface ChatInputProps {
   isStreaming?: boolean;
   useMemory?: boolean;
   onUseMemoryChange?: (useMemory: boolean) => void;
+  enterToSend?: boolean;
+  variant?: "default" | "cowork";
   toolToggles?: Array<{
     id: string;
     label: string;
@@ -38,6 +40,8 @@ export function ChatInput({
   isStreaming,
   useMemory = false,
   onUseMemoryChange,
+  enterToSend = false,
+  variant = "default",
   toolToggles = [],
 }: ChatInputProps) {
   const [input, setInput] = useState("");
@@ -68,6 +72,19 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Check native event for IME composition
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (enterToSend) {
+      if (e.key === "Enter" && !(e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSend();
+      }
+      return;
+    }
+
     // Cmd/Ctrl + Enter to send
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
@@ -76,9 +93,15 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t bg-background p-4">
+    <div className={variant === "cowork" ? "bg-transparent p-6 pt-4" : "border-t bg-background p-4"}>
       {/* Toggles row */}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div
+        className={
+          variant === "cowork"
+            ? "mb-3 flex flex-wrap items-center justify-between gap-3 rounded-full border bg-card/70 px-4 py-2 text-xs shadow-sm backdrop-blur"
+            : "mb-2 flex flex-wrap items-center justify-between gap-2"
+        }
+      >
         <div className="flex flex-wrap items-center gap-3">
           {toolToggles.map((toggle) => (
             <TooltipProvider key={toggle.id}>
@@ -125,28 +148,66 @@ export function ChatInput({
       </div>
 
       {/* Input row */}
-      <div className="flex gap-2">
-        <Textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type your message... (Cmd+Enter to send)"
-          className="min-h-[60px] max-h-[200px] resize-none"
-          disabled={disabled || isStreaming}
-        />
-        <Button
-          onClick={handleSend}
-          disabled={disabled || isStreaming || !input.trim()}
-          className="self-end"
-          size="icon"
-        >
-          {isStreaming ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
+      <div
+        className={
+          variant === "cowork"
+            ? "flex flex-col gap-3 rounded-2xl border bg-card/80 p-3 shadow-sm backdrop-blur"
+            : "flex gap-2"
+        }
+      >
+        <div className="flex gap-2">
+          <Textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              enterToSend
+                ? "Type your message... (Enter to send, Cmd+Enter for new line)"
+                : "Type your message... (Cmd+Enter to send)"
+            }
+            className={
+              variant === "cowork"
+                ? "min-h-[70px] max-h-[220px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                : "min-h-[60px] max-h-[200px] resize-none"
+            }
+            disabled={disabled || isStreaming}
+          />
+          {variant !== "cowork" && (
+            <Button
+              onClick={handleSend}
+              disabled={disabled || isStreaming || !input.trim()}
+              className="self-end"
+              size="icon"
+            >
+              {isStreaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
+        {variant === "cowork" && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              Enter to send · Cmd+Enter for new line
+            </div>
+            <Button
+              onClick={handleSend}
+              disabled={disabled || isStreaming || !input.trim()}
+              className="h-8 rounded-full px-4"
+              size="sm"
+            >
+              {isStreaming ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-3.5 w-3.5" />
+              )}
+              Send
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

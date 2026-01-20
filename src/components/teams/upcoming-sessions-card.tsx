@@ -34,7 +34,7 @@ export function UpcomingSessionsCard({
   // Get upcoming sessions, prioritizing current user's sessions if they're a mentor
   const { nextSession, isUserSession } = useMemo(() => {
     const futureSessions = sessions
-      .filter((s: any) => {
+      .filter((s: Session) => {
         if (!s.scheduledStart) return false;
         // Only show sessions that are scheduled AND in the future
         // Cancelled sessions should not be shown
@@ -45,7 +45,7 @@ export function UpcomingSessionsCard({
           return false;
         }
       })
-      .sort((a: any, b: any) => {
+      .sort((a: Session, b: Session) => {
         const dateA = new Date(a.scheduledStart!).getTime();
         const dateB = new Date(b.scheduledStart!).getTime();
         return dateA - dateB;
@@ -132,9 +132,9 @@ export function UpcomingSessionsCard({
             <Calendar className="h-5 w-5 text-primary" />
             Next Session
           </CardTitle>
-          {(nextSession as any).scheduledStart && (
+          {nextSession?.scheduledStart && (
             <Badge variant="secondary" className="text-xs">
-              {getDateLabel((nextSession as any).scheduledStart)}
+              {getDateLabel(nextSession.scheduledStart)}
             </Badge>
           )}
         </div>
@@ -148,7 +148,7 @@ export function UpcomingSessionsCard({
           </Avatar>
           <div className="flex-1 space-y-1">
             <h3 className="font-semibold text-lg">
-              {(nextSession as any).sessionType || "Mentorship Session"}
+              {nextSession?.sessionType || "Mentorship Session"}
             </h3>
             <p className="text-muted-foreground">
               with {mentor?.fullName || "Your Mentor"}
@@ -157,16 +157,16 @@ export function UpcomingSessionsCard({
         </div>
 
         {/* Time info */}
-        {(nextSession as any).scheduledStart && (
+        {nextSession?.scheduledStart && (
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
               <Clock className="text-muted-foreground h-4 w-4" />
               <span className="font-medium">
-                {formatAsEastern((nextSession as any).scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
+                {formatAsEastern(nextSession.scheduledStart, "h:mm a")} {TIMEZONE_ABBR}
               </span>
-              {(nextSession as any).duration && (
+              {nextSession?.duration && (
                 <span className="text-muted-foreground">
-                  ({(nextSession as any).duration} min)
+                  ({nextSession.duration} min)
                 </span>
               )}
             </div>
@@ -174,19 +174,19 @@ export function UpcomingSessionsCard({
         )}
 
         {/* Agenda preview */}
-        {(nextSession as any).agenda && (
+        {nextSession?.agenda && (
           <p className="text-muted-foreground text-sm line-clamp-2">
-            {(nextSession as any).agenda}
+            {nextSession.agenda}
           </p>
         )}
 
         {/* Action buttons - show for students/staff always, mentors only for their sessions */}
         {(userType === "student" || userType === "staff" || isUserSession) && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
-            {(nextSession as any).meetingUrl && (
+            {nextSession?.meetingUrl && (
               <Button asChild className="w-full sm:w-auto">
                 <a
-                  href={(nextSession as any).meetingUrl}
+                  href={nextSession.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

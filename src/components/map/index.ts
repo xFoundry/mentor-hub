@@ -3,6 +3,7 @@ export { MapSurface } from "./map-surface";
 export { MapTileNode } from "./map-tile-node";
 export { MapSidebar } from "./map-sidebar";
 export { MapWorkspacePanel } from "./map-workspace-panel";
+export { MapWorkspaceOverlay } from "./map-workspace-overlay";
 export { MapTerritoryOverlay } from "./map-territory-overlay";
 export { MapCommandPalette } from "./map-command-palette";
 export { MapControls } from "./map-controls";

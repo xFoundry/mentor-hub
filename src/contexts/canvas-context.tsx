@@ -107,18 +107,6 @@ function readStoredState(storageKey: string): CanvasStorageState | null {
 
 export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
   const canvasId = storageKey;
-  const [nodes, setNodes] = useState<CanvasNode[]>(DEFAULT_NODES);
-  const [edges, setEdges] = useState<Edge[]>(DEFAULT_EDGES);
-  const [viewport, setViewport] = useState<Viewport | undefined>(DEFAULT_VIEWPORT);
-  const [hasStoredState, setHasStoredState] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const [snapshots, setSnapshots] = useState<CanvasSnapshot[]>([]);
-  const [activeZoneId, setActiveZoneId] = useState<string | null>(
-    DEFAULT_NODES[0]?.id ?? null
-  );
-  const [chatPanelOpen, setChatPanelOpen] = useState(true);
-  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
-  const [territories, setTerritories] = useState<ProjectTerritory[]>(DEFAULT_TERRITORIES);
 
   const migrateNodes = useCallback((rawNodes: CanvasNode[] | undefined): CanvasNode[] => {
     if (!rawNodes?.length) return DEFAULT_NODES;
@@ -185,42 +173,50 @@ export function CanvasProvider({ children, storageKey }: CanvasProviderProps) {
     [migrateNodes]
   );
 
-  useEffect(() => {
+  const initialState = useMemo(() => {
     const stored = readStoredState(storageKey);
     if (stored) {
       const nextTerritories = migrateTerritories(stored.territories);
       const nextNodes = migrateNodes(stored.nodes);
-      setNodes(nextNodes);
-      setEdges(stored.edges ?? DEFAULT_EDGES);
-      setViewport(stored.viewport ?? DEFAULT_VIEWPORT);
-      setTerritories(nextTerritories);
-      setSnapshots(migrateSnapshots(stored.snapshots, nextTerritories));
-      if (stored.activeZoneId !== undefined) {
-        setActiveZoneId(stored.activeZoneId ?? null);
-      } else if ((stored as CanvasStorageState & { activeChatBlockId?: string | null }).activeChatBlockId !== undefined) {
-        setActiveZoneId(
-          (stored as CanvasStorageState & { activeChatBlockId?: string | null }).activeChatBlockId
-          ?? null
-        );
-      } else {
-        setActiveZoneId((nextNodes[0]?.id ?? DEFAULT_NODES[0]?.id) ?? null);
-      }
-      if (stored.chatPanelOpen !== undefined) {
-        setChatPanelOpen(Boolean(stored.chatPanelOpen));
-      }
-      setHasStoredState(true);
-    } else {
-      setNodes(DEFAULT_NODES);
-      setEdges(DEFAULT_EDGES);
-      setViewport(DEFAULT_VIEWPORT);
-      setSnapshots([]);
-      setActiveZoneId(DEFAULT_NODES[0]?.id ?? null);
-      setChatPanelOpen(true);
-      setTerritories(DEFAULT_TERRITORIES);
-      setHasStoredState(false);
+      const nextActiveZoneId = stored.activeZoneId !== undefined
+        ? stored.activeZoneId ?? null
+        : (stored as CanvasStorageState & { activeChatBlockId?: string | null }).activeChatBlockId
+          ?? (nextNodes[0]?.id ?? DEFAULT_NODES[0]?.id ?? null);
+
+      return {
+        nodes: nextNodes,
+        edges: stored.edges ?? DEFAULT_EDGES,
+        viewport: stored.viewport ?? DEFAULT_VIEWPORT,
+        territories: nextTerritories,
+        snapshots: migrateSnapshots(stored.snapshots, nextTerritories),
+        activeZoneId: nextActiveZoneId,
+        chatPanelOpen: stored.chatPanelOpen !== undefined ? Boolean(stored.chatPanelOpen) : true,
+        hasStoredState: true,
+      };
     }
-    setHasLoaded(true);
+
+    return {
+      nodes: DEFAULT_NODES,
+      edges: DEFAULT_EDGES,
+      viewport: DEFAULT_VIEWPORT,
+      territories: DEFAULT_TERRITORIES,
+      snapshots: [],
+      activeZoneId: DEFAULT_NODES[0]?.id ?? null,
+      chatPanelOpen: true,
+      hasStoredState: false,
+    };
   }, [migrateNodes, migrateSnapshots, migrateTerritories, storageKey]);
+
+  const [nodes, setNodes] = useState<CanvasNode[]>(() => initialState.nodes);
+  const [edges, setEdges] = useState<Edge[]>(() => initialState.edges);
+  const [viewport, setViewport] = useState<Viewport | undefined>(() => initialState.viewport);
+  const [hasStoredState, setHasStoredState] = useState(() => initialState.hasStoredState);
+  const [hasLoaded] = useState(true);
+  const [snapshots, setSnapshots] = useState<CanvasSnapshot[]>(() => initialState.snapshots);
+  const [activeZoneId, setActiveZoneId] = useState<string | null>(() => initialState.activeZoneId);
+  const [chatPanelOpen, setChatPanelOpen] = useState(() => initialState.chatPanelOpen);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const [territories, setTerritories] = useState<ProjectTerritory[]>(() => initialState.territories);
 
   useEffect(() => {
     if (!hasLoaded || typeof window === "undefined") return;

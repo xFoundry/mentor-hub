@@ -27,7 +27,7 @@ interface MapMinimapProps {
 
 export function MapMinimap({ className }: MapMinimapProps) {
   const { tiles, activeTileId, setActiveTileId } = useMap();
-  const { setCenter, getViewport } = useReactFlow();
+  const { setCenter } = useReactFlow();
   const viewport = useViewport();
 
   // Calculate bounds of all tiles
@@ -86,7 +86,7 @@ export function MapMinimap({ className }: MapMinimapProps) {
 
   // Calculate viewport rectangle in minimap coordinates
   const viewportRect = useMemo(() => {
-    const currentViewport = getViewport();
+    const currentViewport = viewport;
     // The viewport position is the top-left of what's visible
     // We need to calculate the visible area in flow coordinates
     const visibleWidth = window.innerWidth / currentViewport.zoom;
@@ -104,7 +104,7 @@ export function MapMinimap({ className }: MapMinimapProps) {
       width: Math.max(10, bottomRight.x - topLeft.x),
       height: Math.max(10, bottomRight.y - topLeft.y),
     };
-  }, [getViewport, toMinimapPos, viewport]); // viewport included to trigger recalc
+  }, [toMinimapPos, viewport]);
 
   // Handle click to pan
   const handleMinimapClick = useCallback(

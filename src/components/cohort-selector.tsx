@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Cohort } from "@/types/schema";
 
 interface CohortSelectorProps {
   value?: string;
@@ -24,8 +25,9 @@ export function CohortSelector({
   placeholder = "Select cohort...",
   includeAll = true,
 }: CohortSelectorProps) {
-  const { userType, userContext } = useUserType();
+  const { userType } = useUserType();
   const { cohorts, isLoading } = useCohorts();
+  const cohortItems = cohorts as Array<Cohort & { displayName?: string }>;
 
   // Only show for staff users
   if (userType !== "staff") {
@@ -45,7 +47,7 @@ export function CohortSelector({
         {includeAll && (
           <SelectItem value="all">All Cohorts</SelectItem>
         )}
-        {cohorts.map((cohort: any) => (
+        {cohortItems.map((cohort) => (
           <SelectItem key={cohort.id} value={cohort.id}>
             {cohort.displayName || cohort.shortName || `Cohort ${cohort.cohortNumber}`}
           </SelectItem>

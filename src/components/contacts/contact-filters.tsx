@@ -63,7 +63,7 @@ export function ContactFiltersComponent({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [searchValue]); // Only depend on searchValue to avoid infinite loops
+  }, [searchValue, filters, onFiltersChange]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchValue(value);

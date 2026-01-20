@@ -90,7 +90,7 @@ export function SessionPreparationTab({
           </AlertTitle>
           <AlertDescription className="text-slate-600 dark:text-slate-400">
             Meeting preparation has been marked as optional for this session.
-            You can still submit preparation if you'd like.
+            You can still submit preparation if you&apos;d like.
           </AlertDescription>
         </Alert>
       )}
@@ -132,7 +132,7 @@ export function SessionPreparationTab({
           </AlertTitle>
           <AlertDescription className="text-green-700 dark:text-green-300">
             <p>
-              Your mentor can see your team's agenda and questions. You can update this before the meeting.
+              Your mentor can see your team&apos;s agenda and questions. You can update this before the meeting.
             </p>
             <Button
               variant="outline"
@@ -168,7 +168,7 @@ export function SessionPreparationTab({
             <CardDescription>
               {hasTeamSubmitted
                 ? "Review what the team wants to discuss in this session"
-                : "The team hasn't submitted their preparation yet"}
+                : "The team hasn&apos;t submitted their preparation yet"}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -182,7 +182,7 @@ export function SessionPreparationTab({
             Meeting starting soon
           </AlertTitle>
           <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Review the team's submissions below to prepare for your discussion.
+            Review the team&apos;s submissions below to prepare for your discussion.
           </AlertDescription>
         </Alert>
       )}
@@ -205,8 +205,8 @@ export function SessionPreparationTab({
             <p className="font-medium">No preparation submitted</p>
             <p className="text-sm text-muted-foreground mt-1">
               {isStudent
-                ? "Share your team's agenda and questions for this session"
-                : "The team hasn't submitted their preparation yet"}
+                ? "Share your team&apos;s agenda and questions for this session"
+                : "The team hasn&apos;t submitted their preparation yet"}
             </p>
           </CardContent>
         </Card>

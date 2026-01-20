@@ -1,6 +1,8 @@
 import { route, type Router } from "@better-upload/server";
 import { toRouteHandler } from "@better-upload/server/adapters/next";
 import { custom } from "@better-upload/server/clients";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuthSession } from "@/lib/api-auth";
 
 // Railway S3-compatible storage client
 // Uses virtual-hosted style URLs: https://{bucket}.storage.railway.app
@@ -49,4 +51,10 @@ const router: Router = {
   },
 };
 
-export const { POST } = toRouteHandler(router);
+const handlers = toRouteHandler(router);
+
+export const POST = async (request: NextRequest) => {
+  const auth = await requireAuthSession();
+  if (auth instanceof NextResponse) return auth;
+  return handlers.POST(request);
+};

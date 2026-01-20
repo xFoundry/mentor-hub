@@ -11,6 +11,7 @@ import { scheduleSessionEmailsViaQStash, isQStashSchedulerEnabled } from "@/lib/
 import { getSessionBatches, deleteBatch } from "@/lib/notifications/job-store";
 import { isRedisAvailable } from "@/lib/redis";
 import type { Session } from "@/types/schema";
+import { requireStaffSession } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 120; // 2 minutes for bulk operations
@@ -43,6 +44,9 @@ interface ScheduleResult {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     // Check prerequisites
     if (!isQStashSchedulerEnabled()) {
       return NextResponse.json(

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateContact, updateParticipation } from "@/lib/baseql";
+import type { Contact, Participation } from "@/types/schema";
+import { requireStaffSession } from "@/lib/api-auth";
 
 interface UpdateMentorInput {
   // Contact fields
@@ -26,6 +28,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const { id: contactId } = await params;
     const body: UpdateMentorInput = await request.json();
 
@@ -37,12 +42,12 @@ export async function PUT(
     }
 
     const results: {
-      contact?: any;
-      participation?: any;
+      contact?: Contact | Contact[];
+      participation?: Participation | Participation[];
     } = {};
 
     // Update contact fields if any are provided
-    const contactUpdates: Record<string, any> = {};
+    const contactUpdates: Partial<Contact> = {};
     if (body.firstName !== undefined) contactUpdates.firstName = body.firstName;
     if (body.lastName !== undefined) contactUpdates.lastName = body.lastName;
     if (body.email !== undefined) contactUpdates.email = body.email;

@@ -5,6 +5,8 @@ import { ChevronRight, Loader2, Check, Search, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ToolStep } from "@/types/chat";
 
+const INTERNAL_TOOLS = ["increment_retry", "increment retry", "__end__", "__start__"];
+
 interface ChatToolStepsProps {
   steps: ToolStep[];
   isStreaming?: boolean;
@@ -30,6 +32,7 @@ const TOOL_LABELS: Record<string, string> = {
   firecrawl_map: "Site map",
   firecrawl_crawl: "Web crawl",
   firecrawl_extract: "Data extract",
+  request_clarifications: "Clarify",
 };
 
 const PHASE_LABELS: Record<string, string> = {
@@ -180,7 +183,6 @@ export function ChatToolSteps({ steps, isStreaming }: ChatToolStepsProps) {
   const [toolsExpanded, setToolsExpanded] = useState(false);
 
   // Filter to meaningful user-facing steps, exclude internal tools
-  const INTERNAL_TOOLS = ["increment_retry", "increment retry", "__end__", "__start__"];
 
   const meaningful = useMemo(() => {
     const filtered = steps.filter((s) => {

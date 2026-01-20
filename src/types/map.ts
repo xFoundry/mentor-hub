@@ -4,7 +4,7 @@
  */
 
 import type { Viewport } from "@xyflow/react";
-import type { ToolStep } from "@/types/chat";
+import type { ToolStep, RichCitationData } from "@/types/chat";
 
 // ============================================================================
 // Tile Types
@@ -38,6 +38,7 @@ export interface MapChatMessage {
   isStreaming?: boolean;
   steps?: ToolStep[];
   attachments?: MapChatAttachment[];
+  citations?: RichCitationData[];
 }
 
 export interface MapChatAttachment {
@@ -180,6 +181,8 @@ export interface ProjectTerritory {
 
 export type SidebarMode = "expanded" | "full" | "collapsed" | "hidden";
 
+export type WorkspaceDisplayMode = "panel" | "overlay";
+
 export interface MapStorageState {
   version: number;
   tiles: TileData[];
@@ -187,6 +190,7 @@ export interface MapStorageState {
   activeTileId: string | null;
   expandedTileId: string | null;
   sidebarMode: SidebarMode;
+  workspaceDisplayMode?: WorkspaceDisplayMode;
   territories: ProjectTerritory[];
 }
 

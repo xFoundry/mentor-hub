@@ -74,14 +74,21 @@ export function TourStep({
     width: 0,
     height: 0,
   });
-  const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+  const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
 
-  // Check if we're on mobile - only run once on mount
+  // Mark as mounted for client-only rendering
+  useLayoutEffect(() => {
+    if (isBrowser) {
+      setMounted(true);
+    }
+  }, [isBrowser]);
+
+  // Update mobile flag on resize
   useEffect(() => {
-    setMounted(true);
-    setIsMobile(window.innerWidth < 640);
-
     const handleResize = () => {
       setIsMobile(window.innerWidth < 640);
     };
@@ -193,7 +200,7 @@ export function TourStep({
 
   // Calculate position when mounted and target element changes
   useLayoutEffect(() => {
-    if (!mounted || !targetElement) return;
+    if (!isBrowser || !targetElement) return;
 
     // Initial calculation after a small delay to let the card render
     const timer = setTimeout(() => {
@@ -205,7 +212,7 @@ export function TourStep({
 
   // Handle resize and scroll events
   useEffect(() => {
-    if (!mounted) return;
+    if (!isBrowser) return;
 
     const handleUpdate = () => {
       calculatePosition();
@@ -222,7 +229,7 @@ export function TourStep({
 
   // Scroll target into view
   useEffect(() => {
-    if (!targetElement || !mounted) return;
+    if (!targetElement || !isBrowser) return;
 
     const targetRect = targetElement.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
@@ -238,7 +245,7 @@ export function TourStep({
   }, [targetElement, mounted]);
 
   // Don't render until mounted (avoid SSR issues)
-  if (!mounted) return null;
+  if (!isBrowser || !mounted) return null;
 
   const content = (
     <>

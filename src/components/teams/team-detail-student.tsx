@@ -12,7 +12,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useLocalTaskViewState } from "@/hooks/use-task-view-state";
 import type { TeamMember } from "@/hooks/use-team-members";
 import { Calendar, CheckSquare, Users2 } from "lucide-react";
-import type { Session, Task } from "@/types/schema";
+import type { Contact, Member, Session, Task, Team } from "@/types/schema";
 import type { UserContext } from "@/types/schema";
 import { hasMenteeFeedback, isSessionEligibleForFeedback, parseAsLocalTime } from "@/components/sessions/session-transformers";
 import { isFuture } from "date-fns";
@@ -25,7 +25,7 @@ interface TeamDetailStudentProps {
     teamStatus?: string;
     description?: string;
     cohorts?: Array<{ id: string; shortName: string }>;
-    members?: any[];
+    members?: Member[];
     mentorshipSessions?: Session[];
     actionItems?: Task[];
   };
@@ -53,11 +53,11 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
 
   // Transform team members for TaskDetailSheet (contact is an array in member structure)
   const teamMembersForSheet = useMemo<TeamMember[]>(() => {
-    return members.map((member: any) => ({
+    return members.map((member: Member) => ({
       memberId: member.id,
-      contact: member.contact?.[0] || {},
+      contact: member.contact?.[0] || ({} as Contact),
       type: member.type || "Member",
-      status: member.status,
+      status: member.status || "Active",
     }));
   }, [members]);
 
@@ -104,7 +104,7 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
     // Optimistically update the team detail cache
     mutate(
       [`/teams/${team.id}`],
-      (currentData: any) => {
+      (currentData: Team | undefined) => {
         if (!currentData) return currentData;
         return {
           ...currentData,
@@ -142,18 +142,18 @@ export function TeamDetailStudent({ team, userContext }: TeamDetailStudentProps)
   // Calculate stats
   const stats = useMemo(() => {
     const upcomingSessions = sessions.filter(
-      (s: any) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
+      (s: Session) => s.scheduledStart && s.status !== "Cancelled" && isFuture(parseAsLocalTime(s.scheduledStart))
     );
-    const completedSessions = sessions.filter((s: any) => s.status === "Completed");
+    const completedSessions = sessions.filter((s: Session) => s.status === "Completed");
 
     // Count all open tasks for the team
     const openTasks = tasks.filter(
-      (t: any) => t.status !== "Completed" && t.status !== "Cancelled"
+      (t: Task) => t.status !== "Completed" && t.status !== "Cancelled"
     );
 
     // Sessions needing feedback from student
     const needsFeedback = sessions.filter(
-      (s: any) => isSessionEligibleForFeedback(s) && !hasMenteeFeedback(s)
+      (s: Session) => isSessionEligibleForFeedback(s) && !hasMenteeFeedback(s)
     );
 
     return {

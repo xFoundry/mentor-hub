@@ -94,7 +94,9 @@ export function TourProvider({
   // Find target element when step changes
   useEffect(() => {
     if (!isActive || !currentStep) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetElement(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotFoundForStep(null);
       return;
     }
@@ -106,6 +108,7 @@ export function TourProvider({
       const element = document.querySelector(
         currentStep.targetSelector
       ) as HTMLElement | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetElement(element);
       return element;
     };
@@ -120,6 +123,7 @@ export function TourProvider({
     const finalCheckTimer = setTimeout(() => {
       const element = findTarget();
       if (!element) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setNotFoundForStep(stepIndex);
       }
     }, 1200);
@@ -136,6 +140,7 @@ export function TourProvider({
     if (!isActive || notFoundForStep !== currentTourStep) return;
 
     // Clear the not-found state before advancing to prevent re-triggering
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNotFoundForStep(null);
 
     // Skip to next step or complete tour if element not found

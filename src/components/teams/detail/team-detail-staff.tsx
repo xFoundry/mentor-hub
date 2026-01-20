@@ -152,7 +152,7 @@ export function TeamDetailStaff({ team, userContext }: TeamDetailStaffProps) {
 
     mutate(
       [`/teams/${team.id}`],
-      (currentData: any) => {
+      (currentData: TeamDetail | undefined) => {
         if (!currentData) return currentData;
         return {
           ...currentData,

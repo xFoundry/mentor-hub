@@ -182,24 +182,25 @@ export function ChatInputEditor({
 
   const effectiveValue = value ?? contextValue;
   const effectiveOnChange = onChange ?? contextOnChange;
-  const [isMounted, setIsMounted] = useState(false);
+  const isMountedRef = useRef(false);
+  const lastSyncedValueRef = useRef<string | null>(null);
+  const isUpdatingFromEditorRef = useRef(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  const onEnterRef = useRef(onEnter || onSubmit);
-
-  useEffect(() => {
-    onEnterRef.current = onEnter || onSubmit;
-  }, [onEnter, onSubmit]);
+  const getOnEnter = useCallback(() => onEnter || onSubmit, [onEnter, onSubmit]);
 
   const extensions = useMemo(
     () => [
       StarterKit,
       Placeholder.configure({ placeholder }),
       KeyboardShortcuts.configure({
-        getOnEnter: () => onEnterRef.current,
+        getOnEnter,
       }),
       ...mentionConfigs.map((config) => {
         const MentionPlugin = MentionExtension.extend({
@@ -219,16 +220,19 @@ export function ChatInputEditor({
         });
       }),
     ],
-    [mentionConfigs, placeholder]
+    [getOnEnter, mentionConfigs, placeholder]
   );
 
   const onUpdate = useCallback(
     ({ editor }: { editor: Editor }) => {
-      if (isMounted) {
-        effectiveOnChange?.(editor.getJSON());
+      if (isMountedRef.current) {
+        const nextValue = editor.getJSON();
+        isUpdatingFromEditorRef.current = true;
+        lastSyncedValueRef.current = JSON.stringify(nextValue);
+        effectiveOnChange?.(nextValue);
       }
     },
-    [effectiveOnChange, isMounted]
+    [effectiveOnChange]
   );
 
   const editor = useEditor(
@@ -250,13 +254,18 @@ export function ChatInputEditor({
   }, [editor, setEditor]);
 
   useEffect(() => {
-    if (
-      effectiveValue &&
-      editor &&
-      JSON.stringify(effectiveValue) !== JSON.stringify(editor.getJSON())
-    ) {
-      editor.commands.setContent(effectiveValue);
+    if (!effectiveValue || !editor) return;
+    if (isUpdatingFromEditorRef.current) {
+      isUpdatingFromEditorRef.current = false;
+      return;
     }
+    const incoming = JSON.stringify(effectiveValue);
+    const current = JSON.stringify(editor.getJSON());
+    if (incoming === current || lastSyncedValueRef.current === incoming) {
+      return;
+    }
+    editor.commands.setContent(effectiveValue);
+    lastSyncedValueRef.current = incoming;
   }, [effectiveValue, editor]);
 
   return (
@@ -399,14 +408,13 @@ const GenericMentionList = forwardRef(
       });
     }, [items.length, scrollToItem]);
 
-    const enterHandler = useCallback(() => {
-      selectItem(selectedIndex);
-    }, [selectedIndex, selectItem]);
+    const safeSelectedIndex = items.length
+      ? Math.min(selectedIndex, items.length - 1)
+      : 0;
 
-    useEffect(() => {
-      setSelectedIndex(0);
-      itemRefs.current = itemRefs.current.slice(0, items.length);
-    }, [items]);
+    const enterHandler = useCallback(() => {
+      selectItem(safeSelectedIndex);
+    }, [safeSelectedIndex, selectItem]);
 
     const handleKeyDown = useCallback(
       (event: KeyboardEvent) => {
@@ -439,7 +447,7 @@ const GenericMentionList = forwardRef(
               size="sm"
               className={cn(
                 "flex justify-start px-1 py-2 gap-2",
-                selectedIndex === index && "bg-accent"
+                safeSelectedIndex === index && "bg-accent"
               )}
               onClick={() => selectItem(index)}
               ref={(element) => {
@@ -449,7 +457,7 @@ const GenericMentionList = forwardRef(
               }}
             >
               {renderItem ? (
-                renderItem(item, selectedIndex === index)
+                renderItem(item, safeSelectedIndex === index)
               ) : (
                 <span className="px-2">{item.name}</span>
               )}
@@ -464,6 +472,8 @@ const GenericMentionList = forwardRef(
     );
   }
 );
+
+GenericMentionList.displayName = "GenericMentionList";
 
 function getMentionSuggestion<T extends BaseMentionItem>(
   config: MentionConfig<T>

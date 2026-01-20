@@ -11,7 +11,7 @@
  * - Metadata shown in tooltips
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   FileText,
   Calendar,
@@ -103,27 +103,14 @@ function groupCitations(citations: RichCitationData[]): CitationGroup[] {
     });
 }
 
-/**
- * Get icon component for entity type.
- */
-function getEntityIcon(entityType: string) {
-  switch (entityType) {
-    case "task":
-      return FileText;
-    case "session":
-      return Calendar;
-    case "team":
-      return Users;
-    case "mentor":
-      return User;
-    case "document":
-      return BookOpen;
-    case "entity":
-      return Database;
-    default:
-      return FileText;
-  }
-}
+const ENTITY_ICON_BY_TYPE = {
+  task: FileText,
+  session: Calendar,
+  team: Users,
+  mentor: User,
+  document: BookOpen,
+  entity: Database,
+} as const;
 
 /**
  * Get badge variant based on entity type.
@@ -148,7 +135,9 @@ function getBadgeVariant(
  */
 function CitationBadge({ citation }: { citation: RichCitationData }) {
   const normalized = normalizeCitation(citation);
-  const Icon = getEntityIcon(normalized.entityType);
+  const Icon =
+    ENTITY_ICON_BY_TYPE[normalized.entityType as keyof typeof ENTITY_ICON_BY_TYPE] ||
+    FileText;
 
   return (
     <Tooltip>
@@ -206,7 +195,23 @@ function CitationBadge({ citation }: { citation: RichCitationData }) {
 function GroupedCitationBadge({ group }: { group: CitationGroup }) {
   const [open, setOpen] = useState(false);
   const firstCitation = normalizeCitation(group.citations[0] || {});
-  const Icon = getEntityIcon(firstCitation.entityType);
+  const Icon =
+    ENTITY_ICON_BY_TYPE[firstCitation.entityType as keyof typeof ENTITY_ICON_BY_TYPE] ||
+    FileText;
+  const itemsWithIcons = useMemo(
+    () =>
+      group.citations.map((citation, idx) => {
+        const normalized = normalizeCitation(citation);
+        return {
+          key: normalized.source || idx,
+          normalized,
+          Icon:
+            ENTITY_ICON_BY_TYPE[normalized.entityType as keyof typeof ENTITY_ICON_BY_TYPE] ||
+            FileText,
+        };
+      }),
+    [group.citations]
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -231,33 +236,29 @@ function GroupedCitationBadge({ group }: { group: CitationGroup }) {
             {group.displayLabel}
           </p>
           <div className="max-h-64 overflow-y-auto space-y-1">
-            {group.citations.map((citation, idx) => {
-              const normalized = normalizeCitation(citation);
-              const ItemIcon = getEntityIcon(normalized.entityType);
-              return (
-                <div
-                  key={normalized.source || idx}
-                  className="flex items-start gap-2 p-2 rounded hover:bg-muted transition-colors"
-                >
-                  <ItemIcon className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate">
-                      {normalized.displayName}
+            {itemsWithIcons.map(({ key, normalized, Icon: ItemIcon }) => (
+              <div
+                key={key}
+                className="flex items-start gap-2 p-2 rounded hover:bg-muted transition-colors"
+              >
+                <ItemIcon className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate">
+                    {normalized.displayName}
+                  </p>
+                  {normalized.content && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {normalized.content}
                     </p>
-                    {normalized.content && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {normalized.content}
-                      </p>
-                    )}
-                    {normalized.metadata?.status && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Status: {normalized.metadata.status}
-                      </p>
-                    )}
-                  </div>
+                  )}
+                  {normalized.metadata?.status && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Status: {normalized.metadata.status}
+                    </p>
+                  )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </PopoverContent>

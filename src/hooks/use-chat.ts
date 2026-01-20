@@ -322,8 +322,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   // Send a message
   const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isStreaming) return;
+    async (
+      content: string,
+      options?: { force?: boolean; skipUserMessage?: boolean }
+    ) => {
+      if (!content.trim() || (isStreaming && !options?.force)) return;
 
       // Abort any existing connection
       abortControllerRef.current?.abort();
@@ -399,6 +402,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     ]
   );
 
+  const submitClarification = useCallback(async () => {
+    return;
+  }, []);
+
   // Clear chat (keep thread)
   const clearChat = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -432,11 +439,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     traces,
     isStreaming,
     error,
+    todos: [],
+    artifacts: [],
   };
 
   return {
     session,
     sendMessage,
+    submitClarification,
     clearChat,
     newChat,
     isConnected: !error,

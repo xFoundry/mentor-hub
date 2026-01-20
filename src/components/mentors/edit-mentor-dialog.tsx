@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -81,21 +81,21 @@ export function EditMentorDialog({
   const [status, setStatus] = useState<string>(participation?.status || "Active");
   const [errors, setErrors] = useState<Partial<Record<keyof MentorFormValues | "status", string>>>({});
 
-  // Track if dialog was previously open to detect fresh opens
-  const wasOpen = useRef(false);
+  const resetForm = useCallback(() => {
+    setFormValues(getInitialFormValues());
+    setStatus(participation?.status || "Active");
+    setErrors({});
+  }, [getInitialFormValues, participation?.status]);
 
-  // Reset form only when dialog first opens (not on every render while open)
-  useEffect(() => {
-    if (open && !wasOpen.current) {
-      // Dialog just opened - initialize form
-      setFormValues(getInitialFormValues());
-      setStatus(participation?.status || "Active");
-      setErrors({});
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      resetForm();
     }
-    wasOpen.current = open;
-  }, [open, getInitialFormValues, participation?.status]);
+    onOpenChange(nextOpen);
+  }, [onOpenChange, resetForm]);
 
-  const handleFieldChange = useCallback((field: keyof MentorFormValues, value: any) => {
+  const handleFieldChange = useCallback(
+    <K extends keyof MentorFormValues>(field: K, value: MentorFormValues[K]) => {
     setFormValues((prev) => ({ ...prev, [field]: value }));
     // Clear error when field changes
     if (errors[field]) {
@@ -205,7 +205,7 @@ export function EditMentorDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={isUpdating ? undefined : onOpenChange}>
+    <Dialog open={open} onOpenChange={isUpdating ? undefined : handleOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         {/* Loading Overlay */}
         {isUpdating && (

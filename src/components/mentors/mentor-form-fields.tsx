@@ -17,7 +17,10 @@ export interface MentorFormValues {
 
 interface MentorFormFieldsProps {
   values: MentorFormValues;
-  onChange: (field: keyof MentorFormValues, value: any) => void;
+  onChange: <K extends keyof MentorFormValues>(
+    field: K,
+    value: MentorFormValues[K]
+  ) => void;
   errors?: Partial<Record<keyof MentorFormValues, string>>;
   disabled?: boolean;
   /** Whether to show name fields (for edit mode, we may use fullName instead) */

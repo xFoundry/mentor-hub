@@ -75,6 +75,7 @@
     "react-dom": "^19.2.1",
     "react-hook-form": "^7.66.1",
     "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^4.4.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.5.2",

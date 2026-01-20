@@ -12,7 +12,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import type { Team, Contact, Member } from "@/types/schema";
+import type { Member, Task } from "@/types/schema";
 
 interface TeamSummaryProps {
   team: {
@@ -20,7 +20,7 @@ interface TeamSummaryProps {
     teamId?: string;
     teamName: string;
     members?: Member[];
-    actionItems?: any[];
+    actionItems?: Task[];
   };
   /** Start collapsed */
   defaultCollapsed?: boolean;
@@ -45,7 +45,7 @@ export function TeamSummary({
   // Count open tasks
   const tasks = team.actionItems || [];
   const openTaskCount = tasks.filter(
-    (t: any) => t.status !== "Completed" && t.status !== "Cancelled"
+    (t) => t.status !== "Completed" && t.status !== "Cancelled"
   ).length;
 
   // Get member contacts for avatars

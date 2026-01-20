@@ -71,7 +71,7 @@ export function TaskList({
 
     const groups = new Map<string, { name: string; tasks: Task[] }>();
 
-    tasks.forEach((task: any) => {
+    tasks.forEach((task: Task) => {
       let groupId: string;
       let groupName: string;
 

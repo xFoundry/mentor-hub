@@ -16,7 +16,7 @@ import { SessionList } from "@/components/shared/session-list";
 import { TaskList } from "@/components/shared/task-list";
 import { useTaskSheet } from "@/contexts/task-sheet-context";
 import { DataViewControls } from "@/components/staff/data-view-controls";
-import type { UserContext, Task } from "@/types/schema";
+import type { UserContext, Task, Team, Session } from "@/types/schema";
 import { hasMentorFeedback, isSessionEligibleForFeedback, isSessionUpcoming } from "@/components/sessions/session-transformers";
 
 interface StaffDashboardProps {
@@ -89,9 +89,9 @@ export function StaffDashboard({ userContext }: StaffDashboardProps) {
     }
 
     // Teams without recent sessions
-    const teamsWithoutSessions = teams.filter((team: any) => {
+    const teamsWithoutSessions = teams.filter((team: Team) => {
       const teamSessions = sessions.filter(
-        (s: any) => s.team?.[0]?.id === team.id
+        (s: Session) => s.team?.[0]?.id === team.id
       );
       return teamSessions.length === 0;
     });

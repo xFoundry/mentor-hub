@@ -5,6 +5,7 @@ import {
   checkExistingParticipation,
   getUserParticipation,
 } from "@/lib/baseql";
+import { requireStaffSession } from "@/lib/api-auth";
 
 interface CreateMentorInput {
   mode: "link" | "create";
@@ -33,6 +34,9 @@ interface CreateMentorInput {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const body: CreateMentorInput = await request.json();
     const { mode, cohortId, capacityId, capacityName } = body;
 

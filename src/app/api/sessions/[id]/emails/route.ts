@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionJobs, getJob, updateJobStatus } from "@/lib/notifications/job-store";
 import { cancelScheduledEmail, retryAllFailedJobsForSession } from "@/lib/notifications/qstash-scheduler";
 import { isRedisAvailable } from "@/lib/redis";
+import { requireStaffSession } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const { id: sessionId } = await params;
 
     // DEBUG: Log the session ID being queried
@@ -94,6 +98,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const { id: sessionId } = await params;
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get("jobId");
@@ -177,6 +184,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireStaffSession();
+    if (auth instanceof NextResponse) return auth;
+
     const { id: sessionId } = await params;
 
     // Check Redis availability

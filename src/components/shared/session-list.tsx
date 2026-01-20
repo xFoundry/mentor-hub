@@ -74,7 +74,7 @@ export function SessionList({
 
     const groups = new Map<string, { name: string; sessions: Session[] }>();
 
-    sessions.forEach((session: any) => {
+    sessions.forEach((session: Session) => {
       let groupId: string;
       let groupName: string;
 

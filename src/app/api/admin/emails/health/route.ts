@@ -10,6 +10,7 @@ import { qstash, getBaseUrl, FLOW_CONTROL, RETRY_CONFIG } from "@/lib/qstash";
 import { redis, isRedisAvailable, REDIS_KEYS } from "@/lib/redis";
 import { isQStashSchedulerEnabled } from "@/lib/notifications/qstash-scheduler";
 import { updateBatchProgress } from "@/lib/notifications/job-store";
+import { requireStaffSession } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -68,6 +69,9 @@ interface HealthCheckResult {
  * - recalculate=true: Recalculate all batch statuses (useful after code changes)
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireStaffSession();
+  if (auth instanceof NextResponse) return auth;
+
   const { searchParams } = new URL(request.url);
   const testPublish = searchParams.get("testPublish") === "true";
   const recalculate = searchParams.get("recalculate") === "true";
