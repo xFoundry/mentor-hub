@@ -60,8 +60,13 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
 
   // Track which batches we've already scheduled for cleanup to avoid infinite loops
   const scheduledForCleanupRef = useRef<Set<string>>(new Set());
+  const inFlightRef = useRef(false);
+  const trackedFetchTimestampsRef = useRef<Map<string, number>>(new Map());
 
   const fetchJobStatus = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
     try {
       // Build query params
       const params = new URLSearchParams();
@@ -87,6 +92,13 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
         for (const batchId of trackedArray) {
           const existing = batches.find(b => b.batchId === batchId);
           if (!existing) {
+            const lastFetch = trackedFetchTimestampsRef.current.get(batchId) ?? 0;
+            const now = Date.now();
+            if (now - lastFetch < 15000) {
+              continue;
+            }
+            trackedFetchTimestampsRef.current.set(batchId, now);
+
             // Fetch async but don't block
             fetch(`/api/jobs/status?batchId=${batchId}`)
               .then(res => res.ok ? res.json() : null)
@@ -129,6 +141,7 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
+      inFlightRef.current = false;
       setIsLoaded(true);
     }
   }, [userId]); // Removed trackedBatches from dependencies

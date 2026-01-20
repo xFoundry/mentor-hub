@@ -3,6 +3,26 @@ import { getAuthSession } from "@/lib/auth0";
 import { getUserByAuth0Id, getUserParticipation } from "@/lib/baseql";
 import { mapCapacityToUserType, type Contact, type Participation, type UserType } from "@/types/schema";
 
+const USER_TYPE_CACHE_TTL_MS = 5 * 60 * 1000;
+const userTypeCache = new Map<string, { userType: UserType | "unknown"; expiresAt: number }>();
+
+function getCachedUserType(key: string): UserType | "unknown" | undefined {
+  const cached = userTypeCache.get(key);
+  if (!cached) return undefined;
+  if (cached.expiresAt < Date.now()) {
+    userTypeCache.delete(key);
+    return undefined;
+  }
+  return cached.userType;
+}
+
+function setCachedUserType(key: string, userType: UserType | "unknown"): void {
+  userTypeCache.set(key, {
+    userType,
+    expiresAt: Date.now() + USER_TYPE_CACHE_TTL_MS,
+  });
+}
+
 export interface AuthSessionContext {
   email: string;
   auth0Id?: string;
@@ -88,6 +108,15 @@ export async function requireStaffSession(): Promise<AuthSessionContext | NextRe
   const auth = await requireAuthSession();
   if (auth instanceof NextResponse) return auth;
 
+  const cacheKey = auth.auth0Id || auth.email;
+  const cachedUserType = cacheKey ? getCachedUserType(cacheKey) : undefined;
+  if (cachedUserType) {
+    if (cachedUserType !== "staff") {
+      return NextResponse.json({ error: "Forbidden - Staff access required" }, { status: 403 });
+    }
+    return { ...auth, userType: "staff" };
+  }
+
   let participation: Participation[] = [];
   let contacts: Contact[] = [];
 
@@ -108,6 +137,10 @@ export async function requireStaffSession(): Promise<AuthSessionContext | NextRe
   let userType = resolveUserType(participation || []);
   if (!userType && contacts.length > 0) {
     userType = resolveUserTypeFromContacts(contacts);
+  }
+
+  if (cacheKey) {
+    setCachedUserType(cacheKey, userType ?? "unknown");
   }
 
   if (userType !== "staff") {

@@ -20,6 +20,57 @@ import type {
   Role,
 } from "@/types/schema";
 
+const BASEQL_TIMEOUT_MS = 15000;
+const BASEQL_MAX_RETRIES = 2;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status >= 500;
+}
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit
+): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= BASEQL_MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), BASEQL_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok && isRetryableStatus(response.status) && attempt < BASEQL_MAX_RETRIES) {
+        // Drain body before retry to avoid leaking resources.
+        await response.text().catch(() => undefined);
+        await sleep(500 * Math.pow(2, attempt));
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+
+      if (attempt < BASEQL_MAX_RETRIES) {
+        await sleep(500 * Math.pow(2, attempt));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError ?? new Error("BaseQL fetch failed");
+}
+
 /**
  * BaseQL Query Helper
  *
@@ -72,8 +123,12 @@ class BaseQLClient {
   async query<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
     try {
       const config = this.getConfig();
+      const requestId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 
-      const response = await fetch(config.url, {
+      const response = await fetchWithRetry(config.url, {
         method: "POST",
         headers: config.headers,
         body: JSON.stringify({
@@ -84,7 +139,11 @@ class BaseQLClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[BaseQL] HTTP ${response.status}: ${errorText}`);
+        const cfRay = response.headers.get("cf-ray");
+        const cfCacheStatus = response.headers.get("cf-cache-status");
+        console.error(
+          `[BaseQL] HTTP ${response.status} (requestId=${requestId}, cfRay=${cfRay ?? "n/a"}, cfCache=${cfCacheStatus ?? "n/a"}): ${errorText}`
+        );
         throw new Error(`BaseQL query failed: ${response.status} ${response.statusText}`);
       }
 
