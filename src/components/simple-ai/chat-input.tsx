@@ -185,6 +185,8 @@ export function ChatInputEditor({
   const isMountedRef = useRef(false);
   const lastSyncedValueRef = useRef<string | null>(null);
   const isUpdatingFromEditorRef = useRef(false);
+  const onEnterRef = useRef<(() => void) | undefined>(onEnter);
+  const onSubmitRef = useRef(onSubmit);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -193,7 +195,18 @@ export function ChatInputEditor({
     };
   }, []);
 
-  const getOnEnter = useCallback(() => onEnter || onSubmit, [onEnter, onSubmit]);
+  useEffect(() => {
+    onEnterRef.current = onEnter;
+  }, [onEnter]);
+
+  useEffect(() => {
+    onSubmitRef.current = onSubmit;
+  }, [onSubmit]);
+
+  const getOnEnter = useCallback(
+    () => onEnterRef.current ?? onSubmitRef.current,
+    []
+  );
 
   const extensions = useMemo(
     () => [
@@ -760,22 +773,27 @@ export function useChatInput<
     () => parseContent(value, configsArray),
     [value, configsArray]
   );
+  const parsedRef = useRef(parsed);
+  useEffect(() => {
+    parsedRef.current = parsed;
+  }, [parsed]);
 
   const clear = useCallback(() => {
     setValue({ type: "doc", content: [] });
   }, []);
 
   const handleSubmit = useCallback(() => {
-    if (parsed.content.trim().length === 0) {
+    const latestParsed = parsedRef.current;
+    if (latestParsed.content.trim().length === 0) {
       return;
     }
 
     if (onCustomSubmit) {
-      onCustomSubmit(parsed);
+      onCustomSubmit(latestParsed);
     }
 
     clear();
-  }, [parsed, onCustomSubmit, clear]);
+  }, [onCustomSubmit, clear]);
 
   return {
     value,
