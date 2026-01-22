@@ -43,9 +43,9 @@ export function pixelToAxial(point: { x: number; y: number }, size = HEX_SIZE) {
 }
 
 export function roundAxial(coord: { q: number; r: number }): HexCoord {
-  let x = coord.q;
-  let z = coord.r;
-  let y = -x - z;
+  const x = coord.q;
+  const z = coord.r;
+  const y = -x - z;
 
   let rx = Math.round(x);
   let ry = Math.round(y);

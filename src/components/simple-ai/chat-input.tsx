@@ -154,6 +154,13 @@ export function ChatInput({
   );
 }
 
+// Global registry for keyboard callbacks - allows extension to access callbacks
+// without passing refs through React's render cycle
+const keyboardCallbackRegistry = new Map<
+  string,
+  { onEnter?: () => void; onSubmit: () => void }
+>();
+
 export interface ChatInputEditorProps {
   disabled?: boolean;
   onEnter?: () => void;
@@ -185,8 +192,8 @@ export function ChatInputEditor({
   const isMountedRef = useRef(false);
   const lastSyncedValueRef = useRef<string | null>(null);
   const isUpdatingFromEditorRef = useRef(false);
-  const onEnterRef = useRef<(() => void) | undefined>(onEnter);
-  const onSubmitRef = useRef(onSubmit);
+  // Use useState with lazy initializer for stable ID that doesn't trigger ref-during-render warnings
+  const [editorId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -195,25 +202,23 @@ export function ChatInputEditor({
     };
   }, []);
 
+  // Register callbacks in the global registry so the extension can access them
   useEffect(() => {
-    onEnterRef.current = onEnter;
-  }, [onEnter]);
-
-  useEffect(() => {
-    onSubmitRef.current = onSubmit;
-  }, [onSubmit]);
-
-  const getOnEnter = useCallback(
-    () => onEnterRef.current ?? onSubmitRef.current,
-    []
-  );
+    keyboardCallbackRegistry.set(editorId, {
+      onEnter,
+      onSubmit,
+    });
+    return () => {
+      keyboardCallbackRegistry.delete(editorId);
+    };
+  }, [editorId, onEnter, onSubmit]);
 
   const extensions = useMemo(
     () => [
       StarterKit,
       Placeholder.configure({ placeholder }),
       KeyboardShortcuts.configure({
-        getOnEnter,
+        editorId,
       }),
       ...mentionConfigs.map((config) => {
         const MentionPlugin = MentionExtension.extend({
@@ -233,7 +238,7 @@ export function ChatInputEditor({
         });
       }),
     ],
-    [getOnEnter, mentionConfigs, placeholder]
+    [editorId, mentionConfigs, placeholder]
   );
 
   const onUpdate = useCallback(
@@ -309,21 +314,22 @@ export function ChatInputEditor({
   );
 }
 
-const KeyboardShortcuts = Extension.create({
+const KeyboardShortcuts = Extension.create<{
+  editorId: string;
+}>({
   addKeyboardShortcuts() {
     return {
       Enter: () => {
-        const onEnter = this.options.getOnEnter?.();
-        if (onEnter) {
-          onEnter();
-        }
+        const callbacks = keyboardCallbackRegistry.get(this.options.editorId);
+        const handler = callbacks?.onEnter ?? callbacks?.onSubmit;
+        handler?.();
         return true;
       },
     };
   },
   addOptions() {
     return {
-      getOnEnter: () => () => {},
+      editorId: "",
     };
   },
 });

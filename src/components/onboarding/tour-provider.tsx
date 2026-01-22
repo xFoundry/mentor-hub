@@ -96,7 +96,7 @@ export function TourProvider({
     if (!isActive || !currentStep) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetElement(null);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setNotFoundForStep(null);
       return;
     }
@@ -108,7 +108,7 @@ export function TourProvider({
       const element = document.querySelector(
         currentStep.targetSelector
       ) as HTMLElement | null;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setTargetElement(element);
       return element;
     };
@@ -123,7 +123,7 @@ export function TourProvider({
     const finalCheckTimer = setTimeout(() => {
       const element = findTarget();
       if (!element) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setNotFoundForStep(stepIndex);
       }
     }, 1200);

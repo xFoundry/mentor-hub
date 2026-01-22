@@ -59,9 +59,9 @@ export function mapPixelToAxial(point: { x: number; y: number }, size = MAP_HEX_
 }
 
 export function mapRoundAxial(coord: { q: number; r: number }): HexCoord {
-  let x = coord.q;
-  let z = coord.r;
-  let y = -x - z;
+  const x = coord.q;
+  const z = coord.r;
+  const y = -x - z;
 
   let rx = Math.round(x);
   let ry = Math.round(y);

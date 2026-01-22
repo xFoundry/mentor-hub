@@ -82,7 +82,7 @@ export function JobStatusProvider({ children, userId }: JobStatusProviderProps) 
       }
 
       const data = await response.json();
-      let batches: JobProgress[] = data.batches || [];
+      const batches: JobProgress[] = data.batches || [];
 
       // Fetch individually tracked batches that might not be in the user's active list
       // Use functional update to get current value without adding to dependencies
